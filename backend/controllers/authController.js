@@ -6,6 +6,7 @@ const MESSAGES = require("../constants/messages")
 const { isValidEmail, isValidPhone, isValidPassword } = require("../utils/validators")
 const RefreshToken  = require("../models/RefreshToken")
 const { generateAccessToken ,generateRefreshToken } = require("../utils/generateToken")
+const { OAuth2Client } = require("google-auth-library")
 const register = async (req,res,next) =>{
     try{
         const { name , email ,phone , password , role} = req.body
@@ -156,5 +157,30 @@ const refreshAccessToken = async (req,res,next) => {
         next(error)
     }
 }
- 
-module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken}
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+const googleLogin = async (req, res ,next) => {
+    try{
+        const { idToken } = req.body
+        if(!idToken) {
+            return res.status(400).json({success:false,messages:"Google token required."})
+        }
+
+        const ticket = await client.verifyIdToken({ idToken,audience:process.env.GOOGLE_CLIENT_ID})
+
+        const payload = ticket.getPayload()
+        const { email ,name ,sub :googleId} = payload
+        let user = await User.findOne({ email })
+        if(!user) {
+            user = await User.create({name,email,googleId,role:ROLE.CUSTOMER})
+        }
+        const accessToken = generateAccessToken(user._id,user.role)
+        const refreshToken = generateAccessToken(user._id)
+        await RefreshToken.create({user:user._id,token:refreshToken,expiresAt:new Date(Date.now() + 7*24 *60 *60*1000)
+        })
+        return res.status(200).json({success:true ,message:"google login successfull" ,accessToken,refreshToken,role:user.role})
+    }catch(error){
+        next(error)
+    }
+}
+module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken ,googleLogin}
