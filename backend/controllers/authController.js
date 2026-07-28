@@ -32,7 +32,7 @@ const register = async (req,res,next) =>{
         const finalRole = allowedRoles.includes(role) ? role : ROLES.CUSTOMER
         const hashedPassword = await bcrypt.hash(password,10)
         const otp = generateOTP()
-        const otpExpiresAt = new Date(Date.now() + 10 *60 * 1000)
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000)
         const newUser = await User.create({
             name,email,phone,password:hashedPassword,role:finalRole,otp,otpExpiresAt,isVerified:false
         })
@@ -175,12 +175,11 @@ const googleLogin = async (req, res ,next) => {
         }
 
         const ticket = await client.verifyIdToken({ idToken,audience:process.env.GOOGLE_CLIENT_ID})
-
         const payload = ticket.getPayload()
         const { email ,name ,sub :googleId} = payload
         let user = await User.findOne({ email })
         if(!user) {
-            user = await User.create({name,email,googleId,role:ROLE.CUSTOMER,isVerified:true})
+            user = await User.create({name,email,googleId,role:ROLES.CUSTOMER,isVerified:true})
         }
         const accessToken = generateAccessToken(user._id,user.role)
         const refreshToken = generateAccessToken(user._id)
@@ -201,8 +200,8 @@ const verifyOTP = async (req,res,next) => {
         if(!user) {
             return res.status(404).json({success:false,message:"User not found"})
         }
-        if(user.otp !==otp) {
-            return res.status(400).json({success:false,message:"OTP has expired"})
+        if(user.otp !== otp) {
+            return res.status(400).json({success:false,message:"Invalid OTP"})
         }
         if(user.otpExpiresAt <new Date()) {
             return res.status(400).json({success:false,message:"OTP has expired"})
@@ -216,4 +215,30 @@ const verifyOTP = async (req,res,next) => {
         next(error)
     }
 }
-module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken ,googleLogin ,verifyOTP}
+
+const resendOTP = async (req,res,next) => {
+    try {
+        const { email } = req.body
+        if(!email) {
+            return res.status(400).json({success:false,message:"Email is required"})
+        }
+        const user = await User.findOne({ email })
+        if(!user) {
+            return res.status(404).json({success:false,message:"User not found"})
+        }
+        if(user.isVerified) {
+            return res.status(400).json({success:false,message:"Email already verified"})
+        }
+        const otp = generateOTP()
+        const otpExpiresAt = new Date(Date.now() + 10 *60 *1000)
+        user.otp = otp
+        user.otpExpiresAt = otpExpiresAt
+        await user.save()
+        await sendOTPEmail(email,otp)
+        return res.status(200).json({success:true,message:"New OTP sent to Your email"})
+    }catch(error){
+        next(error)
+    }
+}
+
+module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken ,googleLogin ,verifyOTP, resendOTP}

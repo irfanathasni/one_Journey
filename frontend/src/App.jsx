@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import VendorDashboard from "./pages/vendor/VendorDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import VerifyOTP from "./pages/auth/VerifyOTP";
 
 function App() {
   return (
@@ -13,7 +14,7 @@ function App() {
     <Route path="/" element={<Navigate to="/login" replace />} /> 
        <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-
+      <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route element ={<ProtectedRoute allowedRoles={["customer"]} />}>
         <Route path="/customer/dashboard" element={<CustomerDashboard />} />
       </Route>

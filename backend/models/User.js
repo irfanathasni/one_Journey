@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema({
     },
     phone:{
         type:String,
-        required:true,
+        required:function() {
+            return !this.googleId
+        },
     },
     password :{
         type:String,
