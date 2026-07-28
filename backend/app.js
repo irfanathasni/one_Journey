@@ -6,6 +6,7 @@ const connectDB = require("./config/db")
 const authRoutes  =require("./routes/authRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const weddingRoutes = require("./routes/weddingRoutes")
+const vendorRoutes = require("./routes/vendorRoutes")
 const app = express()
 
 app.use(cors())
@@ -14,6 +15,7 @@ app.use(cookieParser())
 
 app.use("/api/v1/auth",authRoutes)
 app.use("/api/v1/wedding",weddingRoutes)
+app.use("/api/v1/vendor",vendorRoutes)
 app.get("/",(req,res) => {
     res.send("One_Journey API running")
 })
