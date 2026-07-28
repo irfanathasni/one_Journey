@@ -40,7 +40,11 @@ const Login = () => {
     
         try {
             const data = await loginUser(formData)
-            dispatch(setCredentials({user:null,token:data.accessToken,role:data.role}))
+            dispatch(setCredentials({
+              user:null,
+              token:data.accessToken,
+              refreshToken:data.refreshToken,
+              role:data.role}))
             
             if(data.role === "customer") navigate("/customer/dashboard")
             else if(data.role === "vendor") navigate("/vendor/dashboard")
