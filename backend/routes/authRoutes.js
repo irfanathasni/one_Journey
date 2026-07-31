@@ -3,7 +3,9 @@ const router = express.Router();
 
 const { register, login, getProfile, updateProfile, 
     changePassword, logout, refreshAccessToken, googleLogin, verifyOTP, 
-    resendOTP} = require("../controllers/authController");
+    resendOTP,
+    forgotPassword,
+    resetPassword} = require("../controllers/authController");
 const protect = require("../Middleware/authMiddleware");
 router.post("/register",register)
 router.post ("/login",login)
@@ -15,4 +17,6 @@ router.put("/change-password",protect,changePassword)
 router.post("/logout",protect,logout)
 router.post("/verify-otp",verifyOTP)
 router.post("/resend-otp" , resendOTP)
-module.exports = router;
+router.post("/forgot-password",forgotPassword)
+router.put("/reset-password/:token",resetPassword)
+module.exports = router

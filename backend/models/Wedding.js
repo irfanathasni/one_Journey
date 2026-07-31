@@ -32,4 +32,4 @@ const weddingSchema = new mongoose.Schema({
 },{timestamps :true}
 );
 
-module.exports = mongoose.model("wedding" , weddingSchema)
+module.exports = mongoose.model("Wedding" , weddingSchema)

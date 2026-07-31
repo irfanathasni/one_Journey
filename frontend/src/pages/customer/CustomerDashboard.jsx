@@ -1,7 +1,7 @@
 import { useEffect } from "react"
 import { useState } from "react"
 import { createWedding, getMyWedding } from "../../services/weddingService"
-
+import Navbar from "../../components/Navbar"
 const CustomerDashboard = () => {
     const [wedding,setWedding] = useState(null)
     const [loading,setLoading] = useState(true)
@@ -45,6 +45,7 @@ const CustomerDashboard = () => {
 
     return (
     <div style={styles.page}>
+      <Navbar />
       {!wedding ? (     
         <div style={styles.card}>
           <p style={styles.eyebrow}>One Journey</p>

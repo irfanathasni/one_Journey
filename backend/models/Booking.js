@@ -1,13 +1,11 @@
 const mongoose = require("mongoose")
-const Vendor = require("./Vendor")
-
 const bookingSchema = new mongoose.Schema({
     wedding:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Wedding",
         required:true
     },
-    Vendor:{
+    vendor:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Vendor",
         required:true

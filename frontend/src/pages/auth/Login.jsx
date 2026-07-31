@@ -6,6 +6,7 @@ import { setCredentials } from "../../features/auth/authSlice"
 import { isValidEmail, isValidPassword } from "../../utils/validators"
 import { GoogleLogin } from "@react-oauth/google"
 import axiosInstance from "../../services/axiosInstance"
+
 const Login = () => {
     const [formData,setFormData] = useState({email:"" , password :""})
     const [error, setError] = useState("")
@@ -91,13 +92,17 @@ const Login = () => {
             />
           </div>
 
-          <div style={styles.field}>
+         <div style={styles.field}>
             <label style={styles.label}>Password</label>
-            <input type="password" name="password" placeholder="Enter your password" value={formData.password} onChange={handleChange} style={styles.input}
-              required />
-          </div>
+            <input type="password" name="password" placeholder="Enter your password" value={formData.password} onChange={handleChange}
+              style={styles.input} required />
+        </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
+        <div style={{ textAlign: "right" }}>
+          <Link to="/forgot-password" style={{ fontSize: "13px", color: "#C97B84", textDecoration: "none" }}>Forgot password</Link>
+        </div>
+      
+        <button type="submit" disabled={loading} style={styles.button}>
             {loading ? "Logging in..." : "Log in"}
           </button>
         </form>

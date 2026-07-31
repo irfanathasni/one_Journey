@@ -12,7 +12,7 @@
     },
     category :{
         type:String,
-        enum:["Photography","EventManagement" ,"Catering" ,"WeddingHall","BridalMakeup","preMarriageCounselling"],
+        enum:["Photography","EventManagement" ,"Catering" ,"WeddingHall","BridalMakeup","PreMarriageCounselling"],
         required :true
     },
     description :{

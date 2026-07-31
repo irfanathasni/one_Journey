@@ -9,6 +9,8 @@ const { generateAccessToken ,generateRefreshToken } = require("../utils/generate
 const { OAuth2Client } = require("google-auth-library")
 const generateOTP = require("../utils/generateOTP")
 const sendOTPEmail = require("../utils/sendEmail")
+const crypto = require("crypto")
+
 const register = async (req,res,next) =>{
     try{
         const { name , email ,phone , password , role} = req.body
@@ -241,4 +243,42 @@ const resendOTP = async (req,res,next) => {
     }
 }
 
-module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken ,googleLogin ,verifyOTP, resendOTP}
+const forgotPassword = async (req,res,next) => {
+    try{
+        const { email } = req.body 
+        const user = await User.findOne({ email })
+        if(!user) {
+            return res.status(404).json({success:false,message:"user not found"})
+        }
+        const resetToken = crypto.randomBytes(32).toString("hex")
+        user.resetPasswordToken = resetToken
+        user.resetPasswordExpires = Date.now() + 10 *60 * 1000
+        await user.save()
+
+        const resetLink = `http://localhost:5173/reset-password/${resetToken}`
+        await sendOTPEmail.sendResetpasswordEmail(email,resetLink)
+        return res.status(200).json({success:true,message:"Password reset link sent to your email"})
+    }catch(error){
+        next(error)
+    }
+}
+
+const resetPassword = async (req,res,next) => {
+    try{
+        const { token } = req.params
+        const { password } = req.body
+        const user = await User.findOne({resetPasswordToken:token,resetPasswordExpires:{$gt:Date.now()}})
+        if(!user) {
+            return res.status(400).json({success:false,message:"Invalid or expired reset Token "})
+        }
+         user.password = await bcrypt.hash(password,10)
+         user.resetPasswordToken = undefined
+         user.resetPasswordExpires = undefined
+         await user.save()
+         return res.status(200).json({success:true,message:"Password reset successfull"})
+        
+    }catch(error){
+        next(error)
+    }
+}
+module.exports = { register ,login ,getProfile , updateProfile , changePassword ,logout,refreshAccessToken ,googleLogin ,verifyOTP, resendOTP , forgotPassword , resetPassword}

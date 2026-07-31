@@ -1,6 +1,7 @@
 import  { useState }  from "react"
 import  { createVendorProfile, getMyVendorProfile } from "../../services/vendorService"
 import { useEffect } from "react"
+import Navbar from "../../components/Navbar";
 
 const VendorDashboard =() =>{
   const [vendor,setVendor] = useState(null)
@@ -39,6 +40,7 @@ const VendorDashboard =() =>{
   if(loading) return <div style={styles.page}>Loading..</div>
    return (
     <div style={styles.page}>
+      <Navbar />
       {!vendor ? (
         <div style={styles.card}>
           <p style={styles.eyebrow}>One Journey</p>
