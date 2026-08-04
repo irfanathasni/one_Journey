@@ -1,4 +1,5 @@
 const mongoose = require("mongoose")
+const BOOKING_STATUS = require("../constants/bookingStatus")
 const bookingSchema = new mongoose.Schema({
     wedding:{
         type:mongoose.Schema.Types.ObjectId,
@@ -21,8 +22,8 @@ const bookingSchema = new mongoose.Schema({
     },
     status :{
         type:String,
-        enum :["pending","approved","rejected","completed","cancelled"],
-        default:"pending"
+        enum :Object.values(BOOKING_STATUS),
+        default:BOOKING_STATUS.PENDING
     },
     amount :{
         type:Number,

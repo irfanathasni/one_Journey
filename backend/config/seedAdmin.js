@@ -20,6 +20,7 @@ const createAdmin = async () => {
       phone: "9999999999",
       password: hashedPassword,
       role: "admin",
+      isVerified :true,
     })
 
     console.log("Admin created successfully")

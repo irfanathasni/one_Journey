@@ -2,12 +2,14 @@ import  { useState }  from "react"
 import  { createVendorProfile, getMyVendorProfile } from "../../services/vendorService"
 import { useEffect } from "react"
 import Navbar from "../../components/Navbar";
+import { VENDOR_STATUS } from "../../constants/vendorStatus";
 
 const VendorDashboard =() =>{
   const [vendor,setVendor] = useState(null)
   const[loading,setLoading] = useState(true)
   const [formData,setFormData] = useState({businessName:"",category:"",description:""})
   const [error,setError] = useState("")
+  const [showReapplyForm,setShowReapplyForm] = useState(false)
 
   useEffect(()=> {
     fetchProfile()
@@ -33,70 +35,92 @@ const VendorDashboard =() =>{
     try {
       const res = await createVendorProfile(formData)
       setVendor(res.data)
+      setShowReapplyForm(false)
     }catch(err) {
-      setError(err.response?.data?.message || "Failed to create profile")
+      setError(err.response?.data?.message || "Failed to Submit")
     }
   }
   if(loading) return <div style={styles.page}>Loading..</div>
-   return (
+    return (
     <div style={styles.page}>
       <Navbar />
-      {!vendor ? (
-        <div style={styles.card}>
-          <p style={styles.eyebrow}>One Journey</p>
-          <h1 style={styles.heading}>Set up your business</h1>
-          <p style={styles.subtext}>Tell customers about your services.</p>
-
-          {error && <div style={styles.errorBox}>{error}</div>}
-
-          <form onSubmit={handleCreate} style={styles.form}>
-            <div style={styles.field}>
-              <label style={styles.label}>Business name</label>
-              <input name="businessName" value={formData.businessName} onChange={handleChange} style={styles.input} required />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Category</label>
-              <select name="category" value={formData.category} onChange={handleChange} style={styles.input}>
-                <option value="Photography">Photography</option>
-                <option value="EventManagement">Event Management</option>
-                <option value="Catering">Catering</option>
-                <option value="WeddingHall">Wedding Hall</option>
-                <option value="BridalMakeup">Bridal Makeup</option>
-                <option value="PreMarriageCounselling">Pre-Marriage Counselling</option>
-              </select>
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Description</label>
-              <input name="description" value={formData.description} onChange={handleChange} style={styles.input} />
-            </div>
-            <button type="submit" style={styles.button}>Create profile</button>
-          </form>
-        </div>
+    {!vendor ? (
+      <div style={styles.card}>
+      </div>
       ) : (
-         <>
-          <div style={styles.hero}>
-            <p style={styles.eyebrow}>Vendor Dashboard</p>
-            <h1 style={styles.heading}>{vendor.businessName}</h1>
-            <p style={styles.subtext}>{vendor.category}</p>
-          </div>
+        <>
+        <div style={styles.hero}>
+          <p style={styles.eyebrow}>Vendor Dashboard</p>
+          <h1 style={styles.heading}>{vendor.businessName}</h1>
+          <p style={styles.subtext}>{vendor.category}</p>
+        </div>
 
-          <div style={styles.grid}>
-            <div style={styles.statCard}>
-              <p style={styles.statLabel}>Verification status</p>
-              <p style={{ ...styles.statValue, color: vendor.isVerified ? "#3D5A50" : "#C97B84" }}>
-                {vendor.isVerified ? "Verified" : "Pending review"}
-              </p>
+      <div style={styles.grid}>
+        <div style={styles.statCard}>
+        <p style={styles.statLabel}>Verification status</p>
+        <p style={{...styles.statValue, color: vendor.verificationStatus === VENDOR_STATUS.APPROVED ? "#3D5A50" :
+                    vendor.verificationStatus === VENDOR_STATUS.REJECTED ? "#A33B3B" : "#C97B84"}}>
+                {   vendor.verificationStatus === VENDOR_STATUS.APPROVED ? "Approved" :
+                    vendor.verificationStatus === VENDOR_STATUS.REJECTED ? "Rejected" : "Pending review"}
+        </p>
+
+              {vendor.verificationStatus === VENDOR_STATUS.REJECTED && vendor.rejectionReason && (
+                <p style={{ fontSize: "13px", color: "#A33B3B", marginTop: "6px" }}>
+                  Reason: {vendor.rejectionReason}
+                </p>
+              )}
             </div>
             <div style={styles.statCard}>
               <p style={styles.statLabel}>Account status</p>
               <p style={{ ...styles.statValue, color: "#3D5A50" }}>{vendor.status}</p>
             </div>
           </div>
+           {vendor.verificationStatus === VENDOR_STATUS.REJECTED && (
+            <div style={{ maxWidth: "420px", margin: "2rem auto" }}>
+              {!showReapplyForm ? (
+                <button onClick={() => {setFormData({
+                      businessName: vendor.businessName,
+                      category: vendor.category,
+                      description: vendor.description || "",
+                    })
+                    setShowReapplyForm(true);
+                  }}
+                  style={styles.button}>Update and reapply</button>
+              ) : (
+        <div style={styles.card}>
+          <h2 style={styles.heading}>Update your profile</h2>
+          {error && <div style={styles.errorBox}>{error}</div>}
+    <form onSubmit={handleCreate} style={styles.form}>
+        <div style={styles.field}>
+          <label style={styles.label}>Business name</label>
+           <input name="businessName" value={formData.businessName} onChange={handleChange} style={styles.input} required />
+        </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Category</label>
+            <select name="category" value={formData.category} onChange={handleChange} style={styles.input}>
+              <option value="Photography">Photography</option>
+              <option value="EventManagement">Event Management</option>
+              <option value="Catering">Catering</option>
+              <option value="WeddingHall">Wedding Hall</option>
+              <option value="BridalMakeup">Bridal Makeup</option>
+              <option value="PreMarriageCounselling">Pre-Marriage Counselling</option>
+            </select>
+          </div>
+        <div style={styles.field}>
+          <label style={styles.label}>Description</label>
+          <input name="description" value={formData.description} onChange={handleChange} style={styles.input} />
+        </div>
+          <button type="submit" style={styles.button}>Resubmit for review</button>
+    </form>
+        </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
-  );
-};
+  )
+}
 const styles = {
   page: { 
     minHeight: "100vh",

@@ -26,4 +26,34 @@ const sendResetpasswordEmail = async (email,resetLink) => {
         <p>If you didn't request this,Please ignore this email,</p>`
     })
 }
-module.exports =  { sendOTPEmail , sendResetpasswordEmail }
+
+const sendVendorStatusEmail = async (email,businessName,status,reason) =>{
+    const isApproved = status === "approved" 
+
+    const subject = isApproved
+        ? "Your vendor application has been approved"
+        : "Update on your vendor applicaiton"
+
+    const text = isApproved
+        ?`congragulations, Your vendor profile "${businessName}" has approved.You can receive bookings on  One_Journey`
+        :`<p>Your vendor profile <b>${businessName}</b> was not approved.</p>
+        \n\nReason:${reason}\n\n
+        <p>You can update your profile and reapply.</p>`
+
+    const html = isApproved
+        ?`<P>Congragulations,Your vendor profile <b>${businessName}</b>has been approved. You can now bookings on One_Journey</p>`
+        :`<p>Your vendor profile <b>${businessName}</b> was not approved</p>
+        <p><b>Reason:</b>${reason}</p>
+        <p>You can update your profile and reapplay</p>`
+
+    await transporter.sendMail({
+        from:`"One Journey weddong planner" <${process.env.EMAIL_USER}>`,
+        to:email ,
+        subject,
+        text,
+        html,
+    })
+}
+
+
+module.exports =  { sendOTPEmail , sendResetpasswordEmail ,sendVendorStatusEmail }

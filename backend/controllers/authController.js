@@ -8,7 +8,7 @@ const RefreshToken  = require("../models/RefreshToken")
 const { generateAccessToken ,generateRefreshToken } = require("../utils/generateToken")
 const { OAuth2Client } = require("google-auth-library")
 const generateOTP = require("../utils/generateOTP")
-const sendOTPEmail = require("../utils/sendEmail")
+const { sendOTPEmail } = require("../utils/sendEmail")
 const crypto = require("crypto")
 
 const register = async (req,res,next) =>{
@@ -70,7 +70,8 @@ const login = async (req,res,next) => {
         token:refreshToken,
         expiresAt:new Date(Date.now() + 7 *24 * 60 * 60 * 1000)
        })
-       return res.status(200).json({success:true,message:MESSAGES.LOGIN_SUCCESS , accessToken,refreshToken ,role:user.role})
+       return res.status(200).json({success:true,message:MESSAGES.LOGIN_SUCCESS ,
+         accessToken,refreshToken ,role:user.role,user:{_id:user._id,name:user.name,email:user.email,role:user.role}})
     }catch(error){
         next(error)
     }

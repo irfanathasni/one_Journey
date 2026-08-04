@@ -8,6 +8,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard"
 import VerifyOTP from "./pages/auth/VerifyOTP"
 import ResetPassword from "./pages/auth/ResetPassword"
 import ForgotPassword from "./pages/auth/ForgotPassword"
+import AdminLogin from "./pages/admin/AdminLogin";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/forgot-password" element={ <ForgotPassword/>} />
       <Route path="/reset-password/:token" element={ <ResetPassword />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
       <Route element ={<ProtectedRoute allowedRoles={["customer"]} />}>
         <Route path="/customer/dashboard" element={<CustomerDashboard />} />
       </Route>

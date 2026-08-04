@@ -8,6 +8,7 @@ const errorHandler = require("./middleware/errorHandler");
 const weddingRoutes = require("./routes/weddingRoutes")
 const vendorRoutes = require("./routes/vendorRoutes")
 const bookingRoutes = require("./routes/bookingRoutes")
+const adminRoutes = require("./routes/adminRoutes")
 const app = express()
 
 app.use(cors())
@@ -18,6 +19,7 @@ app.use("/api/v1/auth",authRoutes)
 app.use("/api/v1/wedding",weddingRoutes)
 app.use("/api/v1/vendor",vendorRoutes)
 app.use("/api/v1/booking",bookingRoutes)
+app.use("/api/v1/admin",adminRoutes)
 app.get("/",(req,res) => {
     res.send("One_Journey API running")
 })
