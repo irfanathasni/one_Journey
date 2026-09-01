@@ -34,10 +34,11 @@ const handleSubmit = async (e) => {
         return
     }
     if(!isValidPassword(formData.password)) {
-        setError("password must be at least 6 characters long")
+        setError("Password must be at least 8 characters long and contain one uppercase letter, one lowercase letter, one number, and one special character")
         return
     }
     setLoading(true)
+
 
     try{
         const res = await axiosInstance.post("/auth/register",formData)
@@ -77,7 +78,7 @@ const handleSubmit = async (e) => {
 
           <div style={styles.field}>
             <label style={styles.label}>Password</label>
-            <input type="password" name="password" placeholder="At least 6 characters" value={formData.password} onChange={handleChange} style={styles.input} required />
+            <input type="password" name="password" placeholder="eg:Password@123" value={formData.password} onChange={handleChange} style={styles.input} required />
           </div>
 
           <div style={styles.field}>

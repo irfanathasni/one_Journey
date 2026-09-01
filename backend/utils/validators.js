@@ -9,6 +9,12 @@ const isValidPhone = (phone) => {
 }
 
 const isValidPassword = (password) => {
-    return password.length >=6
+    const passwordRegex =  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#^()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d@$!%*?&.#^()_+\-=\[\]{};':"\\|,.<>\/?]{8,}$/
+    return passwordRegex.test(password)
 }
-module.exports = { isValidEmail , isValidPhone ,isValidPassword}
+
+const isValidName =(name) => {
+    const nameRegex = /^[A-Za-z ]{3,50}$/
+    return nameRegex.test(name.trim())
+}
+module.exports = { isValidEmail , isValidPhone ,isValidPassword ,isValidName}

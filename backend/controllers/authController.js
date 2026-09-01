@@ -3,31 +3,38 @@ const jwt = require("jsonwebtoken")
 const User = require("../models/User")
 const ROLES = require("../constants/roles")
 const MESSAGES = require("../constants/messages")
-const { isValidEmail, isValidPhone, isValidPassword } = require("../utils/validators")
+const { isValidEmail, isValidPhone, isValidPassword ,isValidName} = require("../utils/validators")
 const RefreshToken  = require("../models/RefreshToken")
 const { generateAccessToken ,generateRefreshToken } = require("../utils/generateToken")
 const { OAuth2Client } = require("google-auth-library")
 const generateOTP = require("../utils/generateOTP")
-const { sendOTPEmail } = require("../utils/sendEmail")
+const { sendOTPEmail ,sendResetpasswordEmail } = require("../utils/sendEmail")
 const crypto = require("crypto")
 
 const register = async (req,res,next) =>{
     try{
-        const { name , email ,phone , password , role} = req.body
+        let { name , email ,phone , password , role} = req.body
+        name = name?.trim()
+        email = email?.trim().toLowerCase()
+        phone = phone?.trim()
         if(!name || !email || !phone || !password) {
             return res.status(400).json({success:false,message:MESSAGES.ALL_FIELDS_REQUIRED})
         }
+        if(!isValidName(name)){
+            return res.status(400).json({success:false,message:MESSAGES.INVALID_NAME})
+        }
+        
         if(!isValidEmail(email)) {
             return res.status(400).json({success:false,message:MESSAGES.INVALID_EMAIL})
         }
-        else if(!isValidPhone(phone)) {
+       if(!isValidPhone(phone)) {
             return res.status(400).json({success:false,message:MESSAGES.INVALID_PHONE})
         }
-        else if(!isValidPassword(password)) {
+        if(!isValidPassword(password)) {
             return res.status(400).json({success:false,message:MESSAGES.INVALID_PASSWORD})
         }
-        const existingUser = await User.findOne( { email})
-        if(existingUser) {
+        const existingEmail = await User.findOne({ email })
+        if(existingEmail) {
             return res.status(400).json({success:false,message:MESSAGES.EMAIL_EXISTS})
         }
         const allowedRoles = [ROLES.CUSTOMER,ROLES.VENDOR]
@@ -47,13 +54,20 @@ const register = async (req,res,next) =>{
 
 const login = async (req,res,next) => {
     try{
-        const { email ,password} = req.body
+        let { email ,password} = req.body || {}
+        email= email?.trim().toLowerCase()
         if(!email || !password ) {
             return res.status(400).json({success:false, message:MESSAGES.ALL_FIELDS_REQUIRED})
+        }
+        if(!isValidEmail(email)) {
+            return res.status(400).json({success:false,message:MESSAGES.INVALID_EMAIL})
         }
         const user = await User.findOne({ email }).select("+password")
         if(!user) {
             return res.status(401).json({success:false, message:MESSAGES.INVALID_CREDENTIALS})
+        }
+        if(!user.isActive) {
+            return res.status(403).json({success:false,message:"Your accout has been blocked by admin"})
         }
         const isMatch = await bcrypt.compare(password,user.password)
         if(!isMatch) {
@@ -70,8 +84,16 @@ const login = async (req,res,next) => {
         token:refreshToken,
         expiresAt:new Date(Date.now() + 7 *24 * 60 * 60 * 1000)
        })
+
+       res.cookie("refreshToken",refreshToken ,{
+        httpOnly :true,
+        secure:process.env.NODE_ENV ==="production",
+        sameSite:"strict",
+        maxAge: 7 * 24 * 60 * 60 *1000
+       })
+
        return res.status(200).json({success:true,message:MESSAGES.LOGIN_SUCCESS ,
-         accessToken,refreshToken ,role:user.role,user:{_id:user._id,name:user.name,email:user.email,role:user.role}})
+         accessToken,role:user.role,user:{_id:user._id,name:user.name,email:user.email,role:user.role}})
     }catch(error){
         next(error)
     }
@@ -96,47 +118,62 @@ const getProfile = async (req,res,next) => {
     }
 }
 
-const updateProfile = async (req,res,next) => {
+const updateProfile = async (req, res, next) => {
     try {
-        const {name, phone } = req.body
-        const user = await User.findById(req.user.userId)
-        if(!user) {
-            return res.status(400).json({success:false,message:MESSAGES.UPDATE_FAILED})
+        const { name, phone } = req.body
+        const user = await User.findById(req.user.id)
+        if (!user) {
+            return res.status(404).json({success: false,message: MESSAGES.UPDATE_FAILED})
         }
-        if(name) user.name =name
-        if (phone) user.phone = phone
+        if (name !== undefined) {
+            user.name = name
+        }
+        if (phone !== undefined) {
+            user.phone = phone
+        }
         await user.save()
-        return res.status(200).json({success:true,message:MESSAGES.UPDATE_SUCCESS})
-    }catch(error){
-       next(error)
-    }
-}
-
-const changePassword = async (req,res,next) => {
-    try {
-        const { currentPassword , newPassword } = req.body
-        if(!currentPassword ||!newPassword) {
-            return res.status(400).json({success:false,message:MESSAGES.PASSWORD_FIELDS_REQUIRED})
-        }
-        const user = await User.findById(req.user.userId).select("+password")
-        const isMatch = await bcrypt.compare(currentPassword,user.password)
-        if(!isMatch) {
-            return res.status(400).json({success:false,message:MESSAGES.INCORRECT_PASSWORD})
-        }
-        user.password = await bcrypt.hash(newPassword,10)
-        await user.save()
-        return res.status(200).json({success:true,message:MESSAGES.PASSWORD_CHANGE_SUCCESS})
-    }catch(error) {
+        return res.status(200).json({success: true,message: MESSAGES.UPDATE_SUCCESS,data: user})
+    } catch (error) {
         next(error)
     }
 }
 
+const changePassword = async (req, res, next) => {
+    try {
+        const { currentPassword, newPassword } = req.body
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({success: false,message: MESSAGES.PASSWORD_FIELDS_REQUIRED})
+        }
+        const user = await User.findById(req.user.id).select("+password")
+        if (!user) {
+            return res.status(404).json({success: false,message: "User not found"})
+        }
+        const isMatch = await bcrypt.compare(currentPassword,user.password)
+        if (!isMatch) {
+            return res.status(400).json({success: false,message: MESSAGES.INCORRECT_PASSWORD})
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10)
+        await user.save()
+
+        return res.status(200).json({success: true,message: MESSAGES.PASSWORD_CHANGE_SUCCESS})
+
+    } catch (error) {
+        next(error)
+    }
+}
 const logout = async (req,res,next) => {
     try{
-        const { refreshToken } = req.body
+        const { refreshToken } = req.cookies
         if(refreshToken) {
             await RefreshToken.deleteOne({ token :refreshToken})
         }
+        res.clearCookie("refreshToken",{
+            httpOnly:true,
+            secure:process.env.NODE_ENV === "production",
+            sameSite:"strict"
+        })
         return res.status(200).json({success:true,message:MESSAGES.LOGOUT_SUCCESS})
     }catch(error){
         next(error)
@@ -145,7 +182,7 @@ const logout = async (req,res,next) => {
 
 const refreshAccessToken = async (req,res,next) => {
     try{
-        const { refreshToken } = req.body
+        const { refreshToken } = req.cookies
         if(!refreshToken) {
             return res.status(401).json({success:false,message:MESSAGES.REFRESH_TOKEN_REQUIRED})
         }
@@ -163,7 +200,12 @@ const refreshAccessToken = async (req,res,next) => {
             return res.status(401).json({success:false,message:MESSAGES.USER_NOT_FOUND})
         }
         const newAccessToken = generateAccessToken(user._id , user.role)
-        return res.status(200).json({success:true,accessToken:newAccessToken})
+        return res.status(200).json({
+            success:true,
+            accessToken:newAccessToken,
+            role:user.role,
+            user:{_id:user._id,name:user.name,email:user.email,role:user.role
+        }})
     }catch (error) {
         next(error)
     }
@@ -172,7 +214,7 @@ const refreshAccessToken = async (req,res,next) => {
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 const googleLogin = async (req, res ,next) => {
     try{
-        const { idToken } = req.body
+        const { idToken ,role} = req.body
         if(!idToken) {
             return res.status(400).json({success:false,messages:"Google token required."})
         }
@@ -182,13 +224,25 @@ const googleLogin = async (req, res ,next) => {
         const { email ,name ,sub :googleId} = payload
         let user = await User.findOne({ email })
         if(!user) {
-            user = await User.create({name,email,googleId,role:ROLES.CUSTOMER,isVerified:true})
+            if(!role) {
+                return res.status(200).json({success:true,needsRole:true,message:"Select account type to continue"})
         }
+        const allowedRoles = [ROLES.CUSTOMER ,ROLES.VENDOR]
+        const selectedRole = allowedRoles.includes(role) ? role : ROLES.CUSTOMER
+        user = await User.create({name,email,googleId,role:selectedRole,isVerified:true})
+    }
         const accessToken = generateAccessToken(user._id,user.role)
-        const refreshToken = generateAccessToken(user._id)
+        const refreshToken =  generateRefreshToken(user._id)   
+        
         await RefreshToken.create({user:user._id,token:refreshToken,expiresAt:new Date(Date.now() + 7*24 *60 *60*1000)
         })
-        return res.status(200).json({success:true ,message:"google login successfull" ,accessToken,refreshToken,role:user.role})
+        res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+        return res.status(200).json({success:true, message:"google login successfull", accessToken, role:user.role})
     }catch(error){
         next(error)
     }
@@ -257,7 +311,7 @@ const forgotPassword = async (req,res,next) => {
         await user.save()
 
         const resetLink = `http://localhost:5173/reset-password/${resetToken}`
-        await sendOTPEmail.sendResetpasswordEmail(email,resetLink)
+        await sendResetpasswordEmail(email,resetLink)
         return res.status(200).json({success:true,message:"Password reset link sent to your email"})
     }catch(error){
         next(error)

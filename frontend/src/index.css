@@ -2,11 +2,146 @@
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
+  width: 100%;
+  min-height: 100%;
 }
 
-#root {
-  min-height: 100vh;
+body {
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+
+  /* Customer sidebar */
+  .customer-sidebar {
+    width: 210px !important;
+  }
+
+  .customer-main {
+    margin-left: 210px !important;
+    width: calc(100% - 210px) !important;
+  }
+
+  /* Vendor navbar */
+  .vendor-navbar {
+    padding: 14px 20px !important;
+  }
+
+  .vendor-nav-links {
+    gap: 15px !important;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Customer layout */
+  .customer-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .customer-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Customer sidebar menu */
+  .customer-menu {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* Vendor navbar */
+  .vendor-navbar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 15px !important;
+    padding: 15px 20px !important;
+  }
+
+  .vendor-nav-links {
+    width: 100%;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .vendor-profile {
+    width: 100%;
+  }
+
+  /* Common page */
+  .responsive-page {
+    padding: 20px !important;
+  }
+
+  /* Cards */
+  .responsive-card {
+    width: 100% !important;
+  }
+
+  /* Chat */
+  .chat-container {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  .conversation-panel {
+    width: 100% !important;
+    max-height: 250px;
+    border-right: none !important;
+    border-bottom: 1px solid #E5DFD5;
+  }
+
+  .chat-panel {
+    min-height: 500px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+
+  .responsive-page {
+    padding: 15px !important;
+  }
+
+  h1 {
+    font-size: 26px !important;
+  }
+
+  h2 {
+    font-size: 20px !important;
+  }
+
+  button {
+    max-width: 100%;
+  }
+
+  .vendor-nav-links {
+    gap: 8px !important;
+  }
 }

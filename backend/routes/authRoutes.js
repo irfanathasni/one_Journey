@@ -6,7 +6,7 @@ const { register, login, getProfile, updateProfile,
     resendOTP,
     forgotPassword,
     resetPassword} = require("../controllers/authController");
-const protect = require("../Middleware/authMiddleware");
+const protect = require("../middleware/authMiddleware");
 router.post("/register",register)
 router.post ("/login",login)
 router.post("/google",googleLogin)

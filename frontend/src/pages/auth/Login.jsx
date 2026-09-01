@@ -3,13 +3,15 @@ import { useDispatch  } from  "react-redux"
 import { useNavigate ,Link} from "react-router-dom"
 import { loginUser } from "../../services/authService"
 import { setCredentials } from "../../features/auth/authSlice"
-import { isValidEmail, isValidPassword } from "../../utils/validators"
+import { isValidEmail} from "../../utils/validators"
 import { GoogleLogin } from "@react-oauth/google"
 import axiosInstance from "../../services/axiosInstance"
 
 const Login = () => {
     const [formData,setFormData] = useState({email:"" , password :""})
     const [error, setError] = useState("")
+    const [showRoleModal,setShowRoleModal] = useState(false)
+    const [pendingIdToken,setPendingIdToken] = useState(null)
     const [loading,setLoading] = useState(false)
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -25,49 +27,63 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError("")
-        if(!formData.email || !formData.password) {
+
+    const email = formData.email.trim().toLowerCase()
+    const password = formData.password
+        
+          if(!email || !password) {
             setError("All field are required")
             return
         }
-        if(!isValidEmail(formData.email)) {
+        if(!isValidEmail(email)) {
             setError("Plese enter a valid email address")
             return
         }
-        if(!isValidPassword(formData.password)) {
-            setError("Password must be at least 6 charactors long")
-            return
-        }
+       
         setLoading(true)
     
         try {
-            const data = await loginUser(formData)
+            const data = await loginUser({email,password})
             dispatch(setCredentials({
-              user:null,
+              user:data.user,
               token:data.accessToken,
-              refreshToken:data.refreshToken,
-              role:data.role}))
-            
-            if(data.role === "customer") navigate("/customer/dashboard")
-            else if(data.role === "vendor") navigate("/vendor/dashboard")
-            else if(data.role === "admin")navigate("/admin/dashboard")
+              role:data.role
+            }))
+          redirectByRole(data.role)
         }catch (err) {
     setError(err.response?.data?.message || "Login failed")
     }finally {
         setLoading(false)
         }
     }
-    const handleGoogleSuccess = async (CredentialResponse) => {
-        console.log("Google credential received:",CredentialResponse)
-        try{
-            const res = await axiosInstance.post("/auth/google" ,{idToken:CredentialResponse.credential})
-            console.log("Backend response:",res.data)
-            dispatch(setCredentials({user:null,token:res.data.accessToken,role:res.data.role}))
-            if(res.data.role ==="customer") navigate("/customer/dashboard")
-            else if(res.data.role ==="vendor")navigate("/vendor/dashboard")
-        }catch(error) {
-            setError(error.response?.data?.message || "Google login failed")
+    const handleGoogleSuccess = async (credentialResponse) => {
+    try{
+        const idToken = credentialResponse.credential
+        const res = await axiosInstance.post("/auth/google", { idToken })
+
+        if(res.data.needsRole) {setPendingIdToken(idToken)
+            setShowRoleModal(true)
+            return
         }
+
+        dispatch(setCredentials({user:res.data.user,token:res.data.accessToken,role:res.data.role}))
+        redirectByRole(res.data.role)
+    }catch(error) {
+        setError(error.response?.data?.message || "Google login failed")
     }
+}
+
+const handleRoleSelect = async (role) => {
+    try{
+        const res = await axiosInstance.post("/auth/google", { idToken: pendingIdToken, role })
+        dispatch(setCredentials({user:res.data.user,token:res.data.accessToken,role:res.data.role}))
+        setShowRoleModal(false)
+        redirectByRole(res.data.role)
+    }catch(error) {
+        setError(error.response?.data?.message || "Signup failed")
+        setShowRoleModal(false)
+    }
+}
 
    return (
     <div style={styles.page}>
@@ -81,15 +97,8 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.field}>
             <label style={styles.label}>Email</label>
-            <input
-              type="email"
-              name="email"
-              placeholder="name@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              style={styles.input}
-              required
-            />
+            <input type="email" name="email" placeholder="name@example.com"
+              value={formData.email} onChange={handleChange} style={styles.input} required />
           </div>
 
          <div style={styles.field}>
@@ -102,24 +111,41 @@ const Login = () => {
           <Link to="/forgot-password" style={{ fontSize: "13px", color: "#C97B84", textDecoration: "none" }}>Forgot password</Link>
         </div>
       
-        <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? "Logging in..." : "Log in"}
-          </button>
-        </form>
-          <div style={styles.divider}>
-          <span style={styles.dividerLine}></span>
-          <span style={styles.dividerText}>or</span>
-          <span style={styles.dividerLine}></span>
-        </div>
+         <div style={styles.divider}>
+            <span style={styles.dividerLine}></span>
+            <span style={styles.dividerText}>or</span>
+           <span style={styles.dividerLine}></span>
+          </div>
 
         <div style={{ display: "flex", justifyContent: "center" }}>
           <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google login failed.")} />
         </div>
 
+        <button type="submit" disabled={loading} style={styles.button}>
+            {loading ? "Logging in..." : "Log in"}
+          </button>
+        </form>
+          
         <p style={styles.footerText}>
           Don't have an account? <Link to="/register" style={styles.link}>Register</Link>
         </p>
       </div>
+      {showRoleModal && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      <h2 style={styles.modalTitle}>Welcome! 💍</h2>
+      <p style={styles.modalText}>How would you like to continue?</p>
+      <div style={styles.modalButtons}>
+        <button style={styles.modalRoleBtn} onClick={() => handleRoleSelect("customer")}>
+          I'm a Customer<br/><span style={styles.modalRoleSub}>Planning a wedding</span>
+        </button>
+        <button style={styles.modalRoleBtn} onClick={() => handleRoleSelect("vendor")}>
+          I'm a Vendor<br/><span style={styles.modalRoleSub}>Offering services</span>
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
@@ -191,11 +217,113 @@ const styles = {
     fontWeight: 500,
     cursor: "pointer",
   },
-  divider: { display: "flex", alignItems: "center", gap: "10px", margin: "20px 0" },
-  dividerLine: { flex: 1, height: "1px", background: "#E5DFD5" },
-  dividerText: { fontSize: "12px", color: "#6B6560" },
-  footerText: { textAlign: "center", fontSize: "14px", color: "#6B6560", marginTop: "20px" },
-  link: { color: "#C97B84", fontWeight: 500, textDecoration: "none" },
+  divider: { 
+    display: "flex", 
+    alignItems: "center", 
+    gap: "10px", 
+    margin: "20px 0" 
+  },
+  dividerLine: { 
+    flex: 1, 
+    height: "1px", 
+    background: "#E5DFD5" 
+  },
+  dividerText: { 
+    fontSize: "12px", 
+    color: "#6B6560" 
+  },
+  footerText: { 
+    textAlign: "center", 
+    fontSize: "14px", 
+    color: "#6B6560", 
+    marginTop: "20px" 
+  },
+  link: { 
+    color: "#C97B84", 
+    fontWeight: 500, 
+    textDecoration: "none" 
+  },
+  roleToggle: { 
+    marginBottom: "14px", 
+    textAlign: "center" 
+  },
+  roleHint: { 
+    fontSize: "12px", 
+    color: "#6B6560", 
+    margin: "0 0 8px" 
+  },
+  roleButtons: { 
+    display: "flex", 
+    gap: "8px",
+    justifyContent: "center" 
+  },
+  roleBtn: {
+  padding: "8px 18px",
+  border: "1px solid #D8D2C7",
+  borderRadius: "20px",
+  background: "#FFFFFF",
+  color: "#6B6560",
+  fontSize: "12px",
+  fontWeight: 600,
+  cursor: "pointer",
+},
+roleBtnActive: {
+  background: "#3D5A50",
+  color: "#FFFFFF",
+  border: "1px solid #3D5A50",
+},
+modalOverlay: {
+  position: "fixed", 
+  top:0, 
+  left:0, 
+  right:0, 
+  bottom:0,
+  background: "rgba(43,43,43,0.5)", 
+  display:"flex",
+  alignItems:"center", 
+  justifyContent:"center", 
+  zIndex:1000, padding:"20px",
+},
+modalCard: {
+  background:"#FFFFFF", 
+  borderRadius:"14px", 
+  padding:"32px",
+  maxWidth:"380px", 
+  width:"100%", 
+  textAlign:"center",
+},
+modalTitle: { 
+  fontFamily:"Georgia, serif", 
+  fontSize:"22px", 
+  color:"#2B2B2B", 
+  margin:"0 0 6px" 
+},
+modalText: { 
+  color:"#6B6560", 
+  fontSize:"14px", 
+  margin:"0 0 22px" 
+},
+modalButtons: { 
+  display:"flex", 
+  flexDirection:"column", 
+  gap:"10px" 
+},
+modalRoleBtn: {
+  padding:"14px", 
+  border:"1px solid #D8D2C7", 
+  borderRadius:"8px",
+  background:"#FAF9F7", 
+  color:"#3D5A50", 
+  fontSize:"14px", 
+  fontWeight:600,
+  cursor:"pointer", 
+  lineHeight:1.6,
+},
+modalRoleSub: { 
+  fontSize:"12px", 
+  color:"#6B6560", 
+  fontWeight:400 
+},
 }
 
 export default Login

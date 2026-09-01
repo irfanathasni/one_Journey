@@ -1,235 +1,1109 @@
-import  { useState }  from "react"
-import  { createVendorProfile, getMyVendorProfile } from "../../services/vendorService"
-import { useEffect } from "react"
-import Navbar from "../../components/Navbar";
+import { useEffect, useState } from "react";
+import { createVendorProfile,getMyVendorProfile ,updateVendorProfile,addPricingTier,deletePricingTier} from "../../services/vendorService";
+import { getVendorBookings, updateBookingStatus, completeBooking, requestFinalPayment } from "../../services/bookingService";
 import { VENDOR_STATUS } from "../../constants/vendorStatus";
+import VendorNavbar from "../../components/VendorNavbar";
+import { getActiveCategories } from "../../services/categoryService";
 
-const VendorDashboard =() =>{
-  const [vendor,setVendor] = useState(null)
-  const[loading,setLoading] = useState(true)
-  const [formData,setFormData] = useState({businessName:"",category:"",description:""})
-  const [error,setError] = useState("")
-  const [showReapplyForm,setShowReapplyForm] = useState(false)
+const VendorDashboard = () => {
+  const [vendor, setVendor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [formData, setFormData] = useState({businessName: "",category: "",description: "",price: ""})
+  const [error, setError] = useState("");
+  const [showReapplyForm, setShowReapplyForm] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [pricingForm, setPricingForm] = useState({ eventType: "Wedding", minGuests: "", maxGuests: "", price: "" });
+  const [addingPricing, setAddingPricing] = useState(false);
 
-  useEffect(()=> {
-    fetchProfile()
-  },[])
+  useEffect(() => {
+    fetchProfile();
+    fetchCategories();
+    fetchBookings();
+  }, []);
 
   const fetchProfile = async () => {
-    try{
-      const res = await getMyVendorProfile()
-      setVendor(res.data)
-    }catch(err){
-      setVendor(null)
-    }finally{
-      setLoading(false)
+    try {
+      const res = await getMyVendorProfile();
+      setVendor(res.data);
+    } catch (err) {
+      setVendor(null);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await getActiveCategories();
+      setCategories(res.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error.response?.data || error);
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      setLoadingBookings(true);
+      const res = await getVendorBookings();
+      const bookingData = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
+
+      setBookings(bookingData);
+    } catch (error) {
+      console.error("Failed to fetch vendor bookings:",error.response?.data || error);
+      setBookings([]);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  const handleBookingStatus = async (bookingId, status) => {
+    try {
+      await updateBookingStatus(bookingId, status);
+      fetchBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update booking");
+    }
+  };
+
+  const handleCompleteBooking = async (bookingId) => {
+    try {
+      await completeBooking(bookingId);
+      fetchBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to mark event as completed");
+    }
+  };
+
+  const handleRequestFinalPayment = async (bookingId) => {
+    try {
+      await requestFinalPayment(bookingId);
+      fetchBookings();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to request final payment");
+    }
+  };
+
+  const totalRequests = bookings.length;
+  const pendingRequests = bookings.filter((booking) => booking.status === "pending").length;
+  const activeBookings = bookings.filter((booking) => booking.status === "approved" || booking.status === "completed").length;
+  const totalEarned = bookings
+    .filter((booking) => booking.status === "approved" || booking.status === "completed")
+    .reduce((total, booking) => total + (Number(booking.amount) || 0),
+      0
+    );
+
+  const profileCompletion = vendor
+    ? Math.round(
+        ([vendor.businessName, vendor.category, vendor.description, vendor.price]
+          .filter(Boolean).length / 4) * 100
+      )
+    : 0;
 
   const handleChange = (e) => {
-    setFormData({ ...formData,[e.target.name]:e.target.value})
-  }
+    setFormData({...formData,[e.target.name]: e.target.value})}
+
   const handleCreate = async (e) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
     try {
-      const res = await createVendorProfile(formData)
-      setVendor(res.data)
-      setShowReapplyForm(false)
-    }catch(err) {
-      setError(err.response?.data?.message || "Failed to Submit")
+      const res = await createVendorProfile(formData);
+      setVendor(res.data);
+      setShowReapplyForm(false);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to submit")
     }
   }
-  if(loading) return <div style={styles.page}>Loading..</div>
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault()
+    setError("")
+    setUpdatingProfile(true)
+
+    try {
+      const res = await updateVendorProfile(formData);
+      setVendor(res.data);
+      setShowEditForm(false);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to update profile"
+      );
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+  const handleAddPricing = async (e) => {
+  e.preventDefault();
+  setAddingPricing(true);
+  try {
+    const res = await addPricingTier(pricingForm);
+    setVendor(res.data);
+    setPricingForm({ eventType: "Wedding", minGuests: "", maxGuests: "", price: "" });
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to add pricing tier");
+  } finally {
+    setAddingPricing(false);
+  }
+};
+
+const handleDeletePricing = async (tierId) => {
+  try {
+    const res = await deletePricingTier(tierId);
+    setVendor(res.data);
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to remove pricing tier");
+  }
+};
+
+  if (loading) {
     return (
-    <div style={styles.page}>
-      <Navbar />
-    {!vendor ? (
-      <div style={styles.card}>
+      <div style={styles.loadingPage}>
+        <div style={styles.loadingIcon}>💍</div>
+        <p>Loading your dashboard...</p>
       </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div style={styles.page}>
+        <VendorNavbar />
+
+        <div style={styles.createContainer}>
+          <div style={styles.createCard}>
+            <p style={styles.eyebrow}>ONE JOURNEY</p>
+            <h1 style={styles.createTitle}>Create Your Vendor Profile</h1>
+            <p style={styles.createSubtitle}>
+              Tell couples about your wedding services
+              and start receiving booking requests.
+            </p>
+
+            {error && (
+              <div style={styles.errorBox}>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleCreate} style={styles.form}>
+              <div style={styles.field}>
+                <label style={styles.label}>Business Name</label>
+                <input type="text" name="businessName" value={formData.businessName} onChange={handleChange} style={styles.input} placeholder="Enter your business name"
+                  required />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Category</label>
+                <select name="category" value={formData.category} onChange={handleChange}
+                  style={styles.input} required >
+                  <option value=""> Select Category</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category.name}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  style={styles.textarea}
+                  rows="5"
+                  placeholder="Tell couples about your services..."
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Price (₹)</label>
+                <input type="number" name="price" value={formData.price} onChange={handleChange}
+                  style={styles.input} placeholder="e.g. 25000" min="0" required />
+              </div>
+
+              <button type="submit" style={styles.primaryButton}>Create Vendor Profile →</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    vendor.verificationStatus ===
+    VENDOR_STATUS.PENDING
+  ) {
+    return (
+      <div style={styles.page}>
+        <VendorNavbar />
+
+        <main style={styles.main}>
+          <section style={styles.createCard}>
+            <p style={styles.eyebrow}>VENDOR APPLICATION</p>
+            <h1 style={styles.createTitle}>Your profile is under review</h1>
+
+            <p style={styles.createSubtitle}>
+              Your vendor profile has been submitted
+              successfully. You can access your vendor
+              dashboard once an admin approves your
+              application.
+            </p>
+
+            <div style={styles.statusBox}>
+              Status:{" "}
+              <strong style={{textTransform: "capitalize"}}>
+                {vendor.verificationStatus}
+              </strong>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (vendor.verificationStatus === VENDOR_STATUS.REJECTED) {
+    return (
+      <div style={styles.page}>
+        <VendorNavbar />
+
+        <main style={styles.main}>
+          <section style={styles.createCard}>
+            <p style={styles.eyebrow}>VENDOR APPLICATION</p>
+            <h1 style={styles.createTitle}>Your application was rejected</h1>
+            {vendor.rejectionReason && (
+              <div style={styles.errorBox}>
+                <strong>Reason:</strong>{" "}
+                {vendor.rejectionReason}
+              </div>
+            )}
+
+            <p style={styles.createSubtitle}>
+              Please update your profile and submit it
+              again for admin review.
+            </p>
+            <form onSubmit={handleCreate} style={styles.form} >
+              <div style={styles.field}>
+                <label style={styles.label}>Business Name</label>
+                <input type="text" name="businessName" value={formData.businessName}
+                  onChange={handleChange} style={styles.input} required />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Category</label>
+                <select name="category" value={formData.category}
+                  onChange={handleChange} style={styles.input} required>
+                  <option value="">Select Category</option>
+
+                  {categories.map((category) => (
+                    <option key={category._id}value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Description</label>
+                <textarea name="description" value={formData.description} onChange={handleChange}
+                  style={styles.textarea} rows="5" />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Price (₹)</label>
+                <input type="number" name="price" value={formData.price} onChange={handleChange}
+                  style={styles.input} placeholder="e.g. 25000" min="0" required />
+              </div>
+
+              <button type="submit" style={styles.primaryButton}>Resubmit for Review →</button>
+            </form>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.page}>
+      <VendorNavbar />
+
+      <main style={styles.main}>
+        <section style={styles.hero}>
+          <div>
+            <span style={styles.verifiedBadge}>
+              {vendor.verificationStatus === "approved" ? "✓ Verified" : vendor.verificationStatus}
+            </span>
+            <p style={styles.categoryEyebrow}>{vendor.category?.toUpperCase()}</p>
+            <h1 style={styles.heroTitle}>{vendor.businessName}</h1>
+            <p style={styles.heroSubtitle}>Manage your bookings, availability, and vendor profile.</p>
+
+            <div style={styles.heroButtons}>
+              <button style={styles.secondaryButton} onClick={() => {
+                  setFormData({businessName:vendor.businessName || "",
+                    category:vendor.category || "",
+                    description:vendor.description || "",
+                    price:vendor.price || ""});
+                  setShowEditForm(true);
+                  setError("");
+                }}
+              >Edit Profile
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {showEditForm && (
+          <section style={styles.createCard}>
+            <p style={styles.eyebrow}>EDIT PROFILE</p>
+            <h2 style={styles.createTitle}>Update Your Vendor Profile</h2>
+
+            {error && (
+              <div style={styles.errorBox}>
+                {error}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleUpdateProfile}
+              style={styles.form}>
+              <div style={styles.field}>
+                <label style={styles.label}>Business Name</label>
+                <input type="text" name="businessName" value={formData.businessName} onChange={handleChange}
+                  style={styles.input} required />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Category</label>
+                <select name="category" value={formData.category} onChange={handleChange}
+                  style={styles.input}required>
+                  <option value="">Select Category</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category.name}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Description</label>
+
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  style={styles.textarea}
+                  rows="5"
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.label}>Price (₹)</label>
+                <input type="number" name="price" value={formData.price} onChange={handleChange}
+                  style={styles.input} placeholder="e.g. 25000" min="0" required />
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                }}
+              >
+                <button type="submit" style={styles.primaryButton} disabled={updatingProfile}>
+                  {updatingProfile
+                    ? "Saving..."
+                    : "Save Changes →"}
+                </button>
+
+                <button type="button" style={styles.secondaryButton}
+                  onClick={() =>setShowEditForm(false)}>Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        <section style={styles.statsGrid}>
+          <StatCard icon="◫" label="New Requests" value={loadingBookings ? "..." : pendingRequests} />
+          <StatCard icon="✓" label="Active Bookings" value={loadingBookings ? "..." : activeBookings} />
+          <StatCard icon="₹" label="Total Revenue" value={loadingBookings ? "..." : `₹${totalEarned.toLocaleString("en-IN")}`} />
+        </section>
+        <section style={styles.activity}>
+  <div style={styles.activityHeader}>
+    <h3 style={styles.activityTitle}>Upcoming Events</h3>
+  </div>
+
+  {loadingBookings ? (
+    <p>Loading...</p>
+  ) : (() => {
+      const upcoming = bookings
+        .filter(b => (b.status === "approved" || b.status === "completed") && b.serviceDate && new Date(b.serviceDate) >= new Date())
+        .sort((a, b) => new Date(a.serviceDate) - new Date(b.serviceDate))
+        .slice(0, 3);
+
+      return upcoming.length === 0 ? (
+        <p>No upcoming events</p>
       ) : (
-        <>
-        <div style={styles.hero}>
-          <p style={styles.eyebrow}>Vendor Dashboard</p>
-          <h1 style={styles.heading}>{vendor.businessName}</h1>
-          <p style={styles.subtext}>{vendor.category}</p>
-        </div>
-
-      <div style={styles.grid}>
-        <div style={styles.statCard}>
-        <p style={styles.statLabel}>Verification status</p>
-        <p style={{...styles.statValue, color: vendor.verificationStatus === VENDOR_STATUS.APPROVED ? "#3D5A50" :
-                    vendor.verificationStatus === VENDOR_STATUS.REJECTED ? "#A33B3B" : "#C97B84"}}>
-                {   vendor.verificationStatus === VENDOR_STATUS.APPROVED ? "Approved" :
-                    vendor.verificationStatus === VENDOR_STATUS.REJECTED ? "Rejected" : "Pending review"}
-        </p>
-
-              {vendor.verificationStatus === VENDOR_STATUS.REJECTED && vendor.rejectionReason && (
-                <p style={{ fontSize: "13px", color: "#A33B3B", marginTop: "6px" }}>
-                  Reason: {vendor.rejectionReason}
-                </p>
-              )}
+        upcoming.map((booking) => (
+          <div key={booking._id} style={styles.requestRow}>
+            <div style={styles.requestAvatar}>📅</div>
+            <div style={styles.requestInfo}>
+              <strong>{booking.wedding?.brideName} & {booking.wedding?.groomName}</strong>
+              <p style={styles.requestMeta}>
+                {new Date(booking.serviceDate).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+                {" • "}{booking.startTime} - {booking.endTime}
+              </p>
             </div>
-            <div style={styles.statCard}>
-              <p style={styles.statLabel}>Account status</p>
-              <p style={{ ...styles.statValue, color: "#3D5A50" }}>{vendor.status}</p>
-            </div>
+            <span style={styles.archivedText}>
+              {booking.status === "completed" ? "Completed" : "Confirmed"}
+            </span>
           </div>
-           {vendor.verificationStatus === VENDOR_STATUS.REJECTED && (
-            <div style={{ maxWidth: "420px", margin: "2rem auto" }}>
-              {!showReapplyForm ? (
-                <button onClick={() => {setFormData({
-                      businessName: vendor.businessName,
-                      category: vendor.category,
-                      description: vendor.description || "",
-                    })
-                    setShowReapplyForm(true);
-                  }}
-                  style={styles.button}>Update and reapply</button>
-              ) : (
-        <div style={styles.card}>
-          <h2 style={styles.heading}>Update your profile</h2>
-          {error && <div style={styles.errorBox}>{error}</div>}
-    <form onSubmit={handleCreate} style={styles.form}>
-        <div style={styles.field}>
-          <label style={styles.label}>Business name</label>
-           <input name="businessName" value={formData.businessName} onChange={handleChange} style={styles.input} required />
-        </div>
-          <div style={styles.field}>
-            <label style={styles.label}>Category</label>
-            <select name="category" value={formData.category} onChange={handleChange} style={styles.input}>
-              <option value="Photography">Photography</option>
-              <option value="EventManagement">Event Management</option>
-              <option value="Catering">Catering</option>
-              <option value="WeddingHall">Wedding Hall</option>
-              <option value="BridalMakeup">Bridal Makeup</option>
-              <option value="PreMarriageCounselling">Pre-Marriage Counselling</option>
-            </select>
+        ))
+      );
+    })()}
+</section>
+        <section style={styles.activity}>
+          <div style={styles.activityHeader}>
+            <h3 style={styles.activityTitle}>Recent Requests</h3>
           </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Description</label>
-          <input name="description" value={formData.description} onChange={handleChange} style={styles.input} />
-        </div>
-          <button type="submit" style={styles.button}>Resubmit for review</button>
-    </form>
-        </div>
-              )}
-            </div>
+          {loadingBookings ? (<p>Loading bookings...</p>
+          ) : bookings.length === 0 ? (
+            <p>No requests yet</p>
+          ) : (
+            bookings
+              .slice(0, 8)
+              .map((booking) => (
+                <RequestRow key={booking._id}
+                  booking={booking}
+                  onStatusChange={handleBookingStatus}
+                  onComplete={handleCompleteBooking}
+                  onRequestFinalPayment={handleRequestFinalPayment}
+                />
+              ))
           )}
-        </>
+        </section>
+
+
+        {vendor.verificationStatus ===
+          VENDOR_STATUS.REJECTED && (
+          <section style={styles.reapplySection}>
+            {!showReapplyForm ? (
+              <div style={styles.reapplyCard}>
+                <div>
+                  <p style={styles.sectionEyebrow}>PROFILE UPDATE</p>
+                  <h3 style={styles.reapplyTitle}>Update your profile and reapply</h3>
+                  <p style={styles.reapplyText}>
+                    Make the required changes
+                    and submit your vendor
+                    profile again for review.
+                  </p>
+                </div>
+
+                <button style={styles.primaryButton} onClick={() => {
+                    setFormData({
+                      businessName:vendor.businessName,
+                      category:vendor.category,
+                      description:vendor.description || "",
+                      price:vendor.price || ""});
+                    setShowReapplyForm(true);
+                  }}>Update & Reapply →
+                </button>
+              </div>
+            ) : (
+              <div style={styles.createCard}>
+                <p style={styles.eyebrow}>UPDATE PROFILE</p>
+                <h2 style={styles.createTitle}>Update Your Vendor Profile</h2>
+                {error && (
+                  <div style={styles.errorBox}>{error}
+                  </div>
+                )}
+
+                <form onSubmit={handleCreate} style={styles.form}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Business Name</label>
+                    <input name="businessName"
+                      value={formData.businessName} onChange={handleChange} style={styles.input}
+                      required />
+                  </div>
+
+                  <div style={styles.field}>
+                    <label style={styles.label}>Category</label>
+                    <select name="category" value={formData.category} onChange={handleChange}style={styles.input}
+                      required>
+                      <option value="">Select Category</option>
+                      {categories.map(
+                        (category) => (
+                          <option key={category._id} value={category.name}>
+                            {category.name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+
+                  <div style={styles.field}>
+                    <label style={styles.label}>Description</label>
+                    <textarea name="description"
+                      value={formData.description} onChange={handleChange}
+                      style={styles.textarea} rows="5" />
+                  </div>
+
+                  <div style={styles.field}>
+                    <label style={styles.label}>Price (₹)</label>
+                    <input type="number" name="price" value={formData.price} onChange={handleChange}
+                      style={styles.input} placeholder="e.g. 25000" min="0" required />
+                  </div>
+
+                  <button type="submit" style={styles.primaryButton}>
+                    Resubmit for Review →
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+          
+        )}
+        <section style={styles.createCard}>
+  <p style={styles.eyebrow}>PRICING</p>
+  <h2 style={styles.createTitle}>Event-based Pricing</h2>
+  {vendor.pricing && vendor.pricing.length > 0 && (
+    <div style={{ marginBottom: "20px" }}>
+      {vendor.pricing.map((tier) => (
+        <div key={tier._id} style={styles.pricingRow}>
+          <span>{tier.eventType} · {tier.minGuests}-{tier.maxGuests} guests</span>
+          <strong>₹{tier.price.toLocaleString("en-IN")}</strong>
+          <button onClick={() => handleDeletePricing(tier._id)} style={styles.pricingDeleteBtn}>✕</button>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <form onSubmit={handleAddPricing} style={styles.pricingForm}>
+    <select value={pricingForm.eventType} onChange={(e) => setPricingForm({...pricingForm, eventType: e.target.value})} style={styles.input}>
+      {["Wedding","Reception","Engagement","Mehndi","Haldi","Sangeet"].map(t => <option key={t} value={t}>{t}</option>)}
+    </select>
+    <input type="number" placeholder="Min guests" value={pricingForm.minGuests}
+      onChange={(e) => setPricingForm({...pricingForm, minGuests: e.target.value})} style={styles.input} required />
+    <input type="number" placeholder="Max guests" value={pricingForm.maxGuests}
+      onChange={(e) => setPricingForm({...pricingForm, maxGuests: e.target.value})} style={styles.input} required />
+    <input type="number" placeholder="Price (₹)" value={pricingForm.price}
+      onChange={(e) => setPricingForm({...pricingForm, price: e.target.value})} style={styles.input} required />
+    <button type="submit" style={styles.primaryButton} disabled={addingPricing}>
+      {addingPricing ? "Adding..." : "+ Add Tier"}
+    </button>
+  </form>
+</section>
+      </main>
+    </div>
+  );
+};
+
+const StatCard = ({ icon, label, value }) => {
+  return (
+    <div style={styles.statCard}>
+      <div style={styles.statIcon}>{icon}</div>
+      <p style={styles.statLabel}>{label}</p>
+      <h3 style={styles.statValue}>{value}</h3>
+    </div>
+  );
+};
+
+const RequestRow = ({ booking, onStatusChange, onComplete, onRequestFinalPayment }) => {
+  const customerName = booking.customer?.name || "Customer";
+  const brideName = booking.wedding?.brideName || "";
+  const groomName = booking.wedding?.groomName || "";
+  const weddingName = brideName && groomName ? `${brideName} & ${groomName}` : "Wedding";
+
+  const serviceDate = booking.serviceDate
+    ? new Date(booking.serviceDate).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Not specified";
+
+  const status = booking.status || "pending";
+
+  return (
+    <div style={styles.requestRow}>
+      <div style={styles.requestAvatar}>
+        {customerName.charAt(0).toUpperCase()}
+      </div>
+
+      <div style={styles.requestInfo}>
+        <strong style={status === "rejected" ? styles.strikethrough : {}}>
+          {weddingName}
+        </strong>
+        <p style={styles.requestMeta}>
+          {serviceDate} • {customerName}
+        </p>
+        {status !== "pending" && status !== "rejected" && (
+          <p style={styles.requestStatusLine}>
+            {status === "approved" && (booking.paymentStatus === "paid" ? "Advance paid" : "Awaiting advance payment")}
+            {status === "completed" && (
+              booking.finalPaymentStatus === "paid"
+                ? "Fully paid"
+                : booking.finalPaymentStatus === "requested"
+                ? "Final payment requested"
+                : "Event completed"
+            )}
+          </p>
+        )}
+      </div>
+
+      {status === "pending" && (
+        <div style={styles.requestActions}>
+          <button style={styles.rejectBtn}
+            onClick={() => onStatusChange(booking._id, "rejected")}>
+            Reject
+          </button>
+          <button style={styles.reviewBtn} onClick={() => onStatusChange(booking._id, "approved")}>
+            Review Request
+          </button>
+        </div>
+      )}
+
+      {status === "approved" && booking.paymentStatus === "paid" && (
+        <button style={styles.reviewBtn} onClick={() => onComplete(booking._id)}>
+          Mark Completed
+        </button>
+      )}
+
+      {status === "approved" && booking.paymentStatus !== "paid" && (
+        <span style={styles.archivedText}>Awaiting advance</span>
+      )}
+
+      {status === "completed" && booking.finalPaymentStatus === "not_requested" && (
+        <button style={styles.reviewBtn} onClick={() => onRequestFinalPayment(booking._id)}>
+          Request Final Payment
+        </button>
+      )}
+
+      {status === "completed" && booking.finalPaymentStatus === "requested" && (
+        <span style={styles.archivedText}>Awaiting final payment</span>
+      )}
+
+      {status === "completed" && booking.finalPaymentStatus === "paid" && (
+        <span style={styles.archivedText}>✓ Fully Paid</span>
+      )}
+
+      {status === "rejected" && (
+        <span style={styles.archivedText}>Rejected</span>
       )}
     </div>
-  )
-}
+    
+  );
+};
+
 const styles = {
-  page: { 
+
+  page: {
     minHeight: "100vh",
     background: "#FBF8F3",
-    padding: "2rem"
-    },
-  card: { 
-    maxWidth: "420px",
-    margin: "4rem auto",
-    background: "#FFFFFF",
-    border: "1px solid #E5DFD5", 
-    borderRadius: "12px", 
-    padding: "2.5rem 2rem" 
-    },
+    color: "#263D36",
+    fontFamily:
+      "Arial, Helvetica, sans-serif",
+  },
+
+  main: {
+    maxWidth: "1180px",
+    margin: "0 auto",
+    padding: "50px 30px 70px",
+    boxSizing: "border-box",
+  },
+
+  hero: {
+    marginBottom: "20px",
+  },
+
   eyebrow: {
-    fontFamily: "Georgia, serif",
-    fontSize: "12px",
-    color: "#C97B84",
+    fontSize: "11px",
     letterSpacing: "2px",
-    textTransform: "uppercase",
-    margin: 0,
-    textAlign: "center" 
+    color: "#B8935A",
+    fontWeight: 600,
+    margin: "0 0 10px",
   },
-  heading: {
+
+  verifiedBadge: {
+    display: "inline-block",
+    padding: "5px 12px",
+    borderRadius: "20px",
+    background: "#F0EDE6",
+    color: "#3D5A50",
+    fontSize: "11px",
+    fontWeight: 600,
+    marginBottom: "12px",
+  },
+
+  categoryEyebrow: {
+    fontSize: "11px",
+    letterSpacing: "1.5px",
+    color: "#B8935A",
+    fontWeight: 600,
+    margin: "0 0 8px",
+  },
+
+  heroTitle: {
     fontFamily: "Georgia, serif",
-    fontSize: "26px",
+    fontSize: "40px",
+    lineHeight: 1.05,
     fontWeight: 400,
-    color: "#2B2B2B",
-    textAlign: "center",
-    margin: "8px 0 4px" 
+    color: "#173E35",
+    margin: "0 0 10px",
+    maxWidth: "600px",
   },
-  subtext: {
+
+  heroSubtitle: {
+    color: "#746F69",
+    fontSize: "15px",
+    lineHeight: 1.6,
+    maxWidth: "550px",
+    marginBottom: 0,
+  },
+
+  heroButtons: {
+    display: "flex",
+    gap: "15px",
+    marginTop: "20px",
+  },
+
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(3, 1fr)",
+    gap: "15px",
+    marginBottom: "35px",
+  },
+
+  statCard: {
+    background: "#FFFFFF",
+    border: "1px solid #E8E1D7",
+    borderRadius: "12px",
+    padding: "22px",
+    boxShadow:
+      "0 5px 20px rgba(55, 48, 40, 0.04)",
+  },
+
+  statIcon: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "50%",
+    background: "#F5EBD9",
+    color: "#A97A31",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "18px",
+    fontSize: "17px",
+  },
+
+  statLabel: {
+    margin: "0 0 7px",
+    fontSize: "12px",
+    color: "#77716B",
+  },
+
+  statValue: {
+    margin: 0,
+    fontFamily: "Georgia, serif",
+    fontSize: "27px",
+    fontWeight: 400,
+    color: "#173E35",
+  },
+
+  activity: {
+    marginTop: "10px",
+  },
+
+  activityHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "16px",
+  },
+
+  activityTitle: {
+    fontFamily: "Georgia, serif",
+    fontSize: "20px",
+    fontWeight: 400,
+    color: "#173E35",
+    margin: 0,
+  },
+
+  requestRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    background: "#FFFFFF",
+    border: "1px solid #E8E1D7",
+    borderRadius: "12px",
+    padding: "16px 20px",
+    marginBottom: "10px",
+  },
+
+  requestAvatar: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    background: "#EEF0EC",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#3D5A50",
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+
+  requestInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  requestMeta: {
+    margin: "3px 0 0",
+    fontSize: "12px",
+    color: "#999",
+  },
+
+  requestStatusLine: {
+    margin: "4px 0 0",
+    fontSize: "11px",
+    color: "#B8935A",
+    fontWeight: 600,
+  },
+
+  strikethrough: {
+    textDecoration: "line-through",
+    color: "#999",
+  },
+
+  requestActions: {
+    display: "flex",
+    gap: "8px",
+  },
+
+  rejectBtn: {
+    border: "1px solid #DCD5CA",
+    background: "#FFFFFF",
+    color: "#454943",
+    borderRadius: "6px",
+    padding: "9px 15px",
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+
+  reviewBtn: {
+    border: "none",
+    background: "#173E35",
+    color: "#FFFFFF",
+    borderRadius: "6px",
+    padding: "9px 15px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+
+  archivedText: {
+    fontSize: "12px",
+    color: "#999",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+  },
+
+  reapplySection: {
+    marginTop: "40px",
+  },
+
+  reapplyCard: {
+    background: "#FFF8EE",
+    border: "1px solid #E8D8BC",
+    borderRadius: "12px",
+    padding: "25px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "20px",
+  },
+
+  reapplyTitle: {
+    margin: "0 0 6px",
+    fontFamily: "Georgia, serif",
+    fontWeight: 400,
+    color: "#173E35",
+  },
+
+  reapplyText: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#77716B",
+  },
+
+  sectionEyebrow: {
+    margin: "0 0 5px",
+    fontSize: "10px",
+    letterSpacing: "1.5px",
+    color: "#B8935A",
+    fontWeight: 600,
+  },
+
+  primaryButton: {
+    background: "#174D40",
+    color: "#FFFFFF",
+    border: "none",
+    borderRadius: "7px",
+    padding: "11px 20px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+  },
+
+  secondaryButton: {
+    background: "#FFFFFF",
+    color: "#174D40",
+    border: "1px solid #174D40",
+    borderRadius: "7px",
+    padding: "10px 20px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 600,
+  },
+
+  createContainer: {
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "70px 25px",
+  },
+
+  createCard: {
+    background: "#FFFFFF",
+    border: "1px solid #E8E1D7",
+    borderRadius: "16px",
+    padding: "35px",
+    boxShadow:
+      "0 10px 35px rgba(55, 48, 40, 0.05)",
+    marginBottom: "25px",
+  },
+
+  createTitle: {
+    fontFamily: "Georgia, serif",
+    fontWeight: 400,
+    color: "#173E35",
+    fontSize: "30px",
+    margin: "8px 0",
+  },
+
+  createSubtitle: {
+    color: "#77716B",
     fontSize: "14px",
-    color: "#6B6560",
-    textAlign: "center",
-    margin: "0 0 24px" 
+    lineHeight: 1.6,
+    marginBottom: "25px",
   },
+
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "17px",
+  },
+
+  field: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "7px",
+  },
+
+  label: {
+    fontSize: "12px",
+    color: "#454943",
+    fontWeight: 600,
+  },
+
+  input: {
+    padding: "12px 13px",
+    border: "1px solid #DCD5CA",
+    borderRadius: "7px",
+    outline: "none",
+    fontSize: "13px",
+    background: "#FFFFFF",
+    boxSizing: "border-box",
+  },
+
+  textarea: {
+    padding: "12px 13px",
+    border: "1px solid #DCD5CA",
+    borderRadius: "7px",
+    outline: "none",
+    fontSize: "13px",
+    resize: "vertical",
+    fontFamily: "Arial, sans-serif",
+    boxSizing: "border-box",
+  },
+
   errorBox: {
     background: "#FBEAEA",
-    color: "#A33B3B", 
-    fontSize: "13px", 
-    padding: "10px 14px", 
-    borderRadius: "6px", 
-    marginBottom: "16px" 
-  },
-  form: {
-     display: "flex", 
-     flexDirection: "column", 
-     gap: "14px" 
-    },
-  field: { 
-    display: "flex", 
-    flexDirection: "column", 
-    gap: "6px" 
-  },
-  label: {
-     fontSize: "13px", 
-     color: "#2B2B2B", 
-     fontWeight: 500 
-    },
-  input: {
-     padding: "10px 12px",
-    fontSize: "14px", 
-    border: "1px solid #D8D2C7", 
-    borderRadius: "6px", 
-    outline: "none" 
-  },
-  button: {
-     marginTop: "8px", 
-     padding: "11px", 
-     background: "#3D5A50", 
-     color: "#FFFFFF", 
-     border: "none", 
-     borderRadius: "6px", 
-     fontSize: "15px", 
-     fontWeight: 500, 
-     cursor: "pointer" 
-    },
-  hero: {
-     textAlign: "center", 
-     padding: "2.5rem 1rem", 
-     borderBottom: "1px solid #E5DFD5", 
-     marginBottom: "2rem" 
-    },
-  grid: {
-     display: "grid", 
-     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "16px", 
-    maxWidth: "700px", 
-    margin: "0 auto" 
-  },
-  statCard: {
-     background: "#FFFFFF", 
-     border: "1px solid #E5DFD5", 
-     borderRadius: "8px", 
-     padding: "1.25rem" 
-    },
-  statLabel: {
+    color: "#A33B3B",
+    borderRadius: "7px",
+    padding: "11px 13px",
     fontSize: "13px",
-    color: "#6B6560",
-    margin: "0 0 6px", 
-    textTransform: "uppercase", 
-    letterSpacing: "0.5px" 
-      },
-  statValue: { 
-    fontSize: "20px", 
-    fontWeight: 500, 
-    margin: 0 
+    marginBottom: "15px",
   },
+
+  statusBox: {
+    background: "#FFF8EE",
+    border: "1px solid #E8D8BC",
+    borderRadius: "8px",
+    padding: "12px 16px",
+    fontSize: "14px",
+  },
+
+  loadingPage: {
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#FBF8F3",
+    color: "#6B6560",
+  },
+
+  loadingIcon: {
+    fontSize: "35px",
+    marginBottom: "10px",
+  },
+  pricingRow: {
+  display: "flex", 
+  justifyContent: "space-between", 
+  alignItems: "center",
+  padding: "10px 14px", 
+  background: "#FAF9F7", 
+  border: "1px solid #E5DFD5",
+  borderRadius: "7px", 
+  marginBottom: "8px", 
+  fontSize: "13px",
+},
+pricingDeleteBtn: {
+  border: "none", 
+  background: "transparent", 
+  color: "#A33B3B", 
+  cursor: "pointer", 
+  fontSize: "14px",
+},
+pricingForm: {
+  display: "grid", 
+  gridTemplateColumns: "1.2fr 1fr 1fr 1fr auto", 
+  gap: "10px", 
+  alignItems: "center",
+},
 };
 
 export default VendorDashboard;

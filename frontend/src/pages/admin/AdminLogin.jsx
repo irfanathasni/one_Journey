@@ -34,7 +34,7 @@ const AdminLogin = () => {
         role: res.data.role,
       }));
 
-      navigate("/admin/dashboard");
+      navigate("/admin");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed.");
     } finally {
@@ -67,15 +67,9 @@ const AdminLogin = () => {
           </div>
           <div style={styles.field}>
             <label style={styles.label}>Password</label>
-            <input
-              type="password"
-              name="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-              style={styles.input}
-              required
-            />
+            <input type="password" name="password" placeholder="Enter your password" value={formData.password}
+              onChange={handleChange} style={styles.input}
+              required />
           </div>
           <button type="submit" disabled={loading} style={styles.button}>
             {loading ? "Logging in..." : "Log in"}

@@ -1,241 +1,188 @@
-import { useState, useEffect } from "react";
-import Navbar from "../../components/Navbar";
-import { getAllVendors, approveVendor, rejectVendor } from "../../services/adminService";
+import StatCard from "../../components/Admin/StatCard";
+import { useEffect, useState } from "react";
+import {  getDashboardStats} from "../../services/adminService";
 
 const AdminDashboard = () => {
-  const [vendors, setVendors] = useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalVendors: 0,
+    pendingVendors: 0,
+    totalBookings: 0,
+    totalRevenue:0,
+    monthlyRevenue:[],
+    recentActivities :[]
+  })
+
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchVendors();
-  }, [filter]);
+    fetchDashboardStats();
+  }, []);
 
-  const fetchVendors = async () => {
-    setLoading(true);
+  const fetchDashboardStats = async () => {
     try {
-      const res = await getAllVendors(filter);
-      setVendors(res.data);
+      setLoading(true);
+      const res = await getDashboardStats();
+      setStats(res.data.data);
+      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load vendors.");
+      console.error("Dashboard error:",
+        err.response?.data || err);
+
+      setError(
+        err.response?.data?.message || "Failed to load dashboard")
     } finally {
       setLoading(false);
     }
   };
-
-  const handleApprove = async (vendorId) => {
-    try {
-      await approveVendor(vendorId);
-      fetchVendors();
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to approve vendor.");
-    }
-  };
-
-  const handleReject = async (vendorId) => {
-    const reason = window.prompt("Enter rejection reason:");
-    if (!reason) return;
-
-    try {
-      await rejectVendor(vendorId, reason);
-      fetchVendors();
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to reject vendor.");
-    }
-  };
+  const maxMonthlyRevenue = Math.max(1, ...stats.monthlyRevenue.map((m) => m.revenue))
 
   return (
-    <div style={styles.page}>
-      <Navbar />
+    <div>
+      <h1 style={styles.heading}>Platform Overview</h1>
 
-      <div style={styles.hero}>
-        <p style={styles.eyebrow}>One Journey — Admin</p>
-        <h1 style={styles.heading}>Vendor Management</h1>
-        <p style={styles.subtext}>Review and manage vendor applications.</p>
-      </div>
-
-      <div style={styles.filterBar}>
-        {["", "pending", "approved", "rejected"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            style={{
-              ...styles.filterButton,
-              background: filter === s ? "#B8935A" : "#FFFFFF",
-              color: filter === s ? "#FFFFFF" : "#2B2B2B",
-            }}
-          >
-            {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {error && <div style={styles.errorBox}>{error}</div>}
-
-      {loading ? (
-        <p style={{ textAlign: "center" }}>Loading...</p>
-      ) : vendors.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#6B6560" }}>No vendors found.</p>
-      ) : (
-        <div style={styles.grid}>
-          {vendors.map((vendor) => (
-            <div key={vendor._id} style={styles.card}>
-              <p style={styles.businessName}>{vendor.businessName}</p>
-              <p style={styles.category}>{vendor.category}</p>
-              <p style={styles.ownerInfo}>{vendor.user?.name} — {vendor.user?.email}</p>
-
-              <p style={{
-                ...styles.statusBadge,
-                color: vendor.verificationStatus === "approved" ? "#3D5A50" :
-                       vendor.verificationStatus === "rejected" ? "#A33B3B" : "#B8935A",
-              }}>
-                {vendor.verificationStatus}
-              </p>
-
-              {vendor.verificationStatus === "rejected" && vendor.rejectionReason && (
-                <p style={styles.rejectionReason}>Reason: {vendor.rejectionReason}</p>
-              )}
-
-              {vendor.verificationStatus === "pending" && (
-                <div style={styles.actions}>
-                  <button onClick={() => handleApprove(vendor._id)} style={styles.approveButton}>
-                    Approve
-                  </button>
-                  <button onClick={() => handleReject(vendor._id)} style={styles.rejectButton}>
-                    Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      {error && (
+        <p style={{ color: "red" }}>{error}</p>
       )}
+
+      <div style={styles.grid}>
+        <StatCard title="Total Users" value={loading ? "..." : stats.totalUsers} />
+        <StatCard title="Total Vendors" value={loading ? "..." : stats.totalVendors} />
+        <StatCard title="Pending Vendors" value={loading ? "..." : stats.pendingVendors} />
+        <StatCard title="Total Bookings" value={loading ? "..." : stats.totalBookings} />
+      </div>
+
+      <div style={styles.chart}>
+         <h3 style={{ margin: "0 0 20px" }}>Revenue Trend (Last 6 Months)</h3>
+        {loading ? (
+          <p style={{ color: "#999", fontSize: "13px" }}>Loading...</p>
+        ) : stats.monthlyRevenue.length === 0 ? (
+           <p style={{ color: "#999", fontSize: "13px" }}>No revenue data yet.</p>
+      ) : (
+       <div style={styles.barChart}>
+           {stats.monthlyRevenue.map((m, i) => (
+          <div key={i} style={styles.barColumn}>
+          <div style={styles.barTrack}>
+            <div style={{...styles.bar,height: `${Math.max(4, (m.revenue / maxMonthlyRevenue) * 100)}%`}}
+              title={`₹${m.revenue.toLocaleString("en-IN")}`}
+            />
+          </div>
+          <span style={styles.barValue}>₹{(m.revenue / 1000).toFixed(1)}k</span>
+          <span style={styles.barLabel}>{m.label}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+<div style={styles.activity}>
+  <h3>Recent Activities</h3>
+
+  {stats.recentActivities.length === 0 ? (
+    <p>No recent activities</p>
+  ) : (
+    <div>
+      {stats.recentActivities.map((activity, index) => (
+        <div
+          key={index}
+          style={styles.activityItem}
+        >
+          <div>
+            <strong>{activity.message}</strong>
+
+            <p>
+              {new Date(activity.createdAt).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
     </div>
   );
 };
 
 const styles = {
-  page: {
-    minHeight: "100vh", 
-    width: "100%", 
-    background: "#FBF8F3", 
-    padding: "2rem", 
-    boxSizing: "border-box" 
-   },
-  hero: { 
-   textAlign: "center", 
-   padding: "2rem 1rem", 
-   borderBottom: "1px solid #E5DFD5", 
-   marginBottom: "1.5rem" 
-   },
-  eyebrow: { 
-   fontFamily: "Georgia, serif", 
-   fontSize: "12px", 
-   color: "#B8935A", 
-   letterSpacing: "2px", 
-   textTransform: "uppercase", 
-   margin: 0 
-   },
-  heading: { 
-   fontFamily: "Georgia, serif", 
-   fontSize: "30px", 
-   fontWeight: 400, 
-   color: "#2B2B2B", 
-   margin: "8px 0 4px" 
-   },
-  subtext: {
-    fontSize: "14px", 
-    color: "#6B6560", 
-    margin: 0 
-   },
-  filterBar: {
-    display: "flex", 
-    justifyContent: "center",
-    gap: "10px", 
-    marginBottom: "1.5rem" 
-   },
-  filterButton: {
-    padding: "8px 16px", 
-    border: "1px solid #D8D2C7", 
-    borderRadius: "20px", 
-    fontSize: "13px", 
-    cursor: "pointer" 
-   },
-  errorBox: {
-    background: "#FBEAEA", 
-    color: "#A33B3B", 
-    fontSize: "13px", 
-    padding: "10px 14px", 
-    borderRadius: "6px", 
-    maxWidth: "500px", 
-    margin: "0 auto 16px" 
-   },
-  grid: { 
-   display: "grid", 
-   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", 
-   gap: "16px", 
-   maxWidth: "1000px", 
-   margin: "0 auto" 
-   },
-  card: {
-    background: "#FFFFFF", 
-    border: "1px solid #E5DFD5", 
-    borderRadius: "8px", 
-    padding: "1.25rem" 
-   },
-  businessName: {
-    fontSize: "17px", 
-    fontWeight: 600, 
+    heading: {
+    fontSize: "28px",
+    marginBottom: "20px",
     color: "#2B2B2B",
-    margin: "0 0 4px" 
-   },
-  category: {
-    fontSize: "13px", 
-    color: "#6B6560", 
-    margin: "0 0 8px" 
-   },
-  ownerInfo: {
-   fontSize: "13px", 
-   color: "#6B6560", 
-   margin: "0 0 10px" 
-   },
-  statusBadge: { 
-   fontSize: "13px", 
-   fontWeight: 600, 
-   textTransform: "uppercase", 
-   margin: "0 0 8px" 
-   },
-  rejectionReason: { 
-   fontSize: "13px", 
-   color: "#A33B3B", 
-   marginBottom: "10px" 
-   },
-  actions: { 
-   display: "flex", 
-   gap: "8px", 
-   marginTop: "12px" 
-   },
-  approveButton: { 
-   flex: 1, 
-   padding: "8px", 
-   background: "#3D5A50", 
-   color: "#FFFFFF", 
-   border: "none", 
-   borderRadius: "6px", 
-   cursor: "pointer", 
-   fontSize: "13px" 
-   },
-  rejectButton: { 
-   flex: 1, 
-   padding: "8px", 
-   background: "transparent", 
-   color: "#A33B3B", 
-   border: "1px solid #A33B3B", 
-   borderRadius: "6px", 
-   cursor: "pointer", 
-   fontSize: "13px" 
+  },
+  grid:{
+    display:"grid",
+    gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",
+    gap:"20px",
+    marginBottom:"30px"
+  },
+  chart:{
+    background:"#fff",
+  border: "1px solid #E5DFD5",
+    borderRadius: "10px",
+    padding: "20px",
+    marginBottom: "20px",
+    minHeight: "250px",
+  },
+
+  activity: {
+    background: "#fff",
+    border: "1px solid #E5DFD5",
+    borderRadius: "10px",
+    padding: "20px",
+    minHeight: "180px",
+  },
+  activityItem: {
+  display: "flex",
+  alignItems: "center",
+  padding: "14px 0",
+  borderBottom: "1px solid #eee",
 },
-};
+
+activityItem: {
+  display: "flex",
+  alignItems: "center",
+  padding: "14px 0",
+  borderBottom: "1px solid #eee",
+},
+barChart: {
+  display: "flex",
+  alignItems: "flex-end",
+  gap: "14px",
+  height: "190px",
+},
+barColumn: {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  height: "100%",
+},
+barTrack: {
+  flex: 1,
+  width: "100%",
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+},
+bar: {
+  width: "60%",
+  background: "#3D5A50",
+  borderRadius: "4px 4px 0 0",
+  minHeight: "4px",
+  transition: "height 0.3s ease",
+},
+barValue: {
+  fontSize: "11px",
+  color: "#3D5A50",
+  fontWeight: 600,
+  marginTop: "6px",
+},
+barLabel: {
+  fontSize: "10px",
+  color: "#999",
+  marginTop: "2px",
+  textAlign: "center",
+},
+}
 
 export default AdminDashboard;

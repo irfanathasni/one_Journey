@@ -1,7 +1,6 @@
  const mongoose = require("mongoose");
 const VENDOR_STATUS = require("../constants/vendorStatus");
-
- const vendorSchema = new mongoose.Schema({
+const vendorSchema = new mongoose.Schema({
     user :{
         type:mongoose.Schema.Types.ObjectId,
         ref :"User",
@@ -13,12 +12,43 @@ const VENDOR_STATUS = require("../constants/vendorStatus");
     },
     category :{
         type:String,
-        enum:["Photography","EventManagement" ,"Catering" ,"WeddingHall","BridalMakeup","PreMarriageCounselling"],
         required :true
     },
     description :{
         type:String
     },
+    price:{
+        type:Number,
+        required:true,
+        min:0,
+        default:0
+    },
+    pricing: [
+    {
+eventType: {
+    type: String,
+    enum: ["Wedding","Reception","Engagement","Mehndi","Haldi","Sangeet"],
+    required: true
+    },
+     minGuests: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+
+    maxGuests: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+
+    price: {
+        type: Number,
+        required: true,
+        min: 0
+    }
+    }
+],
     verificationStatus :{
         type:String,
         enum:Object.values(VENDOR_STATUS),

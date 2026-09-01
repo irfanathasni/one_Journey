@@ -14,3 +14,18 @@ export const resetPassword = async (token,password) =>{
     const res = await axiosInstance.put(`/auth/reset-password/${token}`,{ password})
     return res.data
 }
+
+export const getProfile = async () => {
+    const res = await axiosInstance.get("/auth/profile")
+    return res.data
+}
+
+export const updateProfile = async (data) => {
+    const res = await axiosInstance.put("/auth/profile",data)
+    return res.data
+}
+
+export const changePassword = async (data) => {
+    const res = await axiosInstance.put("/auth/change-password",data)
+    return res.data
+}

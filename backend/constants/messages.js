@@ -2,7 +2,7 @@
 const MESSAGES = {
     ALL_FIELDS_REQUIRED :"All fields are required",
     EMAIL_EXISTS :"Email already exists" ,
-
+    INVALID_NAME:"Name must contain only letters and be between 3 and 50 charactors" ,
     INVALID_CREDENTIALS :"Invalid email or password" ,
     UNAUTHORIZED :"Unauthorized access" ,
     REGISTER_SUCCESS :"User registered successfully" ,
@@ -16,7 +16,7 @@ const MESSAGES = {
     SERVER_ERROR : "Server error" ,
     INVALID_EMAIL : "please add a valid email address" ,
     INVALID_PHONE :"Please enter a valid 10-digit phone number" ,
-    INVALID_PASSWORD :"Password must be at least 6 characters long",
+    INVALID_PASSWORD :"Password must be at least 8 characters long and contain one uppercase letter,One lowercase letter,one number,and one special character",
     REFRESH_TOKEN_REQUIRED :"Refresh token required" ,
     INVALID_REFRESH_TOKEN :"Invalid refresh token" ,
     REFRESH_TOKEN_EXPIRED :"Refresh token expired" ,

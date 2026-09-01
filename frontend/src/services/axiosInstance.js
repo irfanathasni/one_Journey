@@ -1,11 +1,14 @@
 import axios from "axios"
+import { store } from "../app/store"
+import { setCredentials,logout } from "../features/auth/authSlice"
 
 const axiosInstance = axios.create({
     baseURL : "http://localhost:5000/api/v1" ,
+    withCredentials:true
 })
 
 axiosInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem("token")
+    const token = store.getState().auth.token
     if(token) {
         config.headers.Authorization = `Bearer ${token}`
     }
@@ -16,24 +19,28 @@ axiosInstance.interceptors.response.use(
     (response) => response,
     async(error) => {
         const originalRequest = error.config
-        const isAuthRequest = originalRequest.url.includes("/auth/login") || originalRequest.url.includes("/auth/register")
-        if(error.response?.status ===401 && !originalRequest._retry && !isAuthRequest) {
-            originalRequest._retry = true
+        const isAuthRequest = 
+            originalRequest.url.includes("/auth/login") || 
+            originalRequest.url.includes("/auth/register") ||
+            originalRequest.url.includes("/auth/refresh")
 
-        try{
-            const refreshToken = localStorage.getItem("refreshToken")
-            const res = await axios.post("http://localhost:5000/api/v1/auth/refresh",{ refreshToken})
-            const newAccessToken = res.data.accessToken
-            localStorage.setItem("token",newAccessToken)
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-            return axiosInstance(originalRequest)
-        }catch(refreshError) {
-            localStorage.removeItem("token")
-            localStorage.removeItem("refreshToken")
-            localStorage.removeItem("role")
-            window.location.href = "/login"
-            return Promise.reject(refreshError)
-        }
+        if(error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
+            originalRequest._retry = true
+            try{
+                const res = await axiosInstance.post("/auth/refresh")
+                const newAccessToken = res.data.accessToken
+                store.dispatch(setCredentials({
+                    user: store.getState().auth.user,
+                    token: newAccessToken,
+                    role: store.getState().auth.role,
+                }))
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+                return axiosInstance(originalRequest)
+            }catch(refreshError) {
+                store.dispatch(logout())
+                window.location.href = "/login"
+                return Promise.reject(refreshError)
+            }
         }
         return Promise.reject(error)
     }

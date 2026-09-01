@@ -9,5 +9,8 @@ export const isValidPhone = (phone) => {
 }
 
 export const isValidPassword = (password) => {
-    return password.length >= 6
-}
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#^()_+\-=\[\]{};':"\\|,.<>/?])[A-Za-z\d@$!%*?&.#^()_+\-=\[\]{};':"\\|,.<>/?]{8,}$/;
+
+  return passwordRegex.test(password)
+};
