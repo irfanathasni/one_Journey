@@ -114,22 +114,62 @@ const VendorWallet = () => {
             <p style={styles.emptyText}>No transactions yet.</p>
           ) : (
             <div style={styles.list}>
-              {wallet.transactions.map((t, i) => (
-                <div key={i} style={styles.row}>
-                  <div>
-                    <strong style={{ color: t.type === "credit" ? "#2E7D50" : "#B44B4B" }}>
-                      {t.type === "credit" ? "+ Credit" : "− Withdrawal"}
-                    </strong>
-                    <p style={styles.rowDesc}>{t.description}</p>
-                  </div>
-                  <div style={styles.rowRight}>
-                    <span style={{ color: t.type === "credit" ? "#2E7D50" : "#B44B4B", fontWeight: 700 }}>
-                      {t.type === "credit" ? "+" : "-"}₹{t.amount.toLocaleString("en-IN")}
+{wallet.transactions.map((t, i) => {
+
+    const isCredit = t.type === "credit";
+
+    const statusLabel = t.status === "pending"
+            ? "Pending"
+            : t.status === "failed"
+                ? "Failed"
+                : "Success";
+
+    return (
+        <div key={i} style={styles.row}>
+            <div>
+                <strong style={{ color: isCredit
+                            ? "#2E7D50"
+                            : t.status === "failed"
+                                ? "#B44B4B"
+                                : "#8A6A32"
+                    }}>{isCredit
+                        ? "+ Credit"
+                        : "− Withdrawal"}
+                </strong>
+
+                <p style={styles.rowDesc}>{t.description}</p>
+                {!isCredit && (
+                    <span style={{...styles.statusBadge,
+                            background:t.status === "pending"
+                                    ? "#FFF4D6"
+                                    : t.status === "success"
+                                        ? "#E6F3EC"
+                                        : "#FBEAEA",
+                            color: t.status === "pending"
+                                    ? "#8A6A32"
+                                    : t.status === "success"
+                                        ? "#2E7D50"
+                                        : "#A33B3B"
+                        }}>{statusLabel}
                     </span>
-                    <p style={styles.rowDate}>{formatDate(t.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
+                )}
+
+            </div>
+
+            <div style={styles.rowRight}>
+                <span style={{color: isCredit ? "#2E7D50" : t.status === "failed"
+                                ? "#B44B4B"
+                                : "#8A6A32",
+                        fontWeight: 700
+                    }}>{isCredit ? "+" : "-"}₹{Number(t.amount).toLocaleString("en-IN")}
+                </span>
+
+                <p style={styles.rowDate}>{formatDate(t.createdAt)}</p>
+            </div>
+
+        </div>
+    )
+})}
             </div>
           )}
         </section>
@@ -141,59 +181,185 @@ const VendorWallet = () => {
 const styles = {
   page: {
      minHeight: "100vh", 
-     background: "#FBF8F3" },
-  main: { maxWidth: "1100px", margin: "0 auto", padding: "40px" },
-  header: { marginBottom: "28px" },
-  eyebrow: { fontSize: "12px", letterSpacing: "2px", color: "#B8935A", fontWeight: 600, margin: "0 0 6px" },
-  heading: { fontFamily: "Georgia, serif", fontSize: "32px", fontWeight: 400, color: "#2B2B2B", margin: 0 },
-  subtext: { color: "#6B6560", fontSize: "14px", marginTop: "8px" },
-  topRow: { display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: "18px", marginBottom: "22px" },
-  balanceCard: {
-    background: "#173E35", color: "#FFFFFF", borderRadius: "14px",
-    padding: "28px", display: "flex", flexDirection: "column", justifyContent: "center",
+     background: "#FBF8F3" 
+    },
+  main: { 
+    maxWidth: "1100px", 
+    margin: "0 auto", 
+    padding: "40px" 
   },
-  balanceLabel: { fontSize: "12px", opacity: 0.8, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "1px" },
-  balanceValue: { fontFamily: "Georgia, serif", fontSize: "36px", margin: 0 },
-  withdrawCard: { background: "#FFFFFF", border: "1px solid #E5DFD5", borderRadius: "14px", padding: "24px" },
-  withdrawTitle: { margin: "0 0 14px", fontSize: "16px", color: "#2B2B2B" },
-  withdrawForm: { display: "flex", gap: "10px" },
+  header: { 
+    marginBottom: "28px" 
+  },
+  eyebrow: { 
+    fontSize: "12px", 
+    letterSpacing: "2px", 
+    color: "#B8935A", 
+    fontWeight: 600, 
+    margin: "0 0 6px" 
+  },
+  heading: { 
+    fontFamily: "Georgia, serif", 
+    fontSize: "32px", 
+    fontWeight: 400, 
+    color: "#2B2B2B",
+     margin: 0
+     },
+  subtext: { 
+    color: "#6B6560", 
+    fontSize: "14px", 
+    marginTop: "8px" 
+  },
+  topRow: {
+     display: "grid", 
+     gridTemplateColumns: "1fr 1.4fr", 
+     gap: "18px", 
+     marginBottom: "22px" 
+    },
+  balanceCard: {
+    background: "#173E35", 
+    color: "#FFFFFF", 
+    borderRadius: "14px",
+    padding: "28px",
+     display: "flex", 
+     flexDirection: "column", 
+     justifyContent: "center",
+  },
+  balanceLabel: { 
+    fontSize: "12px", 
+    opacity: 0.8, 
+    margin: "0 0 10px", 
+    textTransform: "uppercase", 
+    letterSpacing: "1px" 
+  },
+  balanceValue: { 
+    fontFamily: "Georgia, serif", 
+    fontSize: "36px", 
+    margin: 0 },
+  withdrawCard: { 
+    background: "#FFFFFF", 
+    border: "1px solid #E5DFD5", 
+    borderRadius: "14px", 
+    padding: "24px" 
+  },
+  withdrawTitle: {
+     margin: "0 0 14px", 
+     fontSize: "16px", 
+     color: "#2B2B2B" 
+    },
+  withdrawForm: { 
+    display: "flex", 
+    gap: "10px" 
+  },
   input: {
-    flex: 1, padding: "11px 13px", border: "1px solid #DCD5CA", borderRadius: "7px",
-    fontSize: "14px", outline: "none", boxSizing: "border-box",
+    flex: 1, 
+    padding: "11px 13px", 
+    border: "1px solid #DCD5CA", 
+    borderRadius: "7px",
+    fontSize: "14px",
+     outline: "none", 
+     boxSizing: "border-box",
   },
   withdrawButton: {
-    padding: "11px 22px", background: "#B8935A", color: "#FFFFFF", border: "none",
-    borderRadius: "7px", fontWeight: 600, fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap",
+    padding: "11px 22px", 
+    background: "#B8935A", 
+    color: "#FFFFFF", 
+    border: "none",
+    borderRadius: "7px", 
+    fontWeight: 600, 
+    fontSize: "13px", 
+    cursor: "pointer", 
+    whiteSpace: "nowrap",
   },
-  withdrawHint: { fontSize: "11px", color: "#999", marginTop: "10px", marginBottom: 0 },
-  card: { background: "#FFFFFF", border: "1px solid #E5DFD5", borderRadius: "14px", padding: "24px" },
-  cardTitle: { margin: "0 0 18px", fontSize: "18px", fontFamily: "Georgia, serif", color: "#2B2B2B" },
-  emptyText: { color: "#999", fontSize: "13px" },
-  list: { display: "flex", flexDirection: "column", gap: "10px" },
+  withdrawHint: { 
+    fontSize: "11px", 
+    color: "#999", 
+    marginTop: "10px", 
+    marginBottom: 0 
+  },
+  card: {
+     background: "#FFFFFF",
+      border: "1px solid #E5DFD5", 
+      borderRadius: "14px", 
+      padding: "24px"
+     },
+  cardTitle: { 
+    margin: "0 0 18px", 
+    fontSize: "18px", 
+    fontFamily: "Georgia, serif", 
+    color: "#2B2B2B" 
+  },
+  emptyText: { 
+    color: "#999", 
+    fontSize: "13px" 
+  },
+  list: { 
+    display: "flex", 
+    flexDirection: "column", 
+    gap: "10px" 
+  },
   row: {
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "14px 16px", border: "1px solid #EEE", borderRadius: "10px",
+    display: "flex", 
+    justifyContent: "space-between", 
+    alignItems: "center",
+    padding: "14px 16px", 
+    border: "1px solid #EEE", 
+    borderRadius: "10px",
   },
-  rowDesc: { margin: "3px 0 0", fontSize: "12px", color: "#999" },
-  rowRight: { textAlign: "right" },
-  rowDate: { margin: "3px 0 0", fontSize: "11px", color: "#999" },
+  rowDesc: { 
+    margin: "3px 0 0", fontSize: "12px", color: "#999" },
+  rowRight: { 
+    textAlign: "right" 
+  },
+  rowDate: { 
+    margin: "3px 0 0", 
+    fontSize: "11px", 
+    color: "#999" 
+  },
   errorBox: {
-    background: "#FBEAEA", color: "#A33B3B", borderRadius: "7px",
-    padding: "12px 14px", fontSize: "13px", marginBottom: "18px",
+    background: "#FBEAEA", 
+    color: "#A33B3B", 
+    borderRadius: "7px",
+    padding: "12px 14px", 
+    fontSize: "13px", 
+    marginBottom: "18px",
   },
   errorBoxSmall: {
-    background: "#FBEAEA", color: "#A33B3B", borderRadius: "7px",
-    padding: "9px 12px", fontSize: "12px", marginBottom: "10px",
+    background: "#FBEAEA", 
+    color: "#A33B3B", 
+    borderRadius: "7px",
+    padding: "9px 12px", 
+    fontSize: "12px", 
+    marginBottom: "10px",
   },
   successBoxSmall: {
-    background: "#E6F3EC", color: "#2E7D50", borderRadius: "7px",
-    padding: "9px 12px", fontSize: "12px", marginBottom: "10px",
+    background: "#E6F3EC", 
+    color: "#2E7D50", 
+    borderRadius: "7px",
+    padding: "9px 12px", 
+    fontSize: "12px", 
+    marginBottom: "10px",
   },
   center: {
-    minHeight: "70vh", display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center", color: "#6B6560",
+    minHeight: "70vh",
+     display: "flex", 
+     flexDirection: "column",
+    alignItems: "center", 
+    justifyContent: "center", 
+    color: "#6B6560",
   },
-  loadingIcon: { fontSize: "35px", marginBottom: "10px" },
+  loadingIcon: { 
+    fontSize: "35px", 
+    marginBottom: "10px" 
+  },
+  statusBadge: {
+    display: "inline-block",
+    marginTop: "6px",
+    padding: "3px 8px",
+    borderRadius: "20px",
+    fontSize: "10px",
+    fontWeight: 600
+},
 };
 
 export default VendorWallet;

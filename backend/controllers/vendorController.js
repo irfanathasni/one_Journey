@@ -5,12 +5,9 @@ const VendorAvailability = require("../models/VendorAvailability")
 
 const createVendorProfile = async (req, res, next) => {
   try {
-    const { businessName, category, description,price } = req.body;
-    if (!businessName || !category || !price) {
+    const { businessName, category, description } = req.body;
+    if (!businessName || !category ) {
       return res.status(400).json({success: false, message: "Business Name ,category and price are required"});
-    }
-    if(price <0){
-        return res.status(400).json({success:false,message:"Price cannot be negative"})
     }
     const categoryData = await Category.findOne({name: category.trim(),isActive: true})
 
@@ -49,7 +46,6 @@ const createVendorProfile = async (req, res, next) => {
       businessName,
       category: categoryData.name,
       description,
-      price ,
       verificationStatus: VENDOR_STATUS.PENDING,
     });
 
@@ -92,59 +88,51 @@ const getApprovedVendors = async (req,res,next) => {
     }
 } 
 
-const updateVendorProfile = async (req,res,next) => {
-    try{
-        const { businessName,category,description,price,pricing} = req.body
-        if(!businessName || !category ) {
-            return res.status(400).json({success:false,message:"Business name and category are required"})
+const updateVendorProfile = async (req, res, next) => {
+    try {
+        const {businessName,category,description,packages} = req.body
+
+        if (!businessName || !category) {
+            return res.status(400).json({success: false,message: "Business name and category are required"})
         }
-        const vendor = await Vendor.findOne({user:req.user.id})
-            if(!vendor) {
-                return res.status(404).json({success:false,message:"Vendor Profile not found"})
-            }  
-            if(price !==undefined && price <0) {
-                return res.status(400).json({success:false,message:"Price cannot be negative"})
-            }
-            if(pricing !== undefined) {
-                if(!Array.isArray(pricing)) {
-                    return res.status(400).json({success:false,message:"Pricing must be an array"})
-                }
-                for(const item of pricing) {
-                    if(!item.eventType ||
-                        item.minGuests === undefined ||
-                        item.maxGuests === undefined ||
-                        item.price === undefined
-                    ){
-                        return res.status(400).json({success:false,message:"Event type,guest range and price are required"})
-                    }
-                    if(item.minGuests <0 || item.maxGuests <0) {
-                        return res.status(400).json({success:false,message:"Guest count cannot be negative"})
-                    }
-                    if(item.minGuests >item.maxGuests) {
-                        return res.status(400).json({success:false,message:"Minimum guests cannot be greater than maximum guests"})
-                    }
-                    if(item.price <0) {
-                        return res.status(400).json({success:false,message:"Pricing cannot be negative"})
-                    }
-                }
+        const vendor = await Vendor.findOne({ user: req.user.id })
+
+        if (!vendor) {
+            return res.status(404).json({success: false,message: "Vendor Profile not found"})
+        }
+        if (packages !== undefined) {
+            if (!Array.isArray(packages)) {
+                return res.status(400).json({success: false,message: "Packages must be an array"})
             }
 
-        vendor.businessName = businessName
-        vendor.category = category
-        vendor.description = description
-        if(price !== undefined) {
-            vendor.price = price
+            for (const item of packages) {
+                if (!item.packageType ||!item.packageName || !item.description || item.price === undefined) {
+                    return res.status(400).json({success: false,message:"Package type, name, description and price are required"})
+                }
+                if (!["Normal", "Premium"].includes(item.packageType)) {
+                    return res.status(400).json({success: false,message:"Package type must be Normal or Premium"})
+                }
+
+                if (Number(item.price) < 0) {
+                    return res.status(400).json({success: false,message: "Package price cannot be negative"})
+                }
+            }
         }
-        if(pricing !==undefined) {
-            vendor.pricing = pricing
+
+        vendor.businessName = businessName;
+        vendor.category = category;
+        vendor.description = description;
+
+        if (packages !== undefined) {
+            vendor.packages = packages;
         }
-        
-    await vendor.save()
-    return res.status(200).json({success:true,message:"Vendor Profile updated successfully",data:vendor})
-    }catch(error){
-        next(error)
+        await vendor.save();
+        return res.status(200).json({success: true,message: "Vendor Profile updated successfully",data: vendor})
+
+    } catch (error) {
+        next(error);
     }
-}
+};
 
 const createAvailability = async(req,res,next) => {
     try{
@@ -251,41 +239,67 @@ const getVendorAvailability = async(req,res,next) => {
  }
 }
 
-const addPricingTier = async (req, res, next) => {
+const addPackage = async (req, res, next) => {
     try {
-        const { eventType, minGuests, maxGuests, price } = req.body
-        if (!eventType || minGuests === undefined || maxGuests === undefined || !price) {
-            return res.status(400).json({ success: false, message: "All pricing fields are required" })
-        }
-        if (Number(minGuests) > Number(maxGuests)) {
-            return res.status(400).json({ success: false, message: "Min guests cannot exceed max guests" })
-        }
-        const vendor = await Vendor.findOne({ user: req.user.id })
-        if (!vendor) {
-            return res.status(404).json({ success: false, message: "Vendor profile not found" })
-        }
-        vendor.pricing.push({ eventType, minGuests, maxGuests, price })
-        await vendor.save()
-        return res.status(201).json({ success: true, message: "Pricing tier added", data: vendor })
-    } catch (error) {
-        next(error)
-    }
-}
+        const {packageType,packageName,description,price} = req.body
 
-const deletePricingTier = async (req, res, next) => {
-    try {
-        const { tierId } = req.params
-        const vendor = await Vendor.findOne({ user: req.user.id })
-        if (!vendor) {
-            return res.status(404).json({ success: false, message: "Vendor profile not found" })
+        if (!packageType || !packageName || !description || price === undefined) {
+            return res.status(400).json({success: false,message:"Package type, name, description and price are required"})
         }
-        vendor.pricing = vendor.pricing.filter(p => p._id.toString() !== tierId)
+        if (!["Normal", "Premium"].includes(packageType)) {
+            return res.status(400).json({success: false,message:"Package type must be Normal or Premium"})
+        }
+
+        if (Number(price) < 0) {
+            return res.status(400).json({success: false,message: "Package price cannot be negative"})
+        }
+        const vendor = await Vendor.findOne({user: req.user.id})
+
+        if (!vendor) {
+            return res.status(404).json({success: false,message: "Vendor profile not found"})
+        }
+
+        
+        const existingPackage = vendor.packages.find(pkg => pkg.packageType === packageType)
+
+        if (existingPackage) {
+            return res.status(409).json({success: false,message: `${packageType} package already exists`})
+        }
+
+        vendor.packages.push({packageType,packageName,description,price: Number(price)})
         await vendor.save()
-        return res.status(200).json({ success: true, message: "Pricing tier removed", data: vendor })
+        return res.status(201).json({success: true,message: "Package added successfully",data: vendor})
+
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};
+
+const deletePackage = async (req, res, next) => {
+    try {
+        const { packageId } = req.params;
+
+        const vendor = await Vendor.findOne({user: req.user.id})
+
+        if (!vendor) {
+            return res.status(404).json({success: false,message: "Vendor profile not found"})
+        }
+
+        const packageExists = vendor.packages.some(pkg => pkg._id.toString() === packageId)
+
+        if (!packageExists) {
+            return res.status(404).json({success: false,message: "Package not found"})
+        }
+
+        vendor.packages = vendor.packages.filter(pkg => pkg._id.toString() !== packageId)
+        await vendor.save()
+
+        return res.status(200).json({success: true,message: "Package removed successfully",data: vendor})
+
+    } catch (error) {
+        next(error);
+    }
+};
 module.exports = { 
     createVendorProfile, 
     getMyVendorProfile,
@@ -295,6 +309,6 @@ module.exports = {
     getMyAvailability,
     deleteAvailability,
     getVendorAvailability,
-    addPricingTier,
-    deletePricingTier
+    addPackage,
+   deletePackage
 }

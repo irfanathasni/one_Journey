@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const mongoose = require("mongoose");
 const User = require("../models/User")
 const ROLES = require("../constants/roles")
 const MESSAGES = require("../constants/messages")
@@ -42,9 +43,13 @@ const register = async (req,res,next) =>{
         const hashedPassword = await bcrypt.hash(password,10)
         const otp = generateOTP()
         const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000)
+       console.log("REGISTERING USER:", email);
         const newUser = await User.create({
             name,email,phone,password:hashedPassword,role:finalRole,otp,otpExpiresAt,isVerified:false
         })
+        console.log("USER SAVED:", newUser._id, newUser.email);
+        console.log("DATABASE:", mongoose.connection.name);
+        console.log("COLLECTION:", User.collection.name);
         await sendOTPEmail(email,otp)
         return res.status(201).json({success:true,message:MESSAGES.REGISTER_SUCCESS})
     }catch(error){

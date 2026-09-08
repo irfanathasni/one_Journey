@@ -87,8 +87,15 @@ io.use(async (socket, next) => {
     }
 })
 
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id} - User: ${socket.user.name} (${socket.user.role})`);
+    const userId = socket.user.id.toString();
+    onlineUsers.set(userId, socket.id);
+
+    io.emit("userStatusChanged", {userId,status: "online"})
+    console.log(`User online: ${socket.user.name}`);
+
     socket.on("joinConversation", async (conversationId) => {
         try {
             if (!conversationId) return;
@@ -97,16 +104,13 @@ io.on("connection", (socket) => {
             if (!conversation) {
                 return;
             }
-            const userId = socket.user.id.toString();
-            const isCustomer =conversation.customer.toString() === userId;
-            const isVendor =conversation.vendor.toString() === userId;
+            const isCustomer = conversation.customer.toString() === userId;
+            const isVendor = conversation.vendor.toString() === userId;
             if (!isCustomer && !isVendor) {
                 return;
             }
-
             const roomName = `conversation_${conversationId}`;
-            socket.join(roomName);
-            console.log(`${socket.user.name} joined room: ${roomName}`);
+            socket.join(roomName)
         } catch (error) {
             console.error("Join conversation error:", error);
         }
@@ -115,17 +119,17 @@ io.on("connection", (socket) => {
     socket.on("sendMessage", async ({ conversationId, message }) => {
         try {
             if (!conversationId || !message?.trim()) {
-                return;
+                return
             }
             const Conversation = require("./models/conversationModel");
             const Message = require("./models/messageModel");
-            const conversation =await Conversation.findById(conversationId);
+
+            const conversation = await Conversation.findById(conversationId);
             if (!conversation) {
                 return;
             }
-            const userId = socket.user.id.toString();
-            const isCustomer =conversation.customer.toString() === userId;
-            const isVendor =conversation.vendor.toString() === userId;
+            const isCustomer = conversation.customer.toString() === userId;
+            const isVendor = conversation.vendor.toString() === userId;
             if (!isCustomer && !isVendor) {
                 return;
             }
@@ -138,25 +142,62 @@ io.on("connection", (socket) => {
                 sender: socket.user.id,
                 receiver: receiverId,
                 message: message.trim(),
-            })
+            });
+
             conversation.lastMessage = message.trim();
             conversation.lastMessageAt = new Date();
+
             await conversation.save();
 
-            const populatedMessage =
-                await Message.findById(newMessage._id)
+            const populatedMessage = await Message.findById(newMessage._id)
                     .populate("sender", "name email role")
                     .populate("receiver", "name email role");
+
             const roomName = `conversation_${conversationId}`;
 
-            io.to(roomName).emit("receiveMessage",populatedMessage)
+            io.to(roomName).emit("receiveMessage",populatedMessage);
+
         } catch (error) {
-            console.error("Send message error:",error)
+            console.error("Send message error:", error);
+        }
+    });
+       
+    socket.on("markMessagesAsRead", async (conversationId) => {
+        try {
+            if (!conversationId) return;
+            const Conversation = require("./models/conversationModel");
+            const Message = require("./models/messageModel");
+            const conversation = await Conversation.findById(conversationId);
+            if (!conversation) return;
+
+            const isCustomer = conversation.customer.toString() === userId;
+            const isVendor = conversation.vendor.toString() === userId;
+            if (!isCustomer && !isVendor) return;
+            const updatedMessages = await Message.updateMany(
+                {
+                    conversation: conversationId,
+                    receiver: socket.user.id,
+                    isRead: false
+                },
+                {$set: { isRead: true }}
+            )
+
+            if (updatedMessages.modifiedCount > 0) {
+                const roomName = `conversation_${conversationId}`;
+                io.to(roomName).emit("messagesRead", {conversationId,readBy: userId});
+            }
+
+        } catch (error) {
+            console.error("Mark messages as read error:", error);
         }
     });
     socket.on("disconnect", () => {
-        console.log(`Socket disconnected: ${socket.id} - User: ${socket.user.name}`)
+        onlineUsers.delete(userId);
+        io.emit("userStatusChanged", {userId,status: "offline"});
 
+        console.log(
+            `User offline: ${socket.user.name}`
+        );
     });
 
 });

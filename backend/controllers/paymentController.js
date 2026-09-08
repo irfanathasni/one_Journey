@@ -8,51 +8,71 @@ const razorpay = new Razorpay({
     key_secret :process.env.RAZORPAY_KEY_SECRET
 })
 
-const createPaymentOrder = async (req,res,next) => {
-    try{
-        const { bookingId , paymentType } = req.body
-        if(!bookingId) {
-            return res.status(400).json({success:false,message:"Booking not found"})
+const createPaymentOrder = async (req, res, next) => {
+    try {
+        const { bookingId, paymentType } = req.body
+        if (!bookingId) {
+            return res.status(400).json({success: false,message: "Booking ID is required"})
+        }
+        if (!["advance", "final"].includes(paymentType)) {
+            return res.status(400).json({success: false,message: "Invalid payment type"})
         }
         const booking = await Booking.findById(bookingId)
-        if(!booking) {
-            return res.status(404).json({success:false,message:"Booking not found"})
-        }
-        if(booking.customer.toString() !== req.user.id.toString()) {
-            return res.status(400).json({success:false,message:"You don't have permission for this booking"})
-        }
-        let amountToCharge = 0
-        if(paymentType === "final") {
-            if(booking.status !== "completed"){
-                return res.status(400).json({success:false,message:"Event must be marked completed before final payment"})
-            }
-            if(booking.finalPaymentStatus !== "requested") {   
-                return res.status(400).json({success:false,message:"Vendor has not requested final payment yet"})
-            }
-            amountToCharge = booking.amount - booking.advanceAmount
 
-            if(amountToCharge  <= 0) {
-                return res.status(400).json({success:false,message:"No remaining amount to pay"})
-            }
-        }else {
-            if(booking.status !== "approved") {
-                return res.status(400).json({success:false,message:"Booking must beapproved before payment"})
-            }
-            if(booking.paymentStatus =="paid") {
-                return res.status(400).json({success:false,message:"Advance payment already completed"})
-            }
-            amountToCharge = booking.advanceAmount
+        if (!booking) {
+            return res.status(404).json({success: false,message: "Booking not found"})
         }
-        
+        if (
+            booking.customer.toString() !==
+            req.user.id.toString()
+        ) {
+            return res.status(403).json({success: false,message: "You don't have permission for this booking"})
+        }
+
+        let amountToCharge = 0
+
+        if (paymentType === "final") {
+
+            if (booking.status !== "completed") {
+                return res.status(400).json({success: false,message: "Event must be marked completed before final payment"})
+            }
+            if (booking.finalPaymentStatus !== "requested") {
+                return res.status(400).json({success: false,message: "Vendor has not requested final payment yet"})
+            }
+
+            amountToCharge = Number(booking.amount) - Number(booking.advanceAmount)
+
+            if (!Number.isFinite(amountToCharge) || amountToCharge <= 0
+            ) {
+                return res.status(400).json({success: false,message: "No remaining amount to pay"})
+            }
+
+        }
+        else {
+            if (booking.status !== "approved") {
+                return res.status(400).json({success: false,message: "Booking must be approved before payment"})
+            }
+            if (booking.paymentStatus === "paid") {
+                return res.status(400).json({success: false,message: "Advance payment already completed"})
+            }
+            amountToCharge = Number(booking.advanceAmount)
+
+            if (!Number.isFinite(amountToCharge) || amountToCharge <= 0
+            ) {
+                return res.status(400).json({success: false,message: "Invalid advance payment amount"})
+            }
+        }
+
         const options = {
-            amount:amountToCharge *100,
-            currency:"INR",
-            receipt:`booking_${booking._id}_${paymentType || "advance"}`
+            amount: Math.round(amountToCharge * 100),
+            currency: "INR",
+            receipt: `booking_${booking._id}_${paymentType}`
         }
         const order = await razorpay.orders.create(options)
-        return res.status(200).json({success:true,order,keyId:process.env.RAZORPAY_KEY_ID})
-    }catch(error){
-        console.log("RAZORPAY ERROR FULL:", error) 
+        return res.status(200).json({success: true,order,keyId: process.env.RAZORPAY_KEY_ID})
+
+    } catch (error) {
+        console.log("RAZORPAY ERROR FULL:", error)
         next(error)
     }
 }
@@ -60,45 +80,103 @@ const createPaymentOrder = async (req,res,next) => {
 
 const verifyPayment = async (req, res, next) => {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, bookingId, paymentType } = req.body
+        const {razorpay_order_id,razorpay_payment_id,razorpay_signature,bookingId,paymentType} = req.body
+
+        if (!razorpay_order_id ||!razorpay_payment_id || !razorpay_signature || !bookingId ||!paymentType) {
+            return res.status(400).json({success: false,message: "Payment details are required"})
+        }
+
+        if (!["advance", "final"].includes(paymentType)) {
+            return res.status(400).json({success: false,message: "Invalid payment type"})
+        }
+        const booking = await Booking.findById(bookingId)
+        if (!booking) {
+            return res.status(404).json({success: false,message: "Booking not found"})
+        }
+        if (booking.customer.toString() !== req.user.id.toString()) {
+            return res.status(403).json({success: false,message: "You don't have permission for this booking"})
+        }
+
+        if (paymentType === "advance" && booking.paymentStatus === "paid") {
+            return res.status(400).json({success: false,message: "Advance payment already verified"})
+        }
+
+        if (paymentType === "final" && booking.finalPaymentStatus === "paid") {
+            return res.status(400).json({success: false,message: "Final payment already verified"})
+        }
 
         const generatedSignature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .createHmac("sha256",process.env.RAZORPAY_KEY_SECRET)
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest("hex")
 
         if (generatedSignature !== razorpay_signature) {
-            if(paymentType !== "final") {
-                await Booking.findByIdAndUpdate(bookingId, { paymentStatus: "failed" })
+
+            if (paymentType === "advance") {
+                booking.paymentStatus = "failed"
+                await booking.save()
             }
-            return res.status(400).json({ success: false, message: "Payment verification failed" })
+
+            return res.status(400).json({success: false,message: "Payment verification failed"})
         }
 
-        const updateField = paymentType === "final"
-            ? { finalPaymentStatus: "paid" }
-            : { paymentStatus: "paid" }
+        let creditAmount = 0
 
-        const booking = await Booking.findByIdAndUpdate(bookingId, updateField, { new: true })
+        if (paymentType === "final") {
+            if (booking.status !== "completed") {
+                return res.status(400).json({success: false,message: "Booking must be completed before final payment"})
+            }
+            if (booking.finalPaymentStatus !== "requested") {
+                return res.status(400).json({success: false,message: "Final payment has not been requested"})
+            }
 
-        const creditAmount = paymentType === "final"
-            ? (booking.amount - booking.advanceAmount)
-            : booking.advanceAmount
+            creditAmount = Number(booking.amount) - Number(booking.advanceAmount)
 
-        let wallet = await Wallet.findOne({ vendor: booking.vendor })
+        } else {
+            if (booking.status !== "approved") {
+                return res.status(400).json({ success: false,message: "Booking must be approved before advance payment"})
+            }
+
+            creditAmount = Number(booking.advanceAmount)
+        }
+
+        if ( !Number.isFinite(creditAmount) || creditAmount <= 0) {
+            return res.status(400).json({success: false,message: "Invalid payment amount"})
+        }
+
+        if (paymentType === "final") {
+            booking.finalPaymentStatus = "paid"
+        } else {
+            booking.paymentStatus = "paid"
+        }
+        await booking.save()
+        let wallet = await Wallet.findOne({
+            vendor: booking.vendor
+        })
+
         if (!wallet) {
-            wallet = await Wallet.create({ vendor: booking.vendor, balance: 0, transactions: [] })
+            wallet = await Wallet.create({
+                vendor: booking.vendor,
+                balance: 0,
+                transactions: []
+            })
         }
+
         wallet.balance += creditAmount
         wallet.transactions.unshift({
             type: "credit",
             amount: creditAmount,
-            description: paymentType === "final" ? "Final payment received" : "Advance payment received"
+            description:
+                paymentType === "final"
+                    ? "Final payment received"
+                    : "Advance payment received"
         })
-        await wallet.save()
 
-        return res.status(200).json({ success: true, message: "Payment verified successfully", data: booking })
+        await wallet.save()
+        return res.status(200).json({success: true,message: "Payment verified successfully",data: booking})
+
     } catch (error) {
-        console.log("RAZORPAY ERROR FULL:", error) 
+        console.log("RAZORPAY ERROR FULL:", error)
         next(error)
     }
 }

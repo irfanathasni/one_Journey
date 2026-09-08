@@ -56,27 +56,23 @@ useEffect(() => {
       vendor.businessName?.toLowerCase().includes(searchText) ||
       vendor.category?.toLowerCase().includes(searchText) ||
       vendor.description?.toLowerCase().includes(searchText)
-    );
-  });
+    )
+  })
 
   return (
     <div style={styles.page}>
       <section style={styles.hero}>
         <div>
           <p style={styles.eyebrow}>ONE JOURNEY</p>
-
           <h1 style={styles.title}>Find the perfect vendors
             <br />for your special day</h1>
-
           <p style={styles.subtitle}>
             Discover trusted wedding professionals and make
             every moment of your celebration unforgettable.
           </p>
         </div>
 
-        <div style={styles.heroIcon}>
-          💍
-        </div>
+        <div style={styles.heroIcon}>💍</div>
       </section>
       <div style={styles.searchWrapper}>
         <span style={styles.searchIcon}>🔍</span>
@@ -88,9 +84,7 @@ useEffect(() => {
       <div style={styles.sectionHeader}>
         <div>
           <p style={styles.smallTitle}>EXPLORE</p>
-          <h2 style={styles.sectionTitle}>
-            Browse by category
-          </h2>
+          <h2 style={styles.sectionTitle}>Browse by category</h2>
         </div>
       </div>
 
@@ -135,16 +129,10 @@ useEffect(() => {
        
         <div style={styles.empty}>
           <div style={styles.emptyIcon}>🔍</div>
-
           <h2>No vendors found</h2>
-
-          <p>
-            We couldn't find any vendors matching your search.
-          </p>
-
+          <p>We couldn't find any vendors matching your search.</p>
           <button onClick={() => {setSearch("")
-            setCategory("")}} style={styles.resetButton}>
-            Clear Filters
+            setCategory("")}} style={styles.resetButton}>Clear Filters
           </button>
         </div>
       ) : (
@@ -152,29 +140,36 @@ useEffect(() => {
   {filteredVendors.map((vendor) => (
     <div key={vendor._id} style={styles.card}>
       <div style={styles.cardTop}>
-        <div style={styles.vendorIcon}>
-          💍
-        </div>
-        <span style={styles.status}>
-          ✓ Approved
-        </span>
+        <div style={styles.vendorIcon}>💍</div>
+        <span style={styles.status}>✓ Approved</span>
       </div>
 
         
-              <h2 style={styles.businessName}>
-                {vendor.businessName}
-              </h2>
-              <p style={styles.category}>
-                {vendor.category}
-              </p>
+              <h2 style={styles.businessName}>{vendor.businessName}</h2>
+              <p style={styles.category}>{vendor.category}</p>
               <p style={styles.description}>
                 {vendor.description ||
                   "A trusted wedding professional ready to make your special day memorable."}
               </p>
+                  {vendor.packages?.length > 0 && (
+               <div style={styles.packagePreview}>
+               <div style={styles.packageTitle}>Service Packages</div>
 
+                  {vendor.packages.map((pkg) => (
+               <div key={pkg._id} style={styles.packageRow}>
+              <div>
+                <strong style={styles.packageName}>{pkg.packageName}</strong>
+                <span style={styles.packageType}>{pkg.packageType}</span>
+             </div>
+                 <strong style={styles.packagePrice}>
+                     ₹{Number(pkg.price).toLocaleString("en-IN")}
+               </strong>
+         </div>
+           ))}
+       </div>
+      )}
               {vendor.user && (
                 <div style={styles.contact}>
-
                   <div style={styles.contactRow}>
                     <span>👤</span>
                     <span>{vendor.user.name}</span>
@@ -491,6 +486,52 @@ const styles = {
     borderRadius: "8px",
     fontSize: "13px",
   },
+  packagePreview: {
+  marginTop: "18px",
+  paddingTop: "14px",
+  borderTop: "1px solid #EEE8DF",
+},
+
+packageTitle: {
+  fontSize: "11px",
+  textTransform: "uppercase",
+  letterSpacing: "1px",
+  color: "#999",
+  fontWeight: 600,
+  marginBottom: "10px",
+},
+
+packageRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  padding: "10px 12px",
+  marginBottom: "7px",
+  background: "#FAF9F6",
+  border: "1px solid #E8E2D9",
+  borderRadius: "8px",
+},
+
+packageName: {
+  display: "block",
+  fontSize: "12px",
+  color: "#3D5A50",
+},
+
+packageType: {
+  display: "inline-block",
+  marginTop: "3px",
+  fontSize: "10px",
+  color: "#B8935A",
+  fontWeight: 600,
+},
+
+packagePrice: {
+  fontSize: "12px",
+  color: "#2B2B2B",
+  whiteSpace: "nowrap",
+},
 };
 
 export default CustomerVendors

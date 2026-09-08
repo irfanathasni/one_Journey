@@ -10,6 +10,8 @@ const VendorMessages = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState({});
+  const [readMessages, setReadMessages] = useState({});
 
   useEffect(() => {
     fetchConversations();
@@ -30,62 +32,83 @@ const VendorMessages = () => {
     try {
       setSelectedConversation(conversation);
 
-      setUnreadCounts((prev) => ({
-        ...prev,
-        [conversation._id]: 0,
-      }));
+      setUnreadCounts((prev) => ({...prev,[conversation._id]: 0,}));
 
-      const res = await axiosInstance.get(
-        `/chat/messages/${conversation._id}`
-      );
-
+      const res = await axiosInstance.get(`/chat/messages/${conversation._id}`);
       setMessages(res.data.data || []);
 
       socket.emit("joinConversation", conversation._id);
+      socket.emit("markMessagesAsRead", conversation._id);
     } catch (error) {
       console.error("Failed to load messages:", error);
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     const handleReceiveMessage = (newMessage) => {
-      const conversationId =
-        newMessage.conversation?._id || newMessage.conversation;
+        const conversationId =
+            newMessage.conversation?._id || newMessage.conversation;
 
-      if (conversationId === selectedConversation?._id) {
-        setMessages((prev) => {
-          if (prev.some((msg) => msg._id === newMessage._id)) {
-            return prev;
-          }
+        if (conversationId === selectedConversation?._id) {
+            setMessages((prev) => {
+                if (prev.some((msg) => msg._id === newMessage._id)) {
+                    return prev;
+                }
 
-          return [...prev, newMessage];
-        });
-      } else {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [conversationId]: (prev[conversationId] || 0) + 1,
-        }));
-      }
+                return [...prev, newMessage];
+            });
 
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation._id === conversationId
-            ? {
-                ...conversation,
-                lastMessage: newMessage.message,
-                lastMessageAt: newMessage.createdAt,
-              }
-            : conversation
-        )
-      );
+            // Message received while conversation is open
+            if (
+                newMessage.receiver?._id?.toString() ===
+                selectedConversation.customer?._id?.toString()
+            ) {
+                socket.emit("markMessagesAsRead", conversationId);
+            }
+        } else {
+            setUnreadCounts((prev) => ({
+                ...prev,
+                [conversationId]: (prev[conversationId] || 0) + 1,
+            }));
+        }
+
+        setConversations((prev) =>
+            prev.map((conversation) =>
+                conversation._id === conversationId
+                    ? {
+                          ...conversation,
+                          lastMessage: newMessage.message,
+                          lastMessageAt: newMessage.createdAt,
+                      }
+                    : conversation
+            )
+        );
     };
+
+    const handleUserStatus = ({ userId, status }) => {
+        setOnlineUsers((prev) => ({
+            ...prev,
+            [userId]: status === "online",
+        }));
+    };
+
+    const handleMessagesRead = ({ conversationId }) => {
+    if (conversationId !== selectedConversation?._id) return;
+    setMessages((prev) => prev.map((msg) => ({
+                  ...msg,isRead: true}))
+    );
+};
 
     socket.on("receiveMessage", handleReceiveMessage);
+    socket.on("userStatusChanged", handleUserStatus);
+    socket.on("messagesRead", handleMessagesRead);
 
     return () => {
-      socket.off("receiveMessage", handleReceiveMessage);
+        socket.off("receiveMessage", handleReceiveMessage);
+        socket.off("userStatusChanged", handleUserStatus);
+        socket.off("messagesRead", handleMessagesRead);
     };
-  }, [selectedConversation]);
+}, [selectedConversation]);
 
   const sendMessage = (e) => {
     e.preventDefault();
@@ -185,18 +208,23 @@ const VendorMessages = () => {
                     .toUpperCase()}
                 </div>
 
-                <div>
+              <div>
                   <strong>{selectedConversation.customer?.name}</strong>
-                  <p style={styles.onlineText}>Customer</p>
-                </div>
+                  <p style={{ ...styles.onlineText,
+                      color: onlineUsers[selectedConversation.customer?._id]
+                        ? "#2E8B57"
+                        : "#999"}}>
+                   {onlineUsers[selectedConversation.customer?._id]
+                      ? "● Online"
+                      : "○ Offline"}
+                  </p>          
+              </div>
 
               </div>
 
               <div style={styles.messagesArea}>
                 {messages.length === 0 ? (
-
                   <div style={styles.emptyChat}>No messages yet. Say hello 👋</div>
-
                 ) : (
 
                   messages.map((msg) => {
@@ -225,14 +253,18 @@ const VendorMessages = () => {
 
                           <div>{msg.message}</div>
 
-                          <span style={styles.messageTime}>
-                            {new Date(
-                              msg.createdAt
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                     <span style={styles.messageTime}>
+                             {new Date(msg.createdAt).toLocaleTimeString([], {
+                               hour: "2-digit",
+                               minute: "2-digit",
+                          })}
+
+                         {isMine && (
+                        <span style={{ marginLeft: "5px" }}>
+                           {msg.isRead ? "✓✓" : "✓"}
+                        </span>
+                            )}
+                    </span>
 
                         </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import VendorNavbar from "../../components/VendorNavbar";
-import { getMyVendorProfile, updateVendorProfile } from "../../services/vendorService";
+import { getMyVendorProfile, updateVendorProfile, addPackage, deletePackage} from "../../services/vendorService";
 import { getActiveCategories } from "../../services/categoryService";
 
 const VendorProfile = () => {
@@ -10,7 +10,7 @@ const VendorProfile = () => {
 
   const [categories, setCategories] = useState([]);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [formData, setFormData] = useState({ businessName: "", category: "", description: "", price: "" ,pricing:[]})
+  const [formData, setFormData] = useState({ businessName: "", category: "", description: ""})
   const [updateError, setUpdateError] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
@@ -50,99 +50,86 @@ const VendorProfile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   }
 
- const addPricing = () => {
-  setFormData({
-    ...formData,
-    pricing: [
-      ...formData.pricing,
-      {
-        eventType: "",
-        minGuests: "",
-        maxGuests: "",
-        price: "",
-      },
-    ],
-  });
-}
-
-const removePricing = (index) => {
-  setFormData({
-    ...formData,
-    pricing: formData.pricing.filter((_, i) => i !== index)
-  });
-};
-
-const handlePricingChange = (index, field, value) => {
-  const updatedPricing = [...formData.pricing]
-  updatedPricing[index] = {...updatedPricing[index],[field]: value}
-
-  setFormData({...formData,pricing: updatedPricing})
-}
-
 const openEditModal = () => {
-    setFormData({
-      businessName: vendor?.businessName || "",
-      category: vendor?.category || "",
-      description: vendor?.description || "",
-      price: vendor?.price || "",
-      pricing:vendor?.pricing || []
-    });
-    setUpdateError("");
-    setShowEditModal(true);
-  };
+  setFormData({
+    businessName: vendor?.businessName || "",
+    category: vendor?.category || "",
+    description: vendor?.description || ""
+  });
+
+  setUpdateError("");
+  setShowEditModal(true);
+}
 
 const handleUpdateProfile = async (e) => {
   e.preventDefault();
+
   setUpdateError("");
   setUpdatingProfile(true);
 
-for (const item of formData.pricing) {
-  if (!item.eventType) {
-    setUpdateError("Please select an event type for all pricing rules.");
-    setUpdatingProfile(false);
-    return;
-  }
-
-  if (
-    item.minGuests === "" ||
-    item.maxGuests === "" ||
-    Number(item.minGuests) >= Number(item.maxGuests)
-  ) {
-    setUpdateError("Maximum guests must be greater than minimum guests.");
-    setUpdatingProfile(false);
-    return;
-  }
-
-  if (item.price === "" || Number(item.price) < 0) {
-    setUpdateError("Please enter a valid price.");
-    setUpdatingProfile(false);
-    return;
-  }
-}
-
   try {
-
     const data = {
       businessName: formData.businessName,
       category: formData.category,
-      description: formData.description,
-      price: Number(formData.price) || 0,
-
-      pricing: formData.pricing.map((item) => ({
-        eventType: item.eventType,
-        minGuests: Number(item.minGuests),
-        maxGuests: Number(item.maxGuests),
-        price: Number(item.price)
-      }))
+      description: formData.description
     };
 
-    const res = await updateVendorProfile(data)
-    setVendor(res.data)
-    setShowEditModal(false)
+    const res = await updateVendorProfile(data);
+
+    setVendor(res.data);
+    setShowEditModal(false);
+
   } catch (err) {
-    setUpdateError(err.response?.data?.message ||"Failed to update profile")
+    setUpdateError(
+      err.response?.data?.message ||
+      "Failed to update profile"
+    );
   } finally {
-    setUpdatingProfile(false)
+    setUpdatingProfile(false);
+  }
+};
+
+const handleAddPackage = async () => {
+  try {
+    const packageType = prompt("Enter package type: Normal or Premium");
+    const packageName = prompt("Enter package name");
+    const description = prompt("Enter package description");
+    const price = prompt("Enter package price");
+
+    if (!packageType || !packageName || !description || !price) {
+      return;
+    }
+
+    if (!["Normal", "Premium"].includes(packageType)) {
+      alert("Package type must be Normal or Premium");
+      return;
+    }
+
+    const res = await addPackage({
+      packageType,
+      packageName,
+      description,
+      price: Number(price)
+    });
+
+    setVendor(res.data);
+
+  } catch (err) {
+    alert(err.response?.data?.message ||"Failed to add package")
+  }
+};
+
+const handleDeletePackage = async (packageId) => {
+  try {
+    const res = await deletePackage(packageId);
+
+    setVendor(res.data);
+
+  } catch (err) {
+    alert(
+      err.response?.data?.message ||
+      "Failed to delete package"
+    );
   }
 };
 
@@ -218,39 +205,31 @@ for (const item of formData.pricing) {
               <span style={styles.label}>Description</span>
               <strong>{vendor?.description || "No description added"}</strong>
             </div>
-
-            <div style={styles.infoItem}>
-              <span style={styles.label}>Price</span>
-              <strong>₹{vendor?.price?.toLocaleString("en-IN") || "Not set"}</strong>
-            </div>
             
-              {vendor?.pricing?.length > 0 && (
-  <div style={styles.pricingDisplay}>
-    <span style={styles.label}>Guest Based Pricing</span>
+            {vendor?.packages?.length > 0 && (
+        <div style={styles.pricingDisplay}>
+        <span style={styles.label}>Service Packages</span>
 
     <div style={styles.pricingList}>
-      {vendor.pricing.map((item, index) => (
-        <div key={index} style={styles.pricingDisplayRow}>
-
+      {vendor.packages.map((pkg) => (
+        <div key={pkg._id} style={styles.pricingDisplayRow}>
           <div>
-            <div style={styles.eventType}>
-              {item.eventType}
-            </div>
-
-            <div style={styles.guestRangeText}>
-              {item.minGuests} – {item.maxGuests} guests
-            </div>
+            <div style={styles.eventType}>{pkg.packageName}</div>
+            <div style={styles.guestRangeText}>{pkg.packageType}</div>
+            <div style={styles.guestRangeText}>{pkg.description}</div>
           </div>
-
-          <strong style={styles.pricingAmount}>
-            ₹{Number(item.price).toLocaleString("en-IN")}
-          </strong>
-
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <strong style={styles.pricingAmount}>₹{Number(pkg.price).toLocaleString("en-IN")}</strong>
+            <button type="button" onClick={() => handleDeletePackage(pkg._id)}
+              style={styles.removePricingButton}>✕
+            </button>
+          </div>
         </div>
       ))}
     </div>
   </div>
 )}
+
             <div style={styles.infoItem}>
               <span style={styles.label}>Verification Status</span>
               <strong>{vendor?.verificationStatus}</strong>
@@ -297,143 +276,7 @@ for (const item of formData.pricing) {
                   onChange={handleChange} style={styles.textarea} rows="4" />
               </div>
 
-              <div style={styles.field}>
-                <label style={styles.fieldLabel}>Price (₹)</label>
-                <input type="number" name="price" value={formData.price} onChange={handleChange}
-                  style={styles.input} placeholder="e.g. 25000" min="0" required />
-              </div>
-
-                  <div style={styles.pricingSection}>
-
-  <div style={styles.pricingHeader}>
-    <div>
-      <h3 style={styles.pricingTitle}>
-        Guest Based Pricing
-      </h3>
-
-      <p style={styles.pricingSubtitle}>
-        Set different prices based on event type and guest count.
-      </p>
-    </div>
-
-    <button
-      type="button"
-      style={styles.addPricingButton}
-      onClick={addPricing}
-    >
-      + Add Pricing
-    </button>
-  </div>
-
-  {formData.pricing.length === 0 && (
-    <div style={styles.emptyPricing}>
-      No pricing rules added yet.
-    </div>
-  )}
-
- {formData.pricing.map((item, index) => (
-  <div key={index} style={styles.pricingCard}>
-
-    <div style={styles.pricingTopRow}>
-
-     <div style={styles.pricingField}>
-  <label style={styles.smallLabel}>Event Type</label>
-
-  <select
-    value={item.eventType}
-    onChange={(e) =>
-      handlePricingChange(index, "eventType", e.target.value)
-    }
-    style={styles.pricingInput}
-    required
-  >
-    <option value="">Select Event</option>
-    <option value="Wedding">Wedding</option>
-    <option value="Reception">Reception</option>
-    <option value="Engagement">Engagement</option>
-    <option value="Mehndi">Mehndi</option>
-    <option value="Haldi">Haldi</option>
-    <option value="Sangeet">Sangeet</option>
-  </select>
-</div>
-      <div style={styles.pricingField}>
-        <label style={styles.smallLabel}>Price</label>
-        <div style={styles.priceInputWrapper}>
-          <span style={styles.rupee}>₹</span>
-          <input type="number" min="0" value={item.price}
-            onChange={(e) => handlePricingChange(index, "price",e.target.value)}
-            style={styles.priceInput}
-            placeholder="20,000"
-          />
-        </div>
-      </div>
-
-      <button
-        type="button"
-        style={styles.removePricingButton}
-        onClick={() => removePricing(index)}
-        title="Remove pricing"
-      >
-        ✕
-      </button>
-
-    </div>
-
-
-    <div style={styles.guestSection}>
-
-      <label style={styles.smallLabel}>
-        Guest Range
-      </label>
-
-      <div style={styles.guestRange}>
-
-        <div style={styles.guestInputWrapper}>
-          <input
-            type="number"
-            min="0"
-            value={item.minGuests}
-            onChange={(e) =>
-              handlePricingChange(
-                index,
-                "minGuests",
-                e.target.value
-              )
-            }
-            style={styles.guestInput}
-            placeholder="1"
-          />
-
-          <span>Minimum guests</span>
-        </div>
-
-        <span style={styles.rangeDash}>—</span>
-        <div style={styles.guestInputWrapper}>
-          <input type="number"
-            min="0"
-            value={item.maxGuests}
-            onChange={(e) =>
-              handlePricingChange(
-                index,
-                "maxGuests",
-                e.target.value
-              )
-            }
-            style={styles.guestInput}
-            placeholder="100"
-          />
-
-          <span>Maximum guests</span>
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-))}
-
-</div>
+          
               <div style={styles.modalActions}>
                 <button type="submit" style={styles.primaryButton} disabled={updatingProfile}>
                   {updatingProfile ? "Saving..." : "Save Changes"}

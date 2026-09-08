@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getVendorBookings, updateBookingStatus, completeBooking, requestFinalPayment } from "../../services/bookingService";
 import VendorNavbar from "../../components/VendorNavbar";
+import BookingStatusTimeline from "../../components/BookingStatusTimeline";
 
 const VendorBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -17,8 +18,9 @@ const VendorBookings = () => {
     try {
       setLoading(true);
       setError("");
-      const res = await getVendorBookings();
-      setBookings(res.data || []);
+      const res = await getVendorBookings()
+      console.log("BOOKING DATA:",res.data)
+      setBookings(res.data || [])
     } catch (error) {
       console.error("Failed to fetch vendor bookings:", error.response?.data || error);
       setError(error.response?.data?.message || "Failed to load booking requests.");
@@ -200,7 +202,7 @@ const VendorBookings = () => {
         </div>
       </div>
 
-      <div style={styles.infoCard}>
+       <div style={styles.infoCard}>
          <p style={styles.infoCardTitle}>📍 Event Details</p>
          <div style={styles.infoRow}>
            <span style={styles.infoLabel}>Guests</span>
@@ -219,6 +221,37 @@ const VendorBookings = () => {
           <strong style={styles.infoValue}>{formatDate(booking.wedding?.weddingDate)}</strong>
         </div>
       </div>
+      <div style={styles.infoCard}>
+  <p style={styles.infoCardTitle}>📦 Selected Package</p>
+
+  <div style={styles.infoRow}>
+    <span style={styles.infoLabel}>Package Type</span>
+    <strong style={styles.infoValue}>
+      {booking.package?.packageType || "Not specified"}
+    </strong>
+  </div>
+
+  <div style={styles.infoRow}>
+    <span style={styles.infoLabel}>Package Name</span>
+    <strong style={styles.infoValue}>
+      {booking.package?.packageName || "Not specified"}
+    </strong>
+  </div>
+
+  <div style={styles.infoRow}>
+    <span style={styles.infoLabel}>Description</span>
+    <strong style={styles.infoValue}>
+      {booking.package?.description || "Not specified"}
+    </strong>
+  </div>
+
+  <div style={styles.infoRow}>
+    <span style={styles.infoLabel}>Package Price</span>
+    <strong style={styles.infoValue}>
+      ₹{Number(booking.package?.price || 0).toLocaleString("en-IN")}
+    </strong>
+  </div>
+</div>
 
       <div style={styles.infoCard}>
         <p style={styles.infoCardTitle}>💰 Payment Summary</p>
@@ -245,6 +278,7 @@ const VendorBookings = () => {
         )}
       </div>
     </div>
+      <BookingStatusTimeline booking={booking} role="vendor" />
 
     <div style={styles.actionRow}>
       {status === "pending" && (
@@ -386,7 +420,7 @@ const styles = {
     display: "flex", 
     alignItems: "center", 
     gap: "12px" },
-  customerAvatar: {
+    customerAvatar: {
     width: "44px", 
     height: "44px", 
     borderRadius: "50%", 
@@ -524,17 +558,58 @@ const styles = {
     padding: "4rem 2rem", 
     textAlign: "center" 
   },
-  emptyIcon: { fontSize: "35px", color: "#C97B84", marginBottom: "10px" },
-  emptyTitle: { fontFamily: "Georgia, serif", fontSize: "22px", fontWeight: 400, color: "#2B2B2B", margin: "0 0 8px" },
-  emptyText: { maxWidth: "450px", margin: "0 auto", color: "#6B6560", fontSize: "14px", lineHeight: 1.6 },
-  errorBox: {
-    display: "flex", gap: "10px", background: "#FBEAEA", border: "1px solid #E8B8BE",
-    color: "#A6535D", padding: "12px 16px", borderRadius: "8px", marginBottom: "20px", fontSize: "13px",
+  emptyIcon: { 
+    fontSize: "35px", 
+    color: "#C97B84", 
+    marginBottom: "10px" 
   },
-  loadingCard: { minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" },
-  loadingIcon: { fontSize: "38px", marginBottom: "10px" },
-  loadingTitle: { fontFamily: "Georgia, serif", fontWeight: 400, color: "#2B2B2B", margin: "0 0 5px" },
-  loadingText: { color: "#6B6560", fontSize: "14px" },
+  emptyTitle: { 
+    fontFamily: "Georgia, serif", 
+    fontSize: "22px", 
+    fontWeight: 400, 
+    color: "#2B2B2B", 
+    margin: "0 0 8px" 
+  },
+  emptyText: { 
+    maxWidth: "450px", 
+    margin: "0 auto", 
+    color: "#6B6560", 
+    fontSize: "14px", 
+    lineHeight: 1.6 
+  },
+  errorBox: {
+    display: "flex", 
+    gap: "10px", 
+    background: "#FBEAEA", 
+    border: "1px solid #E8B8BE",
+    color: "#A6535D", 
+    padding: "12px 16px", 
+    borderRadius: "8px", 
+    marginBottom: "20px", 
+    fontSize: "13px",
+  },
+  loadingCard: {
+     minHeight: "60vh", 
+     display: "flex", 
+     flexDirection: "column", 
+     alignItems: "center", 
+     justifyContent: "center", 
+     textAlign: "center" 
+    },
+  loadingIcon: { 
+    fontSize: "38px", 
+    marginBottom: "10px" 
+  },
+  loadingTitle: { 
+    fontFamily: "Georgia, serif", 
+    fontWeight: 400, 
+    color: "#2B2B2B", 
+    margin: "0 0 5px" 
+  },
+  loadingText: { 
+    color: "#6B6560", 
+    fontSize: "14px"
+   },
   detailPanel: {
   borderTop: "1px solid #EEE8DF",
   padding: "1.5rem",
@@ -543,7 +618,7 @@ const styles = {
 
 detailCardsRow: {
   display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
+  gridTemplateColumns: "repeat(2, 1fr)",
   gap: "14px",
   marginBottom: "18px",
 },

@@ -2,10 +2,6 @@ const AdminHeader = () => {
   return (
     <div style={styles.header}>
       <h3>Platform Overview</h3>
-
-      <div>
-        🔔 👤
-      </div>
     </div>
   )
 }

@@ -23,10 +23,12 @@ const VendorDetails = () => {
 
     const[availability,setAvailability] = useState([])
     const[selectedSlot,setSelectedSlot] = useState(null)
-
+    const[selectedPackage, setSelectedPackage] = useState(null)
+    const [packageError, setPackageError] = useState("")
     const [reviews, setReviews] = useState([]);
     const [avgRating, setAvgRating] = useState(0);
     const [reviewCount, setReviewCount] = useState(0);
+
 
   useEffect(() => {
     fetchVendor();
@@ -119,6 +121,10 @@ const handleBooking = async (e) => {
         setBookingError("Please select a service date")
         return;
     }
+    if(!selectedPackage) {
+      setBookingError("Please select a package")
+       return
+    }
     if(!selectedSlot) {
       setBookingError("Please select an available time slot")
       return
@@ -128,18 +134,22 @@ const handleBooking = async (e) => {
         setBookingError("")
         setBookingSuccess("")
 
-    const res = await createBooking({
-        weddingId :wedding._id,
-        vendorId:vendor._id,
+   const res = await createBooking({
+        weddingId: wedding._id,
+        vendorId: vendor._id,
         serviceDate,
         startTime: selectedSlot.startTime,
-        endTime :selectedSlot.endTime
-    })
-    setBookingSuccess(res.message || "Booking request sent successfully")
+        endTime: selectedSlot.endTime,
+        packageId: selectedPackage._id
+      })
+   setBookingSuccess(res.message || "Booking request sent successfully")
+   setShowBookingForm(false)
+   setServiceDate("")
+   setSelectedSlot(null)
+   setSelectedPackage(null)
+   setAvailability([])
+   setPackageError("")
 
-    setServiceDate("")
-    setSelectedSlot(null)
-    setAvailability([])
     }catch(error) {
         console.log("Booking error",error)
         setBookingError(error.response?.data?.message || "Failed to create booking")
@@ -161,8 +171,6 @@ const handleBooking = async (e) => {
 
     try{
       const res = await getVendorAvailability(vendorId,date)
-      console.log("SELECTED DATE:",date)
-      console.log("AVAILABILITY RESPONSE:",res)
       setAvailability(res.data || [])
     }catch(error) {
       console.error("Availability error:" ,error)
@@ -201,10 +209,58 @@ const handleBooking = async (e) => {
                 <p style={styles.eyebrow}>{formatCategory(vendor.category)}</p>
                 <h1 style={styles.title}>{vendor.businessName}</h1>
                 <span style={styles.status}> ✓ Approved Vendor</span>
-                  <p style={styles.priceTag}>₹{vendor.price?.toLocaleString("en-IN")}</p> 
             </div>
         </div>
     <div style={styles.content}>
+      <section style={styles.card}>
+          <h2 style={styles.sectionTitle}>Service Packages</h2>
+            {packageError && (
+        <div style={styles.packageError}>⚠️ {packageError}</div>
+  )}
+           {!vendor.packages || vendor.packages.length === 0 ? (
+           <p style={styles.description}>This vendor has not added any packages yet.</p>
+          ) : (
+         <div style={styles.packageList}>
+            {vendor.packages.map((pkg) => (
+           <div key={pkg._id} style={{...styles.packageCard,...(selectedPackage?._id === pkg._id
+              ? styles.selectedPackage
+              : {})
+          }}
+         onClick={(e) => {
+             e.stopPropagation()
+             setSelectedPackage(pkg)
+             setPackageError("")
+             setBookingError("")
+        }}>
+          <div style={styles.packageInfo}>
+            <span style={styles.packageType}>{pkg.packageType}</span>
+            <h3 style={styles.packageName}>{pkg.packageName}</h3>
+            <p style={styles.packageDescription}>{pkg.description}</p>
+          </div>
+
+          <div style={styles.packageRight}>
+            <strong style={styles.packagePrice}>₹{Number(pkg.price).toLocaleString("en-IN")}</strong>
+            <button type="button"
+              style={selectedPackage?._id === pkg._id
+                  ? styles.selectedPackageButton
+                  : styles.selectPackageButton
+              }
+                   onClick={(e) => {
+                      e.stopPropagation()
+                       setSelectedPackage(pkg)
+                       setPackageError("")
+                       setBookingError("")
+                      }}>
+                     {selectedPackage?._id === pkg._id
+                     ? "✓ Selected"
+                    : "Select Package"}
+                  </button>
+              </div>
+            </div>
+          ))}
+         </div>
+         )}
+      </section>
         <section style={styles.card}>
           <h2 style={styles.sectionTitle}>About this vendor</h2>
           <p style={styles.description}>{vendor.description ||"This vendor has not added a description yet."}</p>
@@ -260,32 +316,52 @@ const handleBooking = async (e) => {
        <p style={styles.bookingText}>Start your journey by requesting a booking.</p>
      </div>
 
-  <div style={styles.actionButtons}>
-    <button style={styles.messageButton} onClick={handleMessageVendor}>
-      💬 Message Vendor
+   <div style={styles.actionButtons}>
+      <button style={styles.messageButton} onClick={handleMessageVendor}>
+        💬 Message Vendor
+     </button>
+
+     <button style={styles.bookButton} onClick={() => {
+          if (!selectedPackage) {
+              setPackageError("Please select a package before booking this vendor.")
+           return
+          }
+           setPackageError("")
+           setShowBookingForm(true)
+           setBookingError("")
+           setBookingSuccess("")
+           }}>
+        Book This Vendor →
     </button>
-    <button style={styles.bookButton} onClick={() => {
-        setShowBookingForm(true)
-        setBookingError("")
-        setBookingSuccess("")
-      }}>Book This Vendor →
-    </button>
-  </div>
+
+          {packageError && (
+         <div style={styles.packageError}>
+           ⚠️ {packageError}
+         </div>
+         )}
+
+   </div>
 </section>
-        {showBookingForm && (
-<div style={styles.bookingForm}>
-    <div style={styles.formHeader}>
-      <div>
-        <p style={styles.bookingSmall}> BOOKING REQUEST</p>
-        <h2 style={styles.formTitle}>Book {vendor.businessName}</h2>
-      </div>
-      <button style={styles.closeButton} onClick={() => setShowBookingForm(false)}>✕</button>
-    </div>
-     {wedding.totalBudget > 0 && vendor.price > wedding.totalBudget && (
-      <div style={styles.budgetWarning}>
-        ⚠️ This vendor's price (₹{vendor.price.toLocaleString("en-IN")}) exceeds your total wedding budget (₹{wedding.totalBudget.toLocaleString("en-IN")}).
-      </div>
-    )}
+                {showBookingForm && (
+          <div style={styles.bookingForm}>
+           <div style={styles.formHeader}>
+         <div>
+            <p style={styles.bookingSmall}> BOOKING REQUEST</p>
+           <h2 style={styles.formTitle}>Book {vendor.businessName}</h2>
+         </div>
+         <button style={styles.closeButton} onClick={() => setShowBookingForm(false)}>✕</button>
+       </div>
+             {wedding.totalBudget > 0 &&
+            selectedPackage &&
+        selectedPackage.price > wedding.totalBudget && (
+         <div style={styles.budgetWarning}>
+           ⚠️ This package price (
+           ₹{Number(selectedPackage.price).toLocaleString("en-IN")}
+          ) exceeds your total wedding budget (
+           ₹{Number(wedding.totalBudget).toLocaleString("en-IN")}
+           ).
+         </div>
+        )}
 
      {!wedding ? (
        <div style={styles.formMessage}>
@@ -296,6 +372,21 @@ const handleBooking = async (e) => {
         </div>
     ) : (
       <form onSubmit={handleBooking}>
+        <div style={styles.formGroup}>
+  <label style={styles.formLabel}>Selected Package</label>
+
+        {selectedPackage ? (
+          <div style={styles.selectedPackageBox}>
+          <div>
+            <strong>{selectedPackage.packageName}</strong>
+            <span>{selectedPackage.packageType} Package</span>
+           </div>
+           <strong>₹{Number(selectedPackage.price).toLocaleString("en-IN")}</strong>
+          </div>
+       ) : (
+          <p style={styles.noPackage}>Please select a package above before booking.</p>
+        )}
+    </div>
         <div style={styles.formGroup}>
           <label style={styles.formLabel}>Your Wedding</label>
           <div style={styles.weddingBox}>
@@ -312,14 +403,9 @@ const handleBooking = async (e) => {
 
           {serviceDate && (
   <div style={styles.slotSection}>
-    <label style={styles.formLabel}>
-      Available Time Slots
-    </label>
-
+    <label style={styles.formLabel}>Available Time Slots</label>
     {availability.length === 0 ? (
-      <p style={styles.noSlots}>
-        No available slots for this date.
-      </p>
+      <p style={styles.noSlots}>No available slots for this date.</p>
     ) : (
       <div style={styles.slotGrid}>
         {availability.map((slot) => (
@@ -333,14 +419,10 @@ const handleBooking = async (e) => {
     )}
   </div>
 )}
-      </div>
-        {bookingError && (<div style={styles.formError}>{bookingError}
-      </div>
+      </div>{bookingError && (<div style={styles.formError}>{bookingError}</div>
         )}
         {bookingSuccess && (
-          <div style={styles.formSuccess}>
-            {bookingSuccess}
-          </div>
+          <div style={styles.formSuccess}>{bookingSuccess}</div>
         )}
 
         <button type="submit" style={styles.submitButton} disabled={bookingLoading}>
@@ -733,6 +815,121 @@ messageButton: {
   fontSize: "13px",
   fontWeight: 600,
   whiteSpace: "nowrap",
+},
+packageList: {
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+},
+
+packageCard: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "20px",
+  padding: "18px",
+  border: "1px solid #E5DFD5",
+  borderRadius: "12px",
+  background: "#FAF9F6",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+},
+
+selectedPackage: {
+  border: "2px solid #3D5A50",
+  background: "#F1F6F3",
+},
+
+packageInfo: {
+  flex: 1,
+},
+
+packageType: {
+  display: "inline-block",
+  fontSize: "10px",
+  color: "#B8935A",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "1px",
+},
+
+packageName: {
+  margin: "5px 0",
+  fontFamily: "Georgia, serif",
+  fontSize: "18px",
+  fontWeight: 400,
+  color: "#3D5A50",
+},
+
+packageDescription: {
+  margin: 0,
+  color: "#6B6560",
+  fontSize: "12px",
+  lineHeight: 1.5,
+},
+
+packageRight: {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: "10px",
+},
+
+packagePrice: {
+  fontSize: "17px",
+  color: "#2B2B2B",
+},
+
+selectPackageButton: {
+  padding: "9px 14px",
+  border: "1px solid #3D5A50",
+  borderRadius: "7px",
+  background: "#FFFFFF",
+  color: "#3D5A50",
+  cursor: "pointer",
+  fontSize: "11px",
+  fontWeight: 600,
+},
+
+selectedPackageButton: {
+  padding: "9px 14px",
+  border: "1px solid #3D5A50",
+  borderRadius: "7px",
+  background: "#3D5A50",
+  color: "#FFFFFF",
+  cursor: "pointer",
+  fontSize: "11px",
+  fontWeight: 600,
+},
+
+selectedPackageBox: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px",
+  background: "#F1F6F3",
+  border: "1px solid #C9DCD3",
+  borderRadius: "8px",
+  color: "#3D5A50",
+},
+
+noPackage: {
+  margin: 0,
+  padding: "12px",
+  background: "#FDF0F1",
+  borderRadius: "8px",
+  color: "#A6535D",
+  fontSize: "12px",
+},
+packageError: {
+  marginBottom: "15px",
+  padding: "12px 14px",
+  borderRadius: "8px",
+  background: "#FFF4DD",
+  border: "1px solid #E8D8BC",
+  color: "#A66B00",
+  fontSize: "12px",
+  fontWeight: 600,
 },
 }
 

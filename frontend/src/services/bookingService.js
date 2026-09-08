@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance"
 
 export const createBooking = async (data) => {
-    const res = await axiosInstance.post("/booking/create",data)
+    const res = await axiosInstance.post("/booking/create", data)
     return res.data
 }
 
@@ -15,8 +15,8 @@ export const getVendorBookings = async () => {
     return res.data
 }
 
-export const updateBookingStatus = async (bookingId , status) => {
-    const res = await axiosInstance.put(`/booking/${bookingId}/status`,{ status})
+export const updateBookingStatus = async (bookingId, status) => {
+    const res = await axiosInstance.put(`/booking/${bookingId}/status`,{ status })
     return res.data
 }
 

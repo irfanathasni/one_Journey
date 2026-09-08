@@ -5,7 +5,13 @@ const CustomerWedding = () => {
   const [wedding, setWedding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData,setFormData] = useState({
-    brideName:"",groomName:"",weddingDate:"",venue:"",guestCount:"",totalBudget:""})
+    brideName:"",
+    groomName:"",
+    weddingDate:""
+    ,venue:"",
+    location:"",
+    guestCount:"",
+    totalBudget:""})
     const[error,setError] = useState("")
     const[creating,setCreating] = useState(false)
 
@@ -39,6 +45,7 @@ const handleSubmit = async (e) => {
       groomName: formData.groomName,
       weddingDate: formData.weddingDate,
       venue: formData.venue,
+      location: formData.location,
       guestCount: Number(formData.guestCount) || 0,
       totalBudget: Number(formData.totalBudget) || 0,
     });
@@ -84,13 +91,9 @@ if (!wedding) {
         <form onSubmit={handleSubmit} style={styles.form}>
 
           <div style={styles.field}>
-            <label style={styles.label}>
-              Bride Name
-            </label>
+            <label style={styles.label}>Bride Name</label>
 
-            <input
-              type="text"
-              name="brideName"
+            <input type="text" name="brideName"
               value={formData.brideName}
               onChange={handleChange}
               placeholder="Enter bride name"
@@ -100,9 +103,7 @@ if (!wedding) {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>
-              Groom Name
-            </label>
+            <label style={styles.label}>Groom Name</label>
 
             <input
               type="text"
@@ -116,9 +117,7 @@ if (!wedding) {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>
-              Wedding Date
-            </label>
+            <label style={styles.label}>Wedding Date</label>
 
             <input
               type="date"
@@ -131,9 +130,7 @@ if (!wedding) {
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>
-              Venue
-            </label>
+            <label style={styles.label}>Venue</label>
 
             <input
               type="text"
@@ -144,44 +141,28 @@ if (!wedding) {
               style={styles.input}
             />
           </div>
-
           <div style={styles.field}>
-            <label style={styles.label}>
-              Guest Count
-            </label>
-
-            <input
-              type="number"
-              name="guestCount"
-              value={formData.guestCount}
-              onChange={handleChange}
-              placeholder="Number of guests"
-              style={styles.input}
-              min="0"
-            />
+            <label style={styles.label}>Location</label>
+             <input type="text" name="location" value={formData.location}
+               onChange={handleChange} placeholder="Enter wedding location"
+              style={styles.input} />
           </div>
 
           <div style={styles.field}>
-            <label style={styles.label}>
-              Total Budget
-            </label>
-
-            <input
-              type="number"
-              name="totalBudget"
-              value={formData.totalBudget}
-              onChange={handleChange}
-              placeholder="Enter total budget"
-              style={styles.input}
-              min="0"
-            />
+            <label style={styles.label}>Guest Count</label>
+            <input type="number" name="guestCount" value={formData.guestCount}
+              onChange={handleChange} placeholder="Number of guests" style={styles.input}
+              min="0" />
           </div>
 
-          <button
-            type="submit"
-            style={styles.primaryButton}
-            disabled={creating}
-          >
+          <div style={styles.field}>
+            <label style={styles.label}>Total Budget</label>
+            <input type="number" name="totalBudget" value={formData.totalBudget}
+              onChange={handleChange} placeholder="Enter total budget" style={styles.input}
+              min="0" />
+          </div>
+
+          <button type="submit" style={styles.primaryButton} disabled={creating}>
             {creating
               ? "Creating Wedding..."
               : "Create Wedding →"}
@@ -229,6 +210,10 @@ if (!wedding) {
           <div style={styles.detailItem}>
             <span style={styles.label}>Venue</span>
             <strong>{wedding.venue || "Not added yet"}</strong>
+          </div>
+          <div style={styles.detailItem}>
+            <span style={styles.label}>Location</span>
+           <strong>{wedding.location || "Not added yet"}</strong>
           </div>
 
           <div style={styles.detailItem}>

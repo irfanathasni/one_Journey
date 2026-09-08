@@ -42,12 +42,12 @@ export const deleteAvailability = async (slotId) => {
     return res.data
 }
 
-export const addPricingTier = async (data) => {
-    const res = await axiosInstance.post("/vendor/pricing", data)
+export const addPackage = async (data) => {
+    const res = await axiosInstance.post("/vendor/packages", data)
     return res.data
 }
 
-export const deletePricingTier = async (tierId) => {
-    const res = await axiosInstance.delete(`/vendor/pricing/${tierId}`)
+export const deletePackage = async (packageId) => {
+    const res = await axiosInstance.delete(`/vendor/packages/${packageId}`)
     return res.data
 }

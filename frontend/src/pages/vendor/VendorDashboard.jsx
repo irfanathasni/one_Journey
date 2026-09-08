@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { createVendorProfile,getMyVendorProfile ,updateVendorProfile,addPricingTier,deletePricingTier} from "../../services/vendorService";
+import { createVendorProfile,getMyVendorProfile ,updateVendorProfile, addPackage,
+  deletePackage} from "../../services/vendorService";
 import { getVendorBookings, updateBookingStatus, completeBooking, requestFinalPayment } from "../../services/bookingService";
 import { VENDOR_STATUS } from "../../constants/vendorStatus";
 import VendorNavbar from "../../components/VendorNavbar";
@@ -10,16 +11,15 @@ const VendorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [formData, setFormData] = useState({businessName: "",category: "",description: "",price: ""})
+  const [formData, setFormData] = useState({businessName: "",category: "",description: ""})
   const [error, setError] = useState("");
   const [showReapplyForm, setShowReapplyForm] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
-  const [pricingForm, setPricingForm] = useState({ eventType: "Wedding", minGuests: "", maxGuests: "", price: "" });
-  const [addingPricing, setAddingPricing] = useState(false);
-
+  const [packageForm, setPackageForm] = useState({packageType: "Normal",packageName: "",description: "",price: ""})
+  const [addingPackage, setAddingPackage] = useState(false);
   useEffect(() => {
     fetchProfile();
     fetchCategories();
@@ -106,11 +106,11 @@ const VendorDashboard = () => {
     );
 
   const profileCompletion = vendor
-    ? Math.round(
-        ([vendor.businessName, vendor.category, vendor.description, vendor.price]
-          .filter(Boolean).length / 4) * 100
-      )
-    : 0;
+  ? Math.round(
+      ([vendor.businessName, vendor.category, vendor.description]
+        .filter(Boolean).length / 3) * 100
+    )
+  : 0;
 
   const handleChange = (e) => {
     setFormData({...formData,[e.target.name]: e.target.value})}
@@ -144,29 +144,50 @@ const VendorDashboard = () => {
     } finally {
       setUpdatingProfile(false);
     }
-  };
-  const handleAddPricing = async (e) => {
-  e.preventDefault();
-  setAddingPricing(true);
-  try {
-    const res = await addPricingTier(pricingForm);
-    setVendor(res.data);
-    setPricingForm({ eventType: "Wedding", minGuests: "", maxGuests: "", price: "" });
-  } catch (err) {
-    alert(err.response?.data?.message || "Failed to add pricing tier");
-  } finally {
-    setAddingPricing(false);
   }
-};
 
-const handleDeletePricing = async (tierId) => {
+ const handleAddPackage = async (e) => {
+  e.preventDefault();
+  setAddingPackage(true);
+
   try {
-    const res = await deletePricingTier(tierId);
+    const res = await addPackage({
+      packageType: packageForm.packageType,
+      packageName: packageForm.packageName,
+      description: packageForm.description,
+      price: Number(packageForm.price)
+    })
+
+    setVendor(res.data)
+
+    setPackageForm({
+      packageType: "Normal",
+      packageName: "",
+      description: "",
+      price: ""
+    });
+
+  } catch (err) {
+    alert(
+      err.response?.data?.message ||
+      "Failed to add package"
+    );
+  } finally {
+    setAddingPackage(false);
+  }
+}
+
+const handleDeletePackage = async (packageId) => {
+  try {
+    const res = await deletePackage(packageId);
     setVendor(res.data);
   } catch (err) {
-    alert(err.response?.data?.message || "Failed to remove pricing tier");
+    alert(
+      err.response?.data?.message ||
+      "Failed to remove package"
+    );
   }
-};
+}
 
   if (loading) {
     return (
@@ -352,8 +373,8 @@ const handleDeletePricing = async (tierId) => {
               <button style={styles.secondaryButton} onClick={() => {
                   setFormData({businessName:vendor.businessName || "",
                     category:vendor.category || "",
-                    description:vendor.description || "",
-                    price:vendor.price || ""});
+                    description:vendor.description || "" 
+                  })
                   setShowEditForm(true);
                   setError("");
                 }}
@@ -397,13 +418,8 @@ const handleDeletePricing = async (tierId) => {
               <div style={styles.field}>
                 <label style={styles.label}>Description</label>
 
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  style={styles.textarea}
-                  rows="5"
-                />
+                <textarea name="description" value={formData.description}
+                  onChange={handleChange} style={styles.textarea} rows="5" />
               </div>
 
               <div style={styles.field}>
@@ -471,26 +487,77 @@ const handleDeletePricing = async (tierId) => {
       );
     })()}
 </section>
-        <section style={styles.activity}>
-          <div style={styles.activityHeader}>
-            <h3 style={styles.activityTitle}>Recent Requests</h3>
+  
+
+<section style={styles.eventsSection}>
+
+  {loadingBookings ? (
+    <p>Loading events...</p>
+  ) : (() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const confirmedBookings = bookings.filter(
+        (booking) => (booking.status === "approved" || booking.status === "completed") && booking.serviceDate);
+
+      const currentEvents = confirmedBookings.filter((booking) => {
+        const eventDate = new Date(booking.serviceDate);
+        eventDate.setHours(0, 0, 0, 0);
+
+        return eventDate.getTime() === today.getTime();
+      });
+
+      const upcomingEvents = confirmedBookings
+        .filter((booking) => {
+          const eventDate = new Date(booking.serviceDate);
+          eventDate.setHours(0, 0, 0, 0);
+
+          return eventDate >= tomorrow;
+        })
+        .sort((a, b) => new Date(a.serviceDate) - new Date(b.serviceDate))
+        .slice(0, 5);
+
+      if (currentEvents.length === 0 && upcomingEvents.length === 0) {
+        return (
+          <div style={styles.emptyEvents}>
+            <div style={styles.emptyEventIcon}>📅</div>
+            <strong>No upcoming events</strong>
+            <p>Confirmed events will appear here once customers
+              book your services.
+            </p>
           </div>
-          {loadingBookings ? (<p>Loading bookings...</p>
-          ) : bookings.length === 0 ? (
-            <p>No requests yet</p>
-          ) : (
-            bookings
-              .slice(0, 8)
-              .map((booking) => (
-                <RequestRow key={booking._id}
-                  booking={booking}
-                  onStatusChange={handleBookingStatus}
-                  onComplete={handleCompleteBooking}
-                  onRequestFinalPayment={handleRequestFinalPayment}
-                />
-              ))
+        );
+      }
+
+      return (
+        <div>
+        
+          {currentEvents.length > 0 && (
+            <div style={styles.eventGroup}>
+              <h4 style={styles.eventGroupTitle}>Happening Today
+              </h4>
+
+              {currentEvents.map((booking) => (
+                <EventCard key={booking._id} booking={booking}current />
+              ))}
+            </div>
           )}
-        </section>
+
+          {upcomingEvents.length > 0 && (
+            <div style={styles.eventGroup}>
+              <h4 style={styles.eventGroupTitle}>Upcoming Events</h4>
+
+              {upcomingEvents.map((booking) => (
+                <EventCard key={booking._id} booking={booking} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    })()}
+</section>
 
 
         {vendor.verificationStatus ===
@@ -512,8 +579,8 @@ const handleDeletePricing = async (tierId) => {
                     setFormData({
                       businessName:vendor.businessName,
                       category:vendor.category,
-                      description:vendor.description || "",
-                      price:vendor.price || ""});
+                      description:vendor.description || ""
+                      });
                     setShowReapplyForm(true);
                   }}>Update & Reapply →
                 </button>
@@ -572,34 +639,88 @@ const handleDeletePricing = async (tierId) => {
           </section>
           
         )}
-        <section style={styles.createCard}>
-  <p style={styles.eyebrow}>PRICING</p>
-  <h2 style={styles.createTitle}>Event-based Pricing</h2>
-  {vendor.pricing && vendor.pricing.length > 0 && (
-    <div style={{ marginBottom: "20px" }}>
-      {vendor.pricing.map((tier) => (
-        <div key={tier._id} style={styles.pricingRow}>
-          <span>{tier.eventType} · {tier.minGuests}-{tier.maxGuests} guests</span>
-          <strong>₹{tier.price.toLocaleString("en-IN")}</strong>
-          <button onClick={() => handleDeletePricing(tier._id)} style={styles.pricingDeleteBtn}>✕</button>
+<section style={styles.createCard}>
+  <p style={styles.eyebrow}>PACKAGES</p>
+
+  <h2 style={styles.createTitle}>
+    Service Packages
+  </h2>
+
+  <p style={styles.createSubtitle}>
+    Create packages that couples can choose when booking your service.
+  </p>
+
+  {vendor.packages && vendor.packages.length > 0 && (
+    <div style={{ marginBottom: "25px" }}>
+
+      {vendor.packages.map((pkg) => (
+        <div key={pkg._id} style={styles.pricingRow}>
+          <div>
+            <strong>{pkg.packageName}</strong>
+            <p style={styles.requestMeta}>{pkg.packageType}</p>
+            <p style={styles.requestMeta}>{pkg.description}</p>
+          </div>
+          <strong>₹{Number(pkg.price).toLocaleString("en-IN")}</strong>
+          <button onClick={() => handleDeletePackage(pkg._id)} style={styles.pricingDeleteBtn}>
+            ✕
+          </button>
         </div>
       ))}
+
     </div>
   )}
 
-  <form onSubmit={handleAddPricing} style={styles.pricingForm}>
-    <select value={pricingForm.eventType} onChange={(e) => setPricingForm({...pricingForm, eventType: e.target.value})} style={styles.input}>
-      {["Wedding","Reception","Engagement","Mehndi","Haldi","Sangeet"].map(t => <option key={t} value={t}>{t}</option>)}
-    </select>
-    <input type="number" placeholder="Min guests" value={pricingForm.minGuests}
-      onChange={(e) => setPricingForm({...pricingForm, minGuests: e.target.value})} style={styles.input} required />
-    <input type="number" placeholder="Max guests" value={pricingForm.maxGuests}
-      onChange={(e) => setPricingForm({...pricingForm, maxGuests: e.target.value})} style={styles.input} required />
-    <input type="number" placeholder="Price (₹)" value={pricingForm.price}
-      onChange={(e) => setPricingForm({...pricingForm, price: e.target.value})} style={styles.input} required />
-    <button type="submit" style={styles.primaryButton} disabled={addingPricing}>
-      {addingPricing ? "Adding..." : "+ Add Tier"}
+  <form onSubmit={handleAddPackage} style={styles.form}>
+    <div style={styles.field}>
+      <label style={styles.label}>Package Type</label>
+      <select value={packageForm.packageType}
+        onChange={(e) => setPackageForm({...packageForm,packageType: e.target.value})
+        }
+        style={styles.input}>
+        <option value="Normal">Normal</option>
+        <option value="Premium">Premium</option>
+      </select>
+    </div>
+
+    <div style={styles.field}>
+      <label style={styles.label}>Package Name</label>
+      <input type="text" placeholder="e.g. Basic Wedding Package"
+        value={packageForm.packageName} onChange={(e) =>
+          setPackageForm({...packageForm,packageName: e.target.value})
+        }
+        style={styles.input}
+        required
+      />
+    </div>
+
+    <div style={styles.field}>
+      <label style={styles.label}>Description</label>
+
+      <textarea
+        placeholder="Describe what is included in this package"
+        value={packageForm.description}
+        onChange={(e) =>
+          setPackageForm({...packageForm,description: e.target.value})
+        }
+        style={styles.textarea} rows="3" required />
+    </div>
+
+    <div style={styles.field}>
+      <label style={styles.label}>Price (₹)</label>
+
+      <input type="number" placeholder="e.g. 25000"
+        value={packageForm.price}
+        onChange={(e) => setPackageForm({...packageForm, price: e.target.value})
+        }
+        style={styles.input} min="0" required />
+    </div>
+
+    <button type="submit" style={styles.primaryButton} disabled={addingPackage}>
+      {addingPackage
+        ? "Adding..."
+        : "+ Add Package"}
     </button>
+
   </form>
 </section>
       </main>
@@ -702,7 +823,114 @@ const RequestRow = ({ booking, onStatusChange, onComplete, onRequestFinalPayment
     </div>
     
   );
+}
+
+const EventCard = ({ booking, current = false }) => {
+  const brideName = booking.wedding?.brideName || "";
+  const groomName = booking.wedding?.groomName || "";
+
+  const weddingName =
+    brideName && groomName
+      ? `${brideName} & ${groomName}`
+      : "Wedding Event";
+
+  const eventDate = booking.serviceDate
+    ? new Date(booking.serviceDate).toLocaleDateString(
+        "en-IN",
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }
+      )
+    : "Date not specified";
+
+  const customerName =
+    booking.customer?.name || "Customer";
+
+  const venue =
+    booking.wedding?.venue || "Venue not specified";
+
+  const location =
+    booking.wedding?.location || "Location not specified";
+
+  const packageName =
+    booking.package?.packageName || "Package not specified";
+
+  const paymentStatus =
+    booking.finalPaymentStatus === "paid"
+      ? "Fully Paid"
+      : booking.paymentStatus === "paid"
+      ? "Advance Paid"
+      : "Payment Pending";
+
+  return (
+    <div
+      style={{
+        ...styles.eventCard,
+        ...(current ? styles.currentEventCard : {}),
+      }}
+    >
+      <div style={styles.eventCardHeader}>
+        <div>
+          {current && (
+            <span style={styles.currentBadge}>EVENT TODAY</span>
+          )}
+
+          <h4 style={styles.eventTitle}>{weddingName}</h4>
+          <p style={styles.eventDate}>{eventDate}
+            {" • "}
+             {booking.startTime} - {booking.endTime}
+          </p>
+        </div>
+
+        <span style={styles.eventStatus}>
+          {booking.status === "completed"
+            ? "Completed"
+            : "Confirmed"}
+        </span>
+      </div>
+
+      <div style={styles.eventDetailsGrid}>
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Venue</span>
+          <strong style={styles.eventDetailStrong}>{venue}</strong>
+        </div>
+
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Location</span>
+         <strong style={styles.eventDetailStrong}>
+            {location}</strong>
+        </div>
+
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Customer</span>
+          <strong style={styles.eventDetailStrong}>
+            {customerName}</strong>
+        </div>
+
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Package</span>
+          <strong style={styles.eventDetailStrong}>
+            {packageName}</strong>
+        </div>
+
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Guests</span>
+          <strong style={styles.eventDetailStrong}>
+            {booking.wedding?.guestCount || 0}</strong>
+        </div>
+
+        <div style={styles.eventDetail}>
+          <span style={styles.eventDetailLabel}>Payment</span>
+         <strong style={styles.eventDetailStrong}>
+          {paymentStatus}</strong>
+        </div>
+      </div>
+    </div>
+  );
 };
+
 
 const styles = {
 
@@ -1103,6 +1331,118 @@ pricingForm: {
   gridTemplateColumns: "1.2fr 1fr 1fr 1fr auto", 
   gap: "10px", 
   alignItems: "center",
+},
+eventsSection: {
+  marginTop: "10px",
+  marginBottom: "35px",
+},
+
+eventGroup: {
+  marginBottom: "25px",
+},
+
+eventGroupTitle: {
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#173E35",
+  margin: "0 0 12px",
+},
+
+eventCard: {
+  background: "#FFFFFF",
+  border: "1px solid #E8E1D7",
+  borderRadius: "14px",
+  padding: "20px",
+  marginBottom: "12px",
+  boxShadow: "0 5px 20px rgba(55, 48, 40, 0.04)",
+},
+
+currentEventCard: {
+  border: "1px solid #B8935A",
+  background: "#FFFDF8",
+},
+
+eventCardHeader: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "15px",
+  marginBottom: "20px",
+},
+
+currentBadge: {
+  display: "inline-block",
+  background: "#F5EBD9",
+  color: "#A66B00",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "1px",
+  padding: "4px 8px",
+  borderRadius: "12px",
+  marginBottom: "7px",
+},
+
+eventTitle: {
+  margin: 0,
+  fontFamily: "Georgia, serif",
+  fontSize: "20px",
+  fontWeight: 400,
+  color: "#173E35",
+},
+
+eventDate: {
+  margin: "6px 0 0",
+  fontSize: "12px",
+  color: "#77716B",
+},
+
+eventStatus: {
+  background: "#EEF0EC",
+  color: "#3D5A50",
+  padding: "6px 10px",
+  borderRadius: "15px",
+  fontSize: "10px",
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+},
+
+eventDetailsGrid: {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: "12px",
+},
+
+eventDetail: {
+  background: "#FAF9F7",
+  border: "1px solid #EEE8DF",
+  borderRadius: "8px",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "5px",
+},
+
+eventDetailLabel: {
+  fontSize: "10px",
+  color: "#999",
+},
+
+eventDetailStrong: {
+  fontSize: "12px",
+  color: "#454943",
+},
+emptyEvents: {
+  background: "#FFFFFF",
+  border: "1px solid #E8E1D7",
+  borderRadius: "12px",
+  padding: "30px",
+  textAlign: "center",
+  color: "#77716B",
+},
+
+emptyEventIcon: {
+  fontSize: "28px",
+  marginBottom: "10px",
 },
 };
 

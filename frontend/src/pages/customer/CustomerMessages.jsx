@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import socket from "../../socket/socket";
 import axiosInstance from "../../services/axiosInstance";
 import { useSelector } from "react-redux";
+import "./CustomerMessages.css";
 
 const CustomerMessages = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ const CustomerMessages = () => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState({});
 
   useEffect(() => {
     fetchConversations();
@@ -23,7 +25,6 @@ const CustomerMessages = () => {
   const fetchConversations = async () => {
     try {
       const res = await axiosInstance.get("/chat/conversations");
-
       const data = res.data.data || [];
 
       setConversations(data);
@@ -44,15 +45,19 @@ const CustomerMessages = () => {
     }
   };
 
+ 
   const openConversation = async (conversation) => {
     try {
       setSelectedConversation(conversation);
 
-      const res = await axiosInstance.get(`/chat/messages/${conversation._id}`)
+      const res = await axiosInstance.get(
+        `/chat/messages/${conversation._id}`
+      );
 
       setMessages(res.data.data || []);
 
       socket.emit("joinConversation", conversation._id);
+      socket.emit("markMessagesAsRead", conversation._id);
     } catch (error) {
       console.error("Failed to load messages:", error);
     }
@@ -61,46 +66,71 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (selectedConversation?._id) {
       socket.emit("joinConversation", selectedConversation._id);
+      socket.emit("markMessagesAsRead", selectedConversation._id);
     }
   }, [selectedConversation]);
 
   useEffect(() => {
-    const handleReceiveMessage = (newMessage) => {
-      if (
-        newMessage.conversation !== selectedConversation?._id &&
-        newMessage.conversation?._id !== selectedConversation?._id
-      ) {
+  const handleReceiveMessage = (newMessage) => {
+  const conversationId =
+    newMessage.conversation?._id || newMessage.conversation;
+
+  if (conversationId === selectedConversation?._id) {
+    setMessages((prev) => {
+      if (prev.some((msg) => msg._id === newMessage._id)) {
+        return prev;
+      }
+
+      return [...prev, newMessage];
+    });
+    if (newMessage.receiver?._id?.toString() === user?._id?.toString()) {
+      socket.emit("markMessagesAsRead", conversationId);
+    }
+  }
+  setConversations((prev) =>
+    prev.map((conversation) =>
+      conversation._id === conversationId
+        ? {
+            ...conversation,
+            lastMessage: newMessage.message,
+            lastMessageAt: newMessage.createdAt,
+          }
+        : conversation
+    )
+  );
+};
+    const handleUserStatus = ({ userId, status }) => {
+      setOnlineUsers((prev) => ({
+        ...prev,
+        [userId]: status === "online",
+      }));
+    };
+
+    const handleMessagesRead = ({ conversationId }) => {
+      if (conversationId !== selectedConversation?._id) {
         return;
       }
 
-      setMessages((prev) => {
-        if (prev.some((msg) => msg._id === newMessage._id)) {
-          return prev;
-        }
-
-        return [...prev, newMessage];
-      });
-
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation._id === newMessage.conversation
-            ? {
-                ...conversation,
-                lastMessage: newMessage.message,
-                lastMessageAt: newMessage.createdAt,
-              }
-            : conversation
-        )
+      setMessages((prev) =>
+        prev.map((msg) => ({
+          ...msg,
+          isRead: true,
+        }))
       );
     };
 
     socket.on("receiveMessage", handleReceiveMessage);
+    socket.on("userStatusChanged", handleUserStatus);
+    socket.on("messagesRead", handleMessagesRead);
 
     return () => {
       socket.off("receiveMessage", handleReceiveMessage);
+      socket.off("userStatusChanged", handleUserStatus);
+      socket.off("messagesRead", handleMessagesRead);
     };
-  }, [selectedConversation]);
+  }, [selectedConversation, user?._id]);
 
+  
   const sendMessage = (e) => {
     e.preventDefault();
 
@@ -115,17 +145,15 @@ const CustomerMessages = () => {
   };
 
   return (
-    <div style={styles.page}>
-
-      <div style={styles.header}>
+<div className="responsive-page" style={styles.page}>
+        <div style={styles.header}>
         <p style={styles.eyebrow}>MESSAGES</p>
-
         <h1 style={styles.title}>Messages</h1>
         <p style={styles.subtitle}>Chat with your vendors.</p>
       </div>
 
-      <div style={styles.chatContainer}>
-        <div style={styles.conversationPanel}>
+<div className="chat-container" style={styles.chatContainer}>
+          <div className="conversation-panel" style={styles.conversationPanel}>
           <h3 style={styles.panelTitle}>Conversations</h3>
 
           {loading ? (
@@ -138,7 +166,6 @@ const CustomerMessages = () => {
             </p>
           ) : (
             conversations.map((conversation) => (
-
               <div
                 key={conversation._id}
                 onClick={() => openConversation(conversation)}
@@ -149,41 +176,38 @@ const CustomerMessages = () => {
                     : {}),
                 }}
               >
-
                 <div style={styles.avatar}>
                   {conversation.vendor?.name
                     ?.charAt(0)
                     .toUpperCase()}
                 </div>
 
-                <div>
-                  <strong>{conversation.vendor?.name || "Vendor"}</strong>
+                <div style={styles.conversationInfo}>
+                  <strong>
+                    {conversation.vendor?.name || "Vendor"}
+                  </strong>
 
-                  <p style={styles.lastMessage}>{conversation.lastMessage || "Start chatting"}</p>
+                  <p style={styles.lastMessage}>
+                    {conversation.lastMessage ||
+                      "Start chatting"}
+                  </p>
                 </div>
-
               </div>
-
             ))
           )}
-
         </div>
 
-        <div style={styles.chatPanel}>
+        <div className="chat-panel" style={styles.chatPanel}>
           {!selectedConversation ? (
-
             <div style={styles.noChat}>
-
               <div style={styles.chatIcon}>💬</div>
+
               <h3>Select a conversation</h3>
+
               <p>Choose a vendor to start chatting.</p>
-
             </div>
-
           ) : (
-
             <>
-
               <div style={styles.chatHeader}>
                 <div style={styles.avatar}>
                   {selectedConversation.vendor?.name
@@ -197,18 +221,31 @@ const CustomerMessages = () => {
                       "Vendor"}
                   </strong>
 
-                  <p style={styles.onlineText}>Vendor</p>
+                  <p
+                    style={{
+                      ...styles.onlineText,
+                      color: onlineUsers[
+                        selectedConversation.vendor?._id
+                      ]
+                        ? "#2E8B57"
+                        : "#999",
+                    }}
+                  >
+                    {onlineUsers[
+                      selectedConversation.vendor?._id
+                    ]
+                      ? "● Online"
+                      : "○ Offline"}
+                  </p>
                 </div>
-
               </div>
 
-              <div style={styles.messagesArea}>
-                {messages.length === 0 ? (
-
-                  <div style={styles.emptyChat}>No messages yet. Say hello 👋</div>
-
+            <div className="messagesArea" style={styles.messagesArea}>
+                  {messages.length === 0 ? (
+                  <div style={styles.emptyChat}>
+                    No messages yet. Say hello 👋
+                  </div>
                 ) : (
-
                   messages.map((msg) => {
                     const senderId =
                       msg.sender?._id || msg.sender;
@@ -227,47 +264,54 @@ const CustomerMessages = () => {
                             : "flex-start",
                         }}
                       >
+                      <div className="messageBubble"
+                         style={{...styles.messageBubble,...(isMine
+                            ? styles.myMessage
+                             : styles.theirMessage)}}>
+                          <div>{msg.message}</div>
 
-                        <div
-                          style={{
-                            ...styles.messageBubble,
-                            ...(isMine
-                              ? styles.myMessage
-                              : styles.theirMessage),
-                          }}
-                        >
-                          {msg.message}
+                          <span style={styles.messageTime}>
+                            {new Date(
+                              msg.createdAt
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+
+                            {isMine && (
+                              <span style={{
+                                  marginLeft: "5px",
+                                }}>
+                                {msg.isRead
+                                  ? "✓✓"
+                                  : "✓"}
+                              </span>
+                            )}
+                          </span>
                         </div>
-
                       </div>
                     );
                   })
-
                 )}
-
               </div>
-
-              <form onSubmit={sendMessage} style={styles.inputArea}>
-                <input value={message} onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..." style={styles.messageInput}
-                />
-                <button type="submit" style={styles.sendButton}>Send</button>
-              </form>
-
+             <form onSubmit={sendMessage} className="inputArea"
+                style={styles.inputArea}>
+               <input className="messageInput" value={message}
+                 onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..."
+                    style={styles.messageInput} />
+            <button type="submit" className="sendButton" style={styles.sendButton}>
+               Send
+            </button>
+         </form>
             </>
-
           )}
-
         </div>
-
       </div>
-
     </div>
   );
 };
 
 const styles = {
-
   page: {
     padding: "35px",
     minHeight: "100vh",
@@ -350,10 +394,18 @@ const styles = {
     flexShrink: 0,
   },
 
+  conversationInfo: {
+    minWidth: 0,
+  },
+
   lastMessage: {
     margin: "3px 0 0",
     fontSize: "11px",
     color: "#888",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: "190px",
   },
 
   emptyText: {
@@ -408,6 +460,14 @@ const styles = {
   theirMessage: {
     background: "#E7F2EC",
     color: "#333",
+  },
+
+  messageTime: {
+    display: "block",
+    fontSize: "9px",
+    marginTop: "4px",
+    opacity: 0.7,
+    textAlign: "right",
   },
 
   emptyChat: {

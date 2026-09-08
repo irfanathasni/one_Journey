@@ -20,6 +20,16 @@ const weddingSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
+    venue: {
+    type: String,
+    trim: true,
+    default: ""
+    },
+    location: {
+    type: String,
+    trim: true,
+    default: ""
+    },
     totalBudget :{
         type:Number,
         default:0

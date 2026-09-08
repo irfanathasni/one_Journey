@@ -1,69 +1,105 @@
- const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const VENDOR_STATUS = require("../constants/vendorStatus");
-const vendorSchema = new mongoose.Schema({
-    user :{
-        type:mongoose.Schema.Types.ObjectId,
-        ref :"User",
-        required:true
-    },
-    businessName :{
-        type: String,
-        required :true
-    },
-    category :{
-        type:String,
-        required :true
-    },
-    description :{
-        type:String
-    },
-    price:{
-        type:Number,
-        required:true,
-        min:0,
-        default:0
-    },
-    pricing: [
+
+const vendorSchema = new mongoose.Schema(
     {
-eventType: {
-    type: String,
-    enum: ["Wedding","Reception","Engagement","Mehndi","Haldi","Sangeet"],
-    required: true
-    },
-     minGuests: {
-        type: Number,
-        required: true,
-        min: 0
-    },
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
+        },
 
-    maxGuests: {
-        type: Number,
-        required: true,
-        min: 0
-    },
+        businessName: {
+            type: String,
+            required: true,
+            trim: true
+        },
 
-    price: {
-        type: Number,
-        required: true,
-        min: 0
+        category: {
+            type: String,
+            required: true
+        },
+
+        description: {
+            type: String,
+            trim: true
+        },
+
+        packages: [
+            {
+                packageType: {
+                    type: String,
+                    enum: ["Normal", "Premium"],
+                    required: true
+                },
+
+                packageName: {
+                    type: String,
+                    required: true,
+                    trim: true
+                },
+
+                description: {
+                    type: String,
+                    required: true,
+                    trim: true
+                },
+
+                price: {
+                    type: Number,
+                    required: true,
+                    min: 0
+                }
+            }
+        ],
+
+        payoutDetails: {
+            contactId: {
+                type: String,
+                default: null
+            },
+
+            fundAccountId: {
+                type: String,
+                default: null
+            },
+
+            accountHolderName: {
+                type: String,
+                default: null
+            },
+
+            bankAccountLast4: {
+                type: String,
+                default: null
+            },
+
+            ifsc: {
+                type: String,
+                default: null
+            }
+        },
+
+        verificationStatus: {
+            type: String,
+            enum: Object.values(VENDOR_STATUS),
+            default: VENDOR_STATUS.PENDING
+        },
+
+        rejectionReason: {
+            type: String,
+            default: null
+        },
+
+        status: {
+            type: String,
+            enum: ["active", "inactive", "blocked"],
+            default: "active"
+        }
+    },
+    {
+        timestamps: true
     }
-    }
-],
-    verificationStatus :{
-        type:String,
-        enum:Object.values(VENDOR_STATUS),
-        default:VENDOR_STATUS.PENDING,
-    },
-    rejectionReason :{
-        type:String,
-        default :null
-    },
-    status:{
-        type: String,
-        enum:["active","inactive","blocked"],
-        default: "active"
-    },
- },
-{timestamps:true}
 );
-module.exports = mongoose.model("Vendor",vendorSchema);
+
+module.exports = mongoose.model("Vendor", vendorSchema);

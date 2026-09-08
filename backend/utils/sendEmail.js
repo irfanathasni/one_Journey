@@ -6,14 +6,26 @@ const transporter = nodemailer.createTransport({service:"gmail",
     },
 })
 
-const sendOTPEmail = async(email ,otp) =>{
-    await transporter.sendMail({
-        from:`"One Journey Wedding Planner" <${process.env.EMAIL_USER}>`,
-        to:email,
-        subject:"One Journey - Verify your email" ,
-        text:`<p>Your OTP is ${otp}.It expires in 10 minutes.</p>` ,
-    })
-}
+const sendOTPEmail = async (email, otp) => {
+    console.log("FROM:", process.env.EMAIL_USER);
+    console.log("TO:", email);
+    console.log("OTP:", otp);
+    try {
+        const info = await transporter.sendMail({
+            from: `"One Journey Wedding Planner" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "One Journey - Verify your email",
+            text: `Your OTP is ${otp}. It expires in 10 minutes.`,
+            html: `<p>Your OTP is <b>${otp}</b>.</p>
+                   <p>It expires in 10 minutes.</p>`
+        });
+
+        console.log("OTP EMAIL SENT:", info.messageId);
+    } catch (error) {
+        console.error("OTP EMAIL ERROR:", error);
+        throw error;
+    }
+};
 
 const sendResetpasswordEmail = async (email,resetLink) => {
     await transporter.sendMail({

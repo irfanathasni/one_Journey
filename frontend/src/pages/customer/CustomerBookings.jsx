@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getMyBookings } from "../../services/bookingService";
 import { createPayment, markPaymentFailed, verifyPayment } from "../../services/paymentService";
 import { createReview } from "../../services/reviewService";
-
+import BookingStatusTimeline from "../../components/BookingStatusTimeline";
 const CustomerBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -203,9 +203,21 @@ const CustomerBookings = () => {
 
               </div>
 
+                <div style={styles.packageSection}>
+          <div>
+             <p style={styles.packageLabel}>SELECTED PACKAGE</p>
+              <strong style={styles.packageName}>{booking.package?.packageName || "Package"}</strong>
+             <p style={styles.packageType}>{booking.package?.packageType || ""}</p>
+          </div>
+
+        <div style={styles.packagePrice}>
+            ₹{Number(booking.package?.price || booking.amount || 0).toLocaleString("en-IN")}
+          </div>
+        </div>
+              <BookingStatusTimeline booking={booking} role="customer" />
+
               <div style={styles.footer}>
-                <span>
-                  Booking requested on{" "}
+                <span>Booking requested on{" "}
                   {formatDate(booking.createdAt)}
                 </span>
 
@@ -222,27 +234,61 @@ const CustomerBookings = () => {
                 )}
 
                 {status === "pending" && (
-                  <span style={styles.pendingText}>
-                    Waiting for vendor response...
-                  </span>
+                  <span style={styles.pendingText}>Waiting for vendor response...</span>
                 )}
               </div>
 
               {status === "approved" && booking.paymentStatus !== "paid" && (
-                <button onClick={() => handlePayment(booking, "advance")} style={styles.payButton}>
-                  Pay Advance ₹{booking.advanceAmount}
-                </button>
-              )}
+            <div style={styles.paymentSection}>
+               <div style={styles.paymentInfo}>
+               <span>Package Total</span>
+             <strong>
+              ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
+             </strong>
+           </div>
+
+            <div style={styles.paymentInfo}>
+               <span>Advance Payment (50%)</span>
+               <strong>
+                  ₹{Number(booking.advanceAmount || 0).toLocaleString("en-IN")}
+               </strong>
+             </div>
+            <button onClick={() => handlePayment(booking, "advance")} style={styles.payButton}>
+               Pay Advance ₹{Number(booking.advanceAmount || 0).toLocaleString("en-IN")}
+           </button>
+         </div>
+          )}
 
               {status === "approved" && booking.paymentStatus === "paid" && (
                 <span style={styles.paidBadge}>✓ Advance Paid</span>
               )}
 
-              {status === "completed" && booking.finalPaymentStatus === "requested" && (
-                <button onClick={() => handlePayment(booking, "final")} style={styles.payButton}>
-                  Pay Remaining ₹{remaining}
-                </button>
-              )}
+             {status === "completed" && booking.finalPaymentStatus === "requested" && (
+        <div style={styles.paymentSection}>
+             <div style={styles.paymentInfo}>
+             <span>Total Package Amount</span>
+           <strong>
+              ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
+           </strong>
+         </div>
+
+         <div style={styles.paymentInfo}>
+            <span>Advance Paid</span>
+             <strong>
+               ₹{Number(booking.advanceAmount || 0).toLocaleString("en-IN")}
+             </strong>
+         </div>
+
+         <div style={styles.paymentInfo}>
+            <span>Remaining Amount</span>
+            <strong>₹{Number(remaining).toLocaleString("en-IN")}</strong>
+         </div>
+         <button onClick={() => handlePayment(booking, "final")}
+           style={styles.payButton}>
+           Pay Remaining ₹{Number(remaining).toLocaleString("en-IN")}
+         </button>
+       </div>
+        )}
 
               {status === "completed" && booking.finalPaymentStatus === "not_requested" && (
                 <span style={styles.pendingText}>Waiting for vendor to request final payment</span>
@@ -264,35 +310,30 @@ const CustomerBookings = () => {
         })}
       
       </div>
-      {reviewingBooking && (
-  <div style={styles.modalOverlay} onClick={() => setReviewingBooking(null)}>
-    <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-      <h2 style={styles.modalTitle}>Rate {reviewingBooking.vendor?.businessName}</h2>
-      <div style={styles.starRow}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <span key={n} onClick={() => setRating(n)}
-            style={{...styles.star, color: n <= rating ? "#B8935A" : "#DDD"}}>★</span>
-        ))}
-      </div>
-      <textarea
-        placeholder="Share your experience (optional)"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        style={styles.reviewTextarea}
-        rows="4"
-      />
-      <div style={styles.modalActions}>
+          {reviewingBooking && (
+        <div style={styles.modalOverlay} onClick={() => setReviewingBooking(null)}>
+           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+         <h2 style={styles.modalTitle}>Rate {reviewingBooking.vendor?.businessName}</h2>
+           <div style={styles.starRow}>
+             {[1, 2, 3, 4, 5].map((n) => (
+              <span key={n} onClick={() => setRating(n)}
+                style={{...styles.star, color: n <= rating ? "#B8935A" : "#DDD"}}>★</span>
+             ))}
+         </div>
+        <textarea placeholder="Share your experience (optional)" value={comment}
+          onChange={(e) => setComment(e.target.value)} style={styles.reviewTextarea} rows="4" />
+       <div style={styles.modalActions}>
         <button onClick={handleSubmitReview} style={styles.primaryButton} disabled={submittingReview}>
-          {submittingReview ? "Submitting..." : "Submit Review"}
+            {submittingReview ? "Submitting..." : "Submit Review"}
         </button>
         <button onClick={() => setReviewingBooking(null)} style={styles.secondaryButtonModal}>Cancel</button>
+        </div>
       </div>
-    </div>
-  </div>
-)}
-    </div>
-  );
-};
+     </div>
+        )}
+     </div>
+     )
+}
 
 const styles = {
   page: {
@@ -512,29 +553,138 @@ const styles = {
     fontWeight: 600,
   },
   reviewButtonCustomer: {
-  marginTop: "14px", width: "100%", padding: "12px", border: "1px solid #B8935A",
-  borderRadius: "8px", background: "#FFFFFF", color: "#B8935A", fontSize: "13px", fontWeight: 600, cursor: "pointer",
+  marginTop: "14px",
+  width: "100%", 
+  padding: "12px", 
+  border: "1px solid #B8935A",
+  borderRadius: "8px", 
+  background: "#FFFFFF", 
+  color: "#B8935A", 
+  fontSize: "13px", 
+  fontWeight: 600, 
+  cursor: "pointer",
 },
 modalOverlay: {
-  position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(43,43,43,0.5)",
-  display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px",
+  position: "fixed", 
+  top: 0, 
+  left: 0, 
+  right: 0, 
+  bottom: 0, 
+  background: "rgba(43,43,43,0.5)",
+  display: "flex", 
+  alignItems: "center", 
+  justifyContent: "center", 
+  zIndex: 1000, 
+  padding: "20px",
 },
-modalCard: { background: "#FFFFFF", borderRadius: "14px", padding: "28px", maxWidth: "420px", width: "100%" },
-modalTitle: { margin: "0 0 18px", fontFamily: "Georgia, serif", fontSize: "20px", color: "#2B2B2B" },
-starRow: { display: "flex", gap: "8px", fontSize: "32px", marginBottom: "16px", cursor: "pointer" },
-star: { cursor: "pointer", transition: "color 0.15s" },
+modalCard: { 
+  background: "#FFFFFF", 
+  borderRadius: "14px", 
+  padding: "28px", 
+  maxWidth: "420px", 
+  width: "100%" 
+},
+modalTitle: { 
+  margin: "0 0 18px", 
+  fontFamily: "Georgia, serif", 
+  fontSize: "20px", 
+  color: "#2B2B2B" 
+},
+starRow: { 
+  display: "flex", 
+  gap: "8px", 
+  fontSize: "32px", 
+  marginBottom: "16px", 
+  cursor: "pointer" 
+},
+star: { 
+  cursor: "pointer", 
+  transition: "color 0.15s" 
+},
 reviewTextarea: {
-  width: "100%", padding: "12px", border: "1px solid #DCD5CA", borderRadius: "7px",
-  fontSize: "13px", boxSizing: "border-box", fontFamily: "Arial, sans-serif", marginBottom: "16px",
+  width: "100%", 
+  padding: "12px", 
+  border: "1px solid #DCD5CA", 
+  borderRadius: "7px",
+  fontSize: "13px", 
+  boxSizing: "border-box", 
+  fontFamily: "Arial, sans-serif", 
+  marginBottom: "16px",
 },
 modalActions: { display: "flex", gap: "10px" },
 primaryButton: {
-  flex: 1, padding: "12px", background: "#3D5A50", color: "#FFF", border: "none",
-  borderRadius: "7px", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+  flex: 1, 
+  padding: "12px", 
+  background: "#3D5A50", 
+  color: "#FFF", 
+  border: "none",
+  borderRadius: "7px", 
+  fontWeight: 600, 
+  fontSize: "13px", 
+  cursor: "pointer",
 },
 secondaryButtonModal: {
-  padding: "12px 20px", background: "#FFF", color: "#3D5A50", border: "1px solid #3D5A50",
-  borderRadius: "7px", fontWeight: 600, fontSize: "13px", cursor: "pointer",
+  padding: "12px 20px", 
+  background: "#FFF", 
+  color: "#3D5A50", 
+  border: "1px solid #3D5A50",
+  borderRadius: "7px", 
+  fontWeight: 600, 
+  fontSize: "13px", 
+  cursor: "pointer",
+},
+packageSection: {
+  marginTop: "18px",
+  padding: "16px",
+  background: "#FAF8F3",
+  border: "1px solid #E5DFD5",
+  borderRadius: "10px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+},
+
+packageLabel: {
+  fontSize: "10px",
+  letterSpacing: "1.5px",
+  color: "#999",
+  margin: "0 0 5px",
+  fontWeight: 700,
+},
+
+packageName: {
+  display: "block",
+  color: "#3D5A50",
+  fontSize: "15px",
+},
+
+packageType: {
+  margin: "4px 0 0",
+  color: "#888",
+  fontSize: "12px",
+},
+
+packagePrice: {
+  color: "#B8935A",
+  fontSize: "18px",
+  fontWeight: 700,
+},
+
+paymentSection: {
+  marginTop: "15px",
+  padding: "16px",
+  background: "#F8F6F1",
+  borderRadius: "10px",
+  border: "1px solid #E5DFD5",
+},
+
+paymentInfo: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "10px",
+  fontSize: "13px",
+  color: "#777",
 },
 };
 

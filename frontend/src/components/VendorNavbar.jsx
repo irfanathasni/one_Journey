@@ -61,7 +61,8 @@ const VendorNavbar = () => {
 
           
       </nav>
-      <div className="vendor-profile" style={styles.profileSection}>        <div style={styles.avatar}>V</div>
+      <div className="vendor-profile" style={styles.profileSection}>   
+             <div style={styles.avatar}>V</div>
         <div style={styles.profileText}>
           <strong>Vendor</strong>
           <span>Business Account</span>

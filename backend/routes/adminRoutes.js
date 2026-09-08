@@ -1,12 +1,18 @@
 const express = require("express")
 const protect = require("../middleware/authMiddleware")
-const { getAllVendors, approveVendor, rejectVendor,updateVendorStatus,
-     getAllUsers, updateUserStatus, 
+const { getAllVendors, 
+    approveVendor, 
+    rejectVendor,
+    updateVendorStatus,
+     getAllUsers, 
+     updateUserStatus, 
     createCategory, 
     getCategories,
     updateCategory,
     toggleCategoryStatus,
-    getDashboardStats} = require("../controllers/adminController")
+    getDashboardStats,
+    getVendorReports
+} = require("../controllers/adminController")
 const router = express.Router()
 const authorize = require("../Middleware/roleMiddleware")
 const ROLES = require("../constants/roles")
@@ -23,4 +29,5 @@ router.get("/categories",protect,authorize("admin"),getCategories)
 router.put("/categories/:categoryId",protect,authorize("admin"),updateCategory)
 router.patch("/categories/:categoryId/toggle-status",protect,authorize("admin"),toggleCategoryStatus)
 router.get("/dashboard",protect,authorize("admin"),getDashboardStats)
+router.get("/reports/vendors",protect,authorize("admin"),getVendorReports)
 module.exports = router

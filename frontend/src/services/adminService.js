@@ -33,3 +33,8 @@ export const updateUserStatus = (userId) =>{
 export const getDashboardStats = async () => {
     return axiosInstance.get("/admin/dashboard")
 }
+
+export const getVendorReports = async (params = {}) => {
+    const res = await axiosInstance.get("/admin/reports/vendors", {params})
+    return res.data
+}
