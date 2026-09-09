@@ -1,48 +1,64 @@
 import axios from "axios"
 import { store } from "../app/store"
-import { setCredentials,logout } from "../features/auth/authSlice"
+import { setCredentials, logout } from "../features/auth/authSlice"
 
 const axiosInstance = axios.create({
-    baseURL : "http://localhost:5000/api/v1" ,
-    withCredentials:true
+    baseURL: "/api/v1",
+    withCredentials: true
 })
 
 axiosInstance.interceptors.request.use((config) => {
     const token = store.getState().auth.token
-    if(token) {
+
+    if (token) {
         config.headers.Authorization = `Bearer ${token}`
     }
+
     return config
 })
 
 axiosInstance.interceptors.response.use(
     (response) => response,
-    async(error) => {
+    async (error) => {
         const originalRequest = error.config
-        const isAuthRequest = 
-            originalRequest.url.includes("/auth/login") || 
+
+        const isAuthRequest =
+            originalRequest.url.includes("/auth/login") ||
             originalRequest.url.includes("/auth/register") ||
             originalRequest.url.includes("/auth/refresh")
 
-        if(error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            !isAuthRequest
+        ) {
             originalRequest._retry = true
-            try{
+
+            try {
                 const res = await axiosInstance.post("/auth/refresh")
+
                 const newAccessToken = res.data.accessToken
-                store.dispatch(setCredentials({
-                    user: store.getState().auth.user,
-                    token: newAccessToken,
-                    role: store.getState().auth.role,
-                }))
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
+
+                store.dispatch(
+                    setCredentials({
+                        user: store.getState().auth.user,
+                        token: newAccessToken,
+                        role: store.getState().auth.role,
+                    })
+                )
+
+                originalRequest.headers.Authorization =
+                    `Bearer ${newAccessToken}`
+
                 return axiosInstance(originalRequest)
-            }catch(refreshError) {
+            } catch (refreshError) {
                 store.dispatch(logout())
                 window.location.href = "/login"
-                return Promise.reject(refreshError)
             }
         }
+
         return Promise.reject(error)
     }
 )
+
 export default axiosInstance
