@@ -1,0 +1,39 @@
+name: OneJourney CD
+
+on:
+  push:
+    branches:
+      - feature/docker
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+
+        run: |
+          mkdir -p ~/.ssh
+
+          echo "$EC2_SSH_KEY" > ~/.ssh/onejourney.pem
+          chmod 600 ~/.ssh/onejourney.pem
+
+          ssh -o StrictHostKeyChecking=no \
+            -i ~/.ssh/onejourney.pem \
+            $EC2_USERNAME@$EC2_HOST << 'EOF'
+
+            cd ~/one_Journey
+
+            git fetch origin
+            git reset --hard origin/feature/docker
+
+            docker compose up -d --build
+
+            docker compose ps
+
+          EOF
