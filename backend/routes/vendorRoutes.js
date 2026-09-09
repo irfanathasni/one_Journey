@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
-const requireApproveVendor = require("../Middleware/vendorMiddleware");
+const requireApproveVendor = require("../middleware/vendorMiddleware");
 
 const {createVendorProfile,getMyVendorProfile,getApprovedVendors,updateVendorProfile,createAvailability,
     getMyAvailability,deleteAvailability,getVendorAvailability,addPackage,deletePackage} = require("../controllers/vendorController")

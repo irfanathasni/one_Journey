@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./backend
+    container_name: onejourney-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5000
+        VITE_GOOGLE_CLIENT_ID: 281931198322-po0sbimakmbkjl48u3jq2tlfphat8epk.apps.googleusercontent.com
+    container_name: onejourney-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

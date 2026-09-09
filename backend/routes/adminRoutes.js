@@ -14,7 +14,7 @@ const { getAllVendors,
     getVendorReports
 } = require("../controllers/adminController")
 const router = express.Router()
-const authorize = require("../Middleware/roleMiddleware")
+const authorize = require("../middleware/roleMiddleware")
 const ROLES = require("../constants/roles")
 
 router.get("/vendors", protect, authorize("admin"), getAllVendors);
