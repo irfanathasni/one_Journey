@@ -14,30 +14,31 @@ on:
 
 jobs:
 
- backend:
-  name: Backend CI
-  runs-on: ubuntu-latest
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
 
-  defaults:
-    run:
-      working-directory: backend
+    defaults:
+      run:
+        working-directory: backend
 
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-        cache: npm
-        cache-dependency-path: backend/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run tests
-      run: echo "No backend tests configured - skipping tests"
+      - name: Run tests
+        run: echo "No backend tests configured - skipping tests"
+
 
   frontend:
     name: Frontend CI
@@ -84,8 +85,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build backend Docker image
-        run: |
-          docker build -t onejourney-backend ./backend
+        run: docker build -t onejourney-backend ./backend
 
       - name: Build frontend Docker image
         run: |
@@ -93,4 +93,3 @@ jobs:
             --build-arg VITE_API_URL=http://localhost:5000 \
             --build-arg VITE_GOOGLE_CLIENT_ID="${{ vars.VITE_GOOGLE_CLIENT_ID }}" \
             -t onejourney-frontend ./frontend
-
