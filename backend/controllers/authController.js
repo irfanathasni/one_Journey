@@ -106,7 +106,7 @@ const login = async (req,res,next) => {
 
 const getProfile = async (req,res,next) => {
     try{
-        const user = await User.findById(req.user.userId)
+        const user = await User.findById(req.user.id)
         if(!user) {
             return res.status(401).json({success:false,message:MESSAGES.UNAUTHORIZED})
         }
