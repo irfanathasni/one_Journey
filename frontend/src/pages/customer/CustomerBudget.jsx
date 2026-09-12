@@ -15,17 +15,21 @@ const CustomerBudget = () => {
 
   const fetchData = async () => {
     try {
-      const [weddingRes, bookingsRes] = await Promise.all([getMyWedding(),getMyBookings()])
+      const [weddingRes, bookingsRes] = await Promise.all([
+        getMyWedding(),
+        getMyBookings(),
+      ]);
+
       setWedding(weddingRes.data);
-      setBookings(bookingsRes.data || [])
+      setBookings(bookingsRes.data || []);
     } catch (error) {
-      console.error("Budget fetch error:",error)
+      console.error("Budget fetch error:", error);
       setWedding(null);
       setBookings([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return <div style={styles.loading}>Loading...</div>;
@@ -34,88 +38,245 @@ const CustomerBudget = () => {
   if (!wedding) {
     return (
       <div style={styles.page}>
-        <div style={styles.emptyCard}>
+        <div
+          style={styles.emptyCard}
+          className="customer-budget-empty-card"
+        >
           <div style={styles.emptyIcon}>💰</div>
-          <h2 style={styles.emptyTitle}>No wedding created yet</h2>
+
+          <h2 style={styles.emptyTitle}>
+            No wedding created yet
+          </h2>
+
           <p style={styles.emptyText}>
             Create your wedding first to start tracking your budget.
           </p>
-          <button style={styles.primaryButton} onClick={() => navigate("/customer/wedding")}>Create Wedding →</button>
+
+          <button
+            style={styles.primaryButton}
+            onClick={() => navigate("/customer/wedding")}
+          >
+            Create Wedding →
+          </button>
         </div>
       </div>
     );
   }
 
-  const approvedBookings = bookings.filter((b) => b.status === "approved");
-  const totalCommitted = approvedBookings.reduce((sum, b) => sum + (b.amount || 0), 0);
+  const approvedBookings = bookings.filter(
+    (b) => b.status === "approved"
+  );
+
+  const totalCommitted = approvedBookings.reduce(
+    (sum, b) => sum + (b.amount || 0),
+    0
+  );
+
   const totalAdvancePaid = approvedBookings
     .filter((b) => b.paymentStatus === "paid")
-    .reduce((sum, b) => sum + (b.advanceAmount || 0), 0);
-  const totalRemaining = approvedBookings.reduce((sum, b) => {
-    const remaining = b.paymentStatus === "paid" ? (b.amount - b.advanceAmount) : b.amount;
-    return sum + remaining;
-  }, 0);
+    .reduce(
+      (sum, b) => sum + (b.advanceAmount || 0),
+      0
+    );
+
+  const totalRemaining = approvedBookings.reduce(
+    (sum, b) => {
+      const remaining =
+        b.paymentStatus === "paid"
+          ? b.amount - b.advanceAmount
+          : b.amount;
+
+      return sum + remaining;
+    },
+    0
+  );
 
   const weddingBudget = wedding.totalBudget || 0;
-  const budgetLeftToAllocate = Math.max(0, weddingBudget - totalCommitted);
-  const usedPercent = weddingBudget > 0 ? Math.min(100, Math.round((totalCommitted / weddingBudget) * 100)) : 0;
+
+  const budgetLeftToAllocate = Math.max(
+    0,
+    weddingBudget - totalCommitted
+  );
+
+  const usedPercent =
+    weddingBudget > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (totalCommitted / weddingBudget) * 100
+          )
+        )
+      : 0;
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div
+      style={styles.page}
+      className="customer-budget-page"
+    >
+      {/* HEADER */}
+      <div
+        style={styles.header}
+        className="customer-budget-header"
+      >
         <p style={styles.eyebrow}>BUDGET</p>
-        <h1 style={styles.heading}>Wedding Budget</h1>
-        <p style={styles.subtext}>Track what you've planned to spend and what's actually committed.</p>
+
+        <h1
+          style={styles.heading}
+          className="customer-budget-heading"
+        >
+          Wedding Budget
+        </h1>
+
+        <p style={styles.subtext}>
+          Track what you've planned to spend and what's
+          actually committed.
+        </p>
       </div>
 
-      <div style={styles.grid}>
-        <div style={styles.statCard}>
+      {/* STAT CARDS */}
+      <div
+        style={styles.grid}
+        className="customer-budget-grid"
+      >
+        <div
+          style={styles.statCard}
+          className="customer-budget-stat-card"
+        >
           <div style={styles.cardIcon}>💰</div>
-          <div>
-            <p style={styles.statLabel}>Total Budget</p>
-            <p style={styles.statValue}>₹{weddingBudget.toLocaleString("en-IN")}</p>
+
+          <div className="customer-budget-stat-content">
+            <p style={styles.statLabel}>
+              Total Budget
+            </p>
+
+            <p style={styles.statValue}>
+              ₹{weddingBudget.toLocaleString("en-IN")}
+            </p>
           </div>
         </div>
-        <div style={styles.statCard}>
+
+        <div
+          style={styles.statCard}
+          className="customer-budget-stat-card"
+        >
           <div style={styles.cardIcon}>📌</div>
-          <div>
-            <p style={styles.statLabel}>Committed (Approved Bookings)</p>
-            <p style={styles.statValue}>₹{totalCommitted.toLocaleString("en-IN")}</p>
+
+          <div className="customer-budget-stat-content">
+            <p style={styles.statLabel}>
+              Committed (Approved Bookings)
+            </p>
+
+            <p style={styles.statValue}>
+              ₹{totalCommitted.toLocaleString("en-IN")}
+            </p>
           </div>
         </div>
-        <div style={styles.statCard}>
+
+        <div
+          style={styles.statCard}
+          className="customer-budget-stat-card"
+        >
           <div style={styles.cardIcon}>✓</div>
-          <div>
-            <p style={styles.statLabel}>Advance Paid</p>
-            <p style={{...styles.statValue, color: "#2E7D50"}}>₹{totalAdvancePaid.toLocaleString("en-IN")}</p>
+
+          <div className="customer-budget-stat-content">
+            <p style={styles.statLabel}>
+              Advance Paid
+            </p>
+
+            <p
+              style={{
+                ...styles.statValue,
+                color: "#2E7D50",
+              }}
+            >
+              ₹{totalAdvancePaid.toLocaleString("en-IN")}
+            </p>
           </div>
         </div>
-        <div style={styles.statCard}>
+
+        <div
+          style={styles.statCard}
+          className="customer-budget-stat-card"
+        >
           <div style={styles.cardIcon}>⏳</div>
-          <div>
-            <p style={styles.statLabel}>Remaining to Pay</p>
-            <p style={{...styles.statValue, color: "#B8935A"}}>₹{totalRemaining.toLocaleString("en-IN")}</p>
+
+          <div className="customer-budget-stat-content">
+            <p style={styles.statLabel}>
+              Remaining to Pay
+            </p>
+
+            <p
+              style={{
+                ...styles.statValue,
+                color: "#B8935A",
+              }}
+            >
+              ₹{totalRemaining.toLocaleString("en-IN")}
+            </p>
           </div>
         </div>
       </div>
 
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Approved Vendor Bookings</h2>
+      {/* APPROVED BOOKINGS */}
+      <div
+        style={styles.section}
+        className="customer-budget-section"
+      >
+        <h2 style={styles.sectionTitle}>
+          Approved Vendor Bookings
+        </h2>
 
         {approvedBookings.length === 0 ? (
-          <div style={styles.emptyRow}>No approved bookings yet — your budget will populate here once a vendor accepts a request.</div>
+          <div
+            style={styles.emptyRow}
+            className="customer-budget-empty-row"
+          >
+            No approved bookings yet — your budget will
+            populate here once a vendor accepts a request.
+          </div>
         ) : (
           <div style={styles.list}>
             {approvedBookings.map((b) => (
-              <div key={b._id} style={styles.row}>
-                <div>
-                  <strong style={styles.rowTitle}>{b.vendor?.businessName || "Vendor"}</strong>
-                  <p style={styles.rowSub}>{b.vendor?.category || ""}</p>
+              <div
+                key={b._id}
+                style={styles.row}
+                className="customer-budget-row"
+              >
+                <div
+                  style={styles.rowInfo}
+                  className="customer-budget-row-info"
+                >
+                  <strong style={styles.rowTitle}>
+                    {b.vendor?.businessName || "Vendor"}
+                  </strong>
+
+                  <p style={styles.rowSub}>
+                    {b.vendor?.category || ""}
+                  </p>
                 </div>
-                <div style={styles.rowAmounts}>
-                  <span style={styles.rowAmount}>₹{(b.amount || 0).toLocaleString("en-IN")}</span>
-                  <span style={{...styles.rowBadge, ...(b.paymentStatus === "paid" ? styles.paidBadge : styles.unpaidBadge)}}>
-                    {b.paymentStatus === "paid" ? "Advance Paid" : "Advance Pending"}
+
+                <div
+                  style={styles.rowAmounts}
+                  className="customer-budget-row-amounts"
+                >
+                  <span style={styles.rowAmount}>
+                    ₹
+                    {(b.amount || 0).toLocaleString(
+                      "en-IN"
+                    )}
+                  </span>
+
+                  <span
+                    style={{
+                      ...styles.rowBadge,
+                      ...(b.paymentStatus === "paid"
+                        ? styles.paidBadge
+                        : styles.unpaidBadge),
+                    }}
+                  >
+                    {b.paymentStatus === "paid"
+                      ? "Advance Paid"
+                      : "Advance Pending"}
                   </span>
                 </div>
               </div>
@@ -123,6 +284,172 @@ const CustomerBudget = () => {
           </div>
         )}
       </div>
+
+      {/* RESPONSIVE CSS */}
+      <style>{`
+        @media (max-width: 1024px) {
+          .customer-budget-page {
+            padding: 30px 25px !important;
+          }
+
+          .customer-budget-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .customer-budget-page {
+            padding: 28px 20px !important;
+          }
+
+          .customer-budget-heading {
+            font-size: 29px !important;
+          }
+
+          .customer-budget-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 14px !important;
+          }
+
+          .customer-budget-stat-card {
+            padding: 16px !important;
+          }
+
+          .customer-budget-stat-content {
+            min-width: 0;
+          }
+
+          .customer-budget-stat-card .customer-budget-stat-content p {
+            overflow-wrap: anywhere;
+          }
+
+          .customer-budget-row {
+            padding: 15px 17px !important;
+          }
+
+          .customer-budget-row-info {
+            min-width: 0;
+          }
+
+          .customer-budget-row-info strong,
+          .customer-budget-row-info p {
+            overflow-wrap: anywhere;
+          }
+
+          .customer-budget-row-amounts {
+            flex-shrink: 0;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .customer-budget-page {
+            padding: 22px 15px !important;
+          }
+
+          .customer-budget-header {
+            margin-bottom: 22px !important;
+          }
+
+          .customer-budget-heading {
+            font-size: 27px !important;
+          }
+
+          .customer-budget-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .customer-budget-stat-card {
+            padding: 16px !important;
+          }
+
+          .customer-budget-section {
+            margin-top: 5px !important;
+          }
+
+          .customer-budget-section h2 {
+            font-size: 20px !important;
+            line-height: 1.3;
+          }
+
+          .customer-budget-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            padding: 16px !important;
+          }
+
+          .customer-budget-row-info {
+            width: 100%;
+          }
+
+          .customer-budget-row-amounts {
+            width: 100%;
+            align-items: flex-start !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            flex-wrap: wrap;
+            gap: 8px !important;
+          }
+
+          .customer-budget-row-amounts .customer-budget-row-amount {
+            white-space: nowrap;
+          }
+
+          .customer-budget-empty-row {
+            padding: 22px 17px !important;
+            line-height: 1.6;
+          }
+
+          .customer-budget-empty-card {
+            margin: 35px auto !important;
+            padding: 30px 20px !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .customer-budget-page {
+            padding: 18px 12px !important;
+          }
+
+          .customer-budget-heading {
+            font-size: 24px !important;
+          }
+
+          .customer-budget-stat-card {
+            padding: 14px !important;
+          }
+
+          .customer-budget-stat-card .customer-budget-stat-content {
+            min-width: 0;
+          }
+
+          .customer-budget-stat-card .customer-budget-stat-content p {
+            font-size: 10px !important;
+          }
+
+          .customer-budget-stat-card .customer-budget-stat-content p:last-child {
+            font-size: 16px !important;
+          }
+
+          .customer-budget-section h2 {
+            font-size: 18px !important;
+          }
+
+          .customer-budget-row {
+            padding: 14px !important;
+          }
+
+          .customer-budget-row-amounts {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .customer-budget-empty-card {
+            padding: 25px 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -169,6 +496,7 @@ const styles = {
     color: "#6B6560",
     fontSize: "14px",
     marginTop: "8px",
+    lineHeight: 1.5,
   },
 
   grid: {
@@ -186,6 +514,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "13px",
+    boxSizing: "border-box",
+    minWidth: 0,
   },
 
   cardIcon: {
@@ -206,6 +536,7 @@ const styles = {
     margin: "0 0 5px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
+    lineHeight: 1.4,
   },
 
   statValue: {
@@ -213,6 +544,7 @@ const styles = {
     fontSize: "18px",
     fontWeight: 600,
     margin: 0,
+    overflowWrap: "anywhere",
   },
 
   progressCard: {
@@ -278,17 +610,26 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    boxSizing: "border-box",
+    minWidth: 0,
+  },
+
+  rowInfo: {
+    minWidth: 0,
+    maxWidth: "100%",
   },
 
   rowTitle: {
     color: "#3D5A50",
     fontSize: "15px",
+    overflowWrap: "anywhere",
   },
 
   rowSub: {
     margin: "3px 0 0",
     color: "#999",
     fontSize: "12px",
+    overflowWrap: "anywhere",
   },
 
   rowAmounts: {
@@ -302,6 +643,7 @@ const styles = {
     fontFamily: "Georgia, serif",
     fontSize: "17px",
     color: "#3D5A50",
+    whiteSpace: "nowrap",
   },
 
   rowBadge: {
@@ -309,6 +651,7 @@ const styles = {
     fontWeight: 600,
     padding: "4px 10px",
     borderRadius: "20px",
+    whiteSpace: "nowrap",
   },
 
   paidBadge: {
@@ -329,6 +672,8 @@ const styles = {
     textAlign: "center",
     color: "#6B6560",
     fontSize: "14px",
+    lineHeight: 1.6,
+    boxSizing: "border-box",
   },
 
   emptyCard: {
@@ -339,6 +684,8 @@ const styles = {
     borderRadius: "14px",
     padding: "40px",
     textAlign: "center",
+    boxSizing: "border-box",
+    width: "100%",
   },
 
   emptyIcon: {
@@ -350,6 +697,7 @@ const styles = {
     fontFamily: "Georgia, serif",
     fontWeight: 400,
     color: "#2B2B2B",
+    lineHeight: 1.3,
   },
 
   emptyText: {
@@ -368,7 +716,8 @@ const styles = {
     fontSize: "14px",
     fontWeight: 500,
     cursor: "pointer",
+    maxWidth: "100%",
   },
-}
+};
 
 export default CustomerBudget;

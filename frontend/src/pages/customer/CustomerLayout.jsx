@@ -1,67 +1,267 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { useState } from "react";
 import { logout } from "../../features/auth/authSlice";
 import axiosInstance from "../../services/axiosInstance";
 
 const CustomerLayout = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate
+  const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const menuItems = [
-    {label: "Dashboard",path: "/customer/dashboard",icon: "⌂"},
+    { label: "Dashboard", path: "/customer/dashboard", icon: "⌂" },
     { label: "My Wedding", path: "/customer/wedding", icon: "💍" },
-    {label: "Vendors",path: "/customer/vendors",icon: "🏪"},
-    {label: "Budget",path: "/customer/budget",icon: "💰"},
-    {label: "Bookings",path: "/customer/bookings",icon: "📋"},
-    {label:"Messages",path:"/customer/messages",icon:"💬"}
-  ]
+    { label: "Vendors", path: "/customer/vendors", icon: "🏪" },
+    { label: "Budget", path: "/customer/budget", icon: "💰" },
+    { label: "Bookings", path: "/customer/bookings", icon: "📋" },
+    { label: "Messages", path: "/customer/messages", icon: "💬" },
+  ];
+
   const handleLogout = async () => {
-    try{
-      await axiosInstance.post("/auth/logout")
-    }catch(err){
-      console.log("Logout error:",err)
+    try {
+      await axiosInstance.post("/auth/logout");
+    } catch (err) {
+      console.log("Logout error:", err);
     }
+
     dispatch(logout());
-    navigate("/login")
-  }
+    navigate("/login");
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
 
   return (
     <div style={styles.layout}>
-      <aside className="customer-sidebar" style={styles.sidebar}>
-          <div style={styles.logoSection}>
+
+      {/* Mobile Header */}
+      <div className="customer-mobile-header">
+        <button
+          className="customer-mobile-menu-button"
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          ☰
+        </button>
+
+        <div className="customer-mobile-title">
+          <span>One Journey</span>
+        </div>
+      </div>
+
+      {/* Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="customer-sidebar-overlay"
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`customer-sidebar ${
+          isSidebarOpen ? "customer-sidebar-open" : ""
+        }`}
+        style={styles.sidebar}
+      >
+
+        {/* Mobile Close Button */}
+        <button
+          className="customer-sidebar-close"
+          onClick={closeSidebar}
+        >
+          ×
+        </button>
+
+        <div style={styles.logoSection}>
           <h2 style={styles.logo}>One Journey</h2>
           <p style={styles.logoSubtext}>Wedding Planner</p>
         </div>
-          <nav className="customer-menu" style={styles.menu}>   
-                   {menuItems.map((item) => (
-            <NavLink key={item.path} to={item.path}
-              style={({ isActive }) => ({...styles.menuItem,...(isActive ? styles.activeMenuItem : {}),})}>
+
+        <nav className="customer-menu" style={styles.menu}>
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={closeSidebar}
+              style={({ isActive }) => ({
+                ...styles.menuItem,
+                ...(isActive ? styles.activeMenuItem : {}),
+              })}
+            >
               <span style={styles.icon}>{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
+
         <div style={styles.bottomSection}>
 
-          <NavLink to="/customer/profile" style={({ isActive }) => ({
-              ...styles.menuItem, ...(isActive ? styles.activeMenuItem : {}),
-            })}>
+          <NavLink
+            to="/customer/profile"
+            onClick={closeSidebar}
+            style={({ isActive }) => ({
+              ...styles.menuItem,
+              ...(isActive ? styles.activeMenuItem : {}),
+            })}
+          >
             <span style={styles.icon}>⚙️</span>
             <span>Profile</span>
           </NavLink>
 
-          <button onClick={handleLogout} style={styles.logoutButton}>
+          <button
+            onClick={handleLogout}
+            style={styles.logoutButton}
+          >
             <span style={styles.icon}>↪</span>
             <span>Logout</span>
           </button>
 
         </div>
+      </aside>
 
-      </aside> 
-        <main className="customer-main" style={styles.mainContent}>
-          <Outlet />
+      {/* Main Content */}
+      <main
+        className="customer-main"
+        style={styles.mainContent}
+      >
+        <Outlet />
       </main>
 
+      <style>{`
+
+        /* =========================
+           MOBILE HEADER
+        ========================= */
+
+        .customer-mobile-header {
+          display: none;
+        }
+
+        .customer-mobile-menu-button {
+          border: none;
+          background: transparent;
+          color: #3D5A50;
+          font-size: 25px;
+          cursor: pointer;
+          padding: 5px;
+        }
+
+        .customer-mobile-title {
+          font-family: Georgia, serif;
+          font-size: 20px;
+          color: #3D5A50;
+        }
+
+        /* =========================
+           SIDEBAR CLOSE BUTTON
+        ========================= */
+
+        .customer-sidebar-close {
+          display: none;
+        }
+
+        /* =========================
+           MOBILE OVERLAY
+        ========================= */
+
+        .customer-sidebar-overlay {
+          display: none;
+        }
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (max-width: 768px) {
+
+          .customer-mobile-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 58px;
+
+            display: flex;
+            align-items: center;
+            gap: 12px;
+
+            padding: 0 15px;
+
+            background: #FFFFFF;
+            border-bottom: 1px solid #E5DFD5;
+
+            z-index: 1000;
+            box-sizing: border-box;
+          }
+
+          .customer-sidebar {
+            width: 250px !important;
+
+            transform: translateX(-100%);
+            transition: transform 0.25s ease;
+
+            z-index: 1200;
+
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+          }
+
+          .customer-sidebar.customer-sidebar-open {
+            transform: translateX(0);
+          }
+
+          .customer-sidebar-close {
+            display: block;
+
+            position: absolute;
+            top: 12px;
+            right: 12px;
+
+            border: none;
+            background: transparent;
+
+            color: #6B6560;
+            font-size: 27px;
+            line-height: 1;
+
+            cursor: pointer;
+          }
+
+          .customer-sidebar-overlay {
+            display: block;
+
+            position: fixed;
+            inset: 0;
+
+            background: rgba(0, 0, 0, 0.35);
+
+            z-index: 1100;
+          }
+
+          .customer-main {
+            margin-left: 0 !important;
+            width: 100% !important;
+
+            padding-top: 58px;
+
+            box-sizing: border-box;
+          }
+        }
+
+        /* =========================
+           DESKTOP
+        ========================= */
+
+        @media (min-width: 769px) {
+
+          .customer-sidebar {
+            transform: translateX(0);
+          }
+
+        }
+
+      `}</style>
     </div>
   );
 };
@@ -137,6 +337,7 @@ const styles = {
     width: "22px",
     fontSize: "17px",
     textAlign: "center",
+    flexShrink: 0,
   },
 
   bottomSection: {

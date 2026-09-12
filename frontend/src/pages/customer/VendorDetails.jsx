@@ -1,86 +1,100 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getVendorAvailability, getVendors } from "../../services/vendorService";
+import {
+  getVendorAvailability,
+  getVendors,
+} from "../../services/vendorService";
 import { getMyWedding } from "../../services/weddingService";
 import { createBooking } from "../../services/bookingService";
 import { getVendorReviews } from "../../services/reviewService";
 import { getOrCreateConversation } from "../../services/chatService";
 
 const VendorDetails = () => {
-    const { vendorId } = useParams();
-    const navigate = useNavigate();
+  const { vendorId } = useParams();
+  const navigate = useNavigate();
 
-    const [vendor, setVendor] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+  const [vendor, setVendor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    const [wedding,setWedding] = useState(null)
-    const [serviceDate,setServiceDate] = useState("")
-    const [showBookingForm,setShowBookingForm] = useState(false)
-    const [bookingLoading,setBookingLoading] = useState(false)
-    const [bookingError,setBookingError] = useState("")
-    const [bookingSuccess,setBookingSuccess] = useState("")
+  const [wedding, setWedding] = useState(null);
+  const [serviceDate, setServiceDate] = useState("");
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingSuccess, setBookingSuccess] = useState("");
 
-    const[availability,setAvailability] = useState([])
-    const[selectedSlot,setSelectedSlot] = useState(null)
-    const[selectedPackage, setSelectedPackage] = useState(null)
-    const [packageError, setPackageError] = useState("")
-    const [reviews, setReviews] = useState([]);
-    const [avgRating, setAvgRating] = useState(0);
-    const [reviewCount, setReviewCount] = useState(0);
+  const [availability, setAvailability] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [packageError, setPackageError] = useState("");
 
+  const [reviews, setReviews] = useState([]);
+  const [avgRating, setAvgRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     fetchVendor();
   }, [vendorId]);
 
-    useEffect(() => {
-    fetchWedding()
-  },[])
+  useEffect(() => {
+    fetchWedding();
+  }, []);
 
   useEffect(() => {
-  fetchReviews();
-}, [vendorId]);
+    fetchReviews();
+  }, [vendorId]);
 
-const fetchReviews = async () => {
-  try {
-    const res = await getVendorReviews(vendorId);
-    setReviews(res.data.reviews);
-    setAvgRating(res.data.avgRating);
-    setReviewCount(res.data.count);
-  } catch (err) {
-    console.log("Reviews fetch error", err);
-  }
-};
-  
+  const fetchReviews = async () => {
+    try {
+      const res = await getVendorReviews(vendorId);
+
+      setReviews(res.data.reviews);
+      setAvgRating(res.data.avgRating);
+      setReviewCount(res.data.count);
+    } catch (err) {
+      console.log("Reviews fetch error", err);
+    }
+  };
+
   const fetchVendor = async () => {
     try {
       setLoading(true);
       setError("");
+
       const res = await getVendors();
-      const foundVendor = res.data?.find((item) => item._id === vendorId)
+
+      const foundVendor = res.data?.find(
+        (item) => item._id === vendorId
+      );
+
       if (!foundVendor) {
         setError("Vendor not found");
         return;
       }
+
       setVendor(foundVendor);
     } catch (err) {
       console.error("Vendor details error:", err);
-      setError(err.response?.data?.message ||"Failed to load vendor details");
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to load vendor details"
+      );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const fetchWedding = async () => {
-    try{
-        const res = await getMyWedding()
-        setWedding(res.data)
-    }catch(error) {
-        console.log("Wedding fetch error",error)
-        setWedding(null)
+    try {
+      const res = await getMyWedding();
+      setWedding(res.data);
+    } catch (error) {
+      console.log("Wedding fetch error", error);
+      setWedding(null);
     }
-  }
+  };
 
   const formatCategory = (value) => {
     const labels = {
@@ -90,94 +104,109 @@ const fetchReviews = async () => {
       EventManagement: "Event Management",
       WeddingHall: "Wedding Hall",
       PreMarriageCounselling: "Pre-Marriage Counselling",
-    }
+    };
+
     return labels[value] || value;
-  }
+  };
 
-const handleMessageVendor = async () => {
-  try {
-    const res = await getOrCreateConversation(vendor.user._id);
-
-    if (res.success) {
-      navigate("/customer/messages", {
-        state: {
-          conversation: res.data,
-        },
-      });
-    }
-  } catch (error) {
-    console.error("Chat error:", error);
-  }
-}
-
-const handleBooking = async (e) => {
-    e.preventDefault()
-
-    if(!wedding) {
-        setBookingError("Please create your wedding first")
-        return;
-    }
-    if(!serviceDate){
-        setBookingError("Please select a service date")
-        return;
-    }
-    if(!selectedPackage) {
-      setBookingError("Please select a package")
-       return
-    }
-    if(!selectedSlot) {
-      setBookingError("Please select an available time slot")
-      return
-    }
+  const handleMessageVendor = async () => {
     try {
-        setBookingLoading(true)
-        setBookingError("")
-        setBookingSuccess("")
+      const res = await getOrCreateConversation(vendor.user._id);
 
-   const res = await createBooking({
+      if (res.success) {
+        navigate("/customer/messages", {
+          state: {
+            conversation: res.data,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+    }
+  };
+
+  const handleBooking = async (e) => {
+    e.preventDefault();
+
+    if (!wedding) {
+      setBookingError("Please create your wedding first");
+      return;
+    }
+
+    if (!serviceDate) {
+      setBookingError("Please select a service date");
+      return;
+    }
+
+    if (!selectedPackage) {
+      setBookingError("Please select a package");
+      return;
+    }
+
+    if (!selectedSlot) {
+      setBookingError("Please select an available time slot");
+      return;
+    }
+
+    try {
+      setBookingLoading(true);
+      setBookingError("");
+      setBookingSuccess("");
+
+      const res = await createBooking({
         weddingId: wedding._id,
         vendorId: vendor._id,
         serviceDate,
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
-        packageId: selectedPackage._id
-      })
-   setBookingSuccess(res.message || "Booking request sent successfully")
-   setShowBookingForm(false)
-   setServiceDate("")
-   setSelectedSlot(null)
-   setSelectedPackage(null)
-   setAvailability([])
-   setPackageError("")
+        packageId: selectedPackage._id,
+      });
 
-    }catch(error) {
-        console.log("Booking error",error)
-        setBookingError(error.response?.data?.message || "Failed to create booking")
-    }finally {
-        setBookingLoading(false)
+      setBookingSuccess(
+        res.message || "Booking request sent successfully"
+      );
+
+      setShowBookingForm(false);
+      setServiceDate("");
+      setSelectedSlot(null);
+      setSelectedPackage(null);
+      setAvailability([]);
+      setPackageError("");
+    } catch (error) {
+      console.log("Booking error", error);
+
+      setBookingError(
+        error.response?.data?.message ||
+          "Failed to create booking"
+      );
+    } finally {
+      setBookingLoading(false);
     }
-  }
-
+  };
 
   const handleDateChange = async (e) => {
-    const date = e.target.value
+    const date = e.target.value;
 
-    setServiceDate(date)
-    setSelectedSlot(null)
-    setAvailability([])
-    setBookingError("")
+    setServiceDate(date);
+    setSelectedSlot(null);
+    setAvailability([]);
+    setBookingError("");
 
-    if(!date) return
+    if (!date) return;
 
-    try{
-      const res = await getVendorAvailability(vendorId,date)
-      setAvailability(res.data || [])
-    }catch(error) {
-      console.error("Availability error:" ,error)
-      setBookingError(error.response?.data?.message || "Failed to load available slots")
+    try {
+      const res = await getVendorAvailability(vendorId, date);
+
+      setAvailability(res.data || []);
+    } catch (error) {
+      console.error("Availability error:", error);
+
+      setBookingError(
+        error.response?.data?.message ||
+          "Failed to load available slots"
+      );
     }
-  }
-
+  };
 
   if (loading) {
     return (
@@ -193,249 +222,661 @@ const handleBooking = async (e) => {
       <div style={styles.center}>
         <h2>{error}</h2>
 
-        <button style={styles.backButton} onClick={() => navigate(-1)}>
-          ← Go Back</button>
+        <button
+          style={styles.backButton}
+          onClick={() => navigate(-1)}
+        >
+          ← Go Back
+        </button>
       </div>
     );
   }
+
   return (
-<div style={styles.page}>
+    <div style={styles.page}>
 
-    <button onClick={() => navigate(-1)} style={styles.backLink}>← Back to Vendors</button>
-        <div style={styles.hero}>
-            <div style={styles.icon}>💍</div>
+      <button
+        onClick={() => navigate(-1)}
+        style={styles.backLink}
+      >
+        ← Back to Vendors
+      </button>
 
-            <div>
-                <p style={styles.eyebrow}>{formatCategory(vendor.category)}</p>
-                <h1 style={styles.title}>{vendor.businessName}</h1>
-                <span style={styles.status}> ✓ Approved Vendor</span>
-            </div>
+      {/* HERO */}
+      <div style={styles.hero}>
+        <div style={styles.icon}>💍</div>
+
+        <div style={styles.heroInfo}>
+          <p style={styles.eyebrow}>
+            {formatCategory(vendor.category)}
+          </p>
+
+          <h1 style={styles.title}>
+            {vendor.businessName}
+          </h1>
+
+          <span style={styles.status}>
+            ✓ Approved Vendor
+          </span>
         </div>
-    <div style={styles.content}>
-      <section style={styles.card}>
-          <h2 style={styles.sectionTitle}>Service Packages</h2>
-            {packageError && (
-        <div style={styles.packageError}>⚠️ {packageError}</div>
-  )}
-           {!vendor.packages || vendor.packages.length === 0 ? (
-           <p style={styles.description}>This vendor has not added any packages yet.</p>
-          ) : (
-         <div style={styles.packageList}>
-            {vendor.packages.map((pkg) => (
-           <div key={pkg._id} style={{...styles.packageCard,...(selectedPackage?._id === pkg._id
-              ? styles.selectedPackage
-              : {})
-          }}
-         onClick={(e) => {
-             e.stopPropagation()
-             setSelectedPackage(pkg)
-             setPackageError("")
-             setBookingError("")
-        }}>
-          <div style={styles.packageInfo}>
-            <span style={styles.packageType}>{pkg.packageType}</span>
-            <h3 style={styles.packageName}>{pkg.packageName}</h3>
-            <p style={styles.packageDescription}>{pkg.description}</p>
-          </div>
-
-          <div style={styles.packageRight}>
-            <strong style={styles.packagePrice}>₹{Number(pkg.price).toLocaleString("en-IN")}</strong>
-            <button type="button"
-              style={selectedPackage?._id === pkg._id
-                  ? styles.selectedPackageButton
-                  : styles.selectPackageButton
-              }
-                   onClick={(e) => {
-                      e.stopPropagation()
-                       setSelectedPackage(pkg)
-                       setPackageError("")
-                       setBookingError("")
-                      }}>
-                     {selectedPackage?._id === pkg._id
-                     ? "✓ Selected"
-                    : "Select Package"}
-                  </button>
-              </div>
-            </div>
-          ))}
-         </div>
-         )}
-      </section>
-        <section style={styles.card}>
-          <h2 style={styles.sectionTitle}>About this vendor</h2>
-          <p style={styles.description}>{vendor.description ||"This vendor has not added a description yet."}</p>
-        </section>
-        <section style={styles.card}>
-  <h2 style={styles.sectionTitle}>Reviews {reviewCount > 0 && `(${avgRating} ★ · ${reviewCount})`}</h2>
-  {reviews.length === 0 ? (
-    <p style={styles.description}>No reviews yet.</p>
-  ) : (
-    reviews.map((r) => (
-      <div key={r._id} style={{ borderBottom: "1px solid #EEE8DF", padding: "14px 0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <strong style={{ color: "#3D5A50" }}>{r.customer?.name || "Customer"}</strong>
-          <span style={{ color: "#B8935A" }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
-        </div>
-        {r.comment && <p style={{ margin: "6px 0 0", color: "#6B6560", fontSize: "13px" }}>{r.comment}</p>}
       </div>
-    ))
-  )}
-</section>
-       {vendor.user && (
+
+      <div style={styles.content}>
+
+        {/* SERVICE PACKAGES */}
         <section style={styles.card}>
-        <h2 style={styles.sectionTitle}>Contact Information</h2>
-        <div style={styles.infoRow}>
-            <span style={styles.infoIcon}>👤</span>
-        <div>
-            <p style={styles.label}>Owner</p>
-            <p style={styles.value}>{vendor.user.name}</p>
-        </div>
-    </div>
-
-    <div style={styles.infoRow}>
-        <span style={styles.infoIcon}>📧</span>
-
-      <div>
-        <p style={styles.label}>Email</p>
-        <p style={styles.value}>{vendor.user.email}</p>
-      </div>
-    </div>
-        {vendor.user.phone && (
-    <div style={styles.infoRow}>
-        <span style={styles.infoIcon}>📞</span>
-        <div>
-            <p style={styles.label}>Phone</p>
-            <p style={styles.value}>{vendor.user.phone}</p>
-        </div>
-    </div>)}
-    </section>)}
-  <section style={styles.bookingCard}>
-    <div>
-       <p style={styles.bookingSmall}>READY TO PLAN?</p>
-       <h2 style={styles.bookingTitle}>Interested in this vendor?</h2>
-       <p style={styles.bookingText}>Start your journey by requesting a booking.</p>
-     </div>
-
-   <div style={styles.actionButtons}>
-      <button style={styles.messageButton} onClick={handleMessageVendor}>
-        💬 Message Vendor
-     </button>
-
-     <button style={styles.bookButton} onClick={() => {
-          if (!selectedPackage) {
-              setPackageError("Please select a package before booking this vendor.")
-           return
-          }
-           setPackageError("")
-           setShowBookingForm(true)
-           setBookingError("")
-           setBookingSuccess("")
-           }}>
-        Book This Vendor →
-    </button>
+          <h2 style={styles.sectionTitle}>
+            Service Packages
+          </h2>
 
           {packageError && (
-         <div style={styles.packageError}>
-           ⚠️ {packageError}
-         </div>
-         )}
+            <div style={styles.packageError}>
+              ⚠️ {packageError}
+            </div>
+          )}
 
-   </div>
-</section>
-                {showBookingForm && (
+          {!vendor.packages ||
+          vendor.packages.length === 0 ? (
+            <p style={styles.description}>
+              This vendor has not added any packages yet.
+            </p>
+          ) : (
+            <div style={styles.packageList}>
+              {vendor.packages.map((pkg) => (
+                <div
+                  key={pkg._id}
+                  style={{
+                    ...styles.packageCard,
+                    ...(selectedPackage?._id === pkg._id
+                      ? styles.selectedPackage
+                      : {}),
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+
+                    setSelectedPackage(pkg);
+                    setPackageError("");
+                    setBookingError("");
+                  }}
+                >
+                  <div style={styles.packageInfo}>
+                    <span style={styles.packageType}>
+                      {pkg.packageType}
+                    </span>
+
+                    <h3 style={styles.packageName}>
+                      {pkg.packageName}
+                    </h3>
+
+                    <p style={styles.packageDescription}>
+                      {pkg.description}
+                    </p>
+                  </div>
+
+                  <div style={styles.packageRight}>
+                    <strong style={styles.packagePrice}>
+                      ₹
+                      {Number(pkg.price).toLocaleString(
+                        "en-IN"
+                      )}
+                    </strong>
+
+                    <button
+                      type="button"
+                      style={
+                        selectedPackage?._id === pkg._id
+                          ? styles.selectedPackageButton
+                          : styles.selectPackageButton
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        setSelectedPackage(pkg);
+                        setPackageError("");
+                        setBookingError("");
+                      }}
+                    >
+                      {selectedPackage?._id === pkg._id
+                        ? "✓ Selected"
+                        : "Select Package"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ABOUT */}
+        <section style={styles.card}>
+          <h2 style={styles.sectionTitle}>
+            About this vendor
+          </h2>
+
+          <p style={styles.description}>
+            {vendor.description ||
+              "This vendor has not added a description yet."}
+          </p>
+        </section>
+
+        {/* REVIEWS */}
+        <section style={styles.card}>
+          <h2 style={styles.sectionTitle}>
+            Reviews{" "}
+            {reviewCount > 0 &&
+              `(${avgRating} ★ · ${reviewCount})`}
+          </h2>
+
+          {reviews.length === 0 ? (
+            <p style={styles.description}>
+              No reviews yet.
+            </p>
+          ) : (
+            reviews.map((r) => (
+              <div
+                key={r._id}
+                style={styles.reviewItem}
+              >
+                <div style={styles.reviewHeader}>
+                  <strong style={styles.reviewCustomer}>
+                    {r.customer?.name || "Customer"}
+                  </strong>
+
+                  <span style={styles.reviewRating}>
+                    {"★".repeat(r.rating)}
+                    {"☆".repeat(5 - r.rating)}
+                  </span>
+                </div>
+
+                {r.comment && (
+                  <p style={styles.reviewComment}>
+                    {r.comment}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </section>
+
+        {/* CONTACT */}
+        {vendor.user && (
+          <section style={styles.card}>
+            <h2 style={styles.sectionTitle}>
+              Contact Information
+            </h2>
+
+            <div style={styles.infoRow}>
+              <span style={styles.infoIcon}>👤</span>
+
+              <div style={styles.infoContent}>
+                <p style={styles.label}>Owner</p>
+                <p style={styles.value}>
+                  {vendor.user.name}
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.infoRow}>
+              <span style={styles.infoIcon}>📧</span>
+
+              <div style={styles.infoContent}>
+                <p style={styles.label}>Email</p>
+                <p style={styles.value}>
+                  {vendor.user.email}
+                </p>
+              </div>
+            </div>
+
+            {vendor.user.phone && (
+              <div style={styles.infoRow}>
+                <span style={styles.infoIcon}>📞</span>
+
+                <div style={styles.infoContent}>
+                  <p style={styles.label}>Phone</p>
+
+                  <p style={styles.value}>
+                    {vendor.user.phone}
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* BOOKING CTA */}
+        <section style={styles.bookingCard}>
+          <div style={styles.bookingInfo}>
+            <p style={styles.bookingSmall}>
+              READY TO PLAN?
+            </p>
+
+            <h2 style={styles.bookingTitle}>
+              Interested in this vendor?
+            </h2>
+
+            <p style={styles.bookingText}>
+              Start your journey by requesting a booking.
+            </p>
+          </div>
+
+          <div style={styles.actionButtons}>
+            <button
+              style={styles.messageButton}
+              onClick={handleMessageVendor}
+            >
+              💬 Message Vendor
+            </button>
+
+            <button
+              style={styles.bookButton}
+              onClick={() => {
+                if (!selectedPackage) {
+                  setPackageError(
+                    "Please select a package before booking this vendor."
+                  );
+                  return;
+                }
+
+                setPackageError("");
+                setShowBookingForm(true);
+                setBookingError("");
+                setBookingSuccess("");
+              }}
+            >
+              Book This Vendor →
+            </button>
+
+            {packageError && (
+              <div style={styles.packageError}>
+                ⚠️ {packageError}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* BOOKING FORM */}
+        {showBookingForm && (
           <div style={styles.bookingForm}>
-           <div style={styles.formHeader}>
-         <div>
-            <p style={styles.bookingSmall}> BOOKING REQUEST</p>
-           <h2 style={styles.formTitle}>Book {vendor.businessName}</h2>
-         </div>
-         <button style={styles.closeButton} onClick={() => setShowBookingForm(false)}>✕</button>
-       </div>
-             {wedding.totalBudget > 0 &&
-            selectedPackage &&
-        selectedPackage.price > wedding.totalBudget && (
-         <div style={styles.budgetWarning}>
-           ⚠️ This package price (
-           ₹{Number(selectedPackage.price).toLocaleString("en-IN")}
-          ) exceeds your total wedding budget (
-           ₹{Number(wedding.totalBudget).toLocaleString("en-IN")}
-           ).
-         </div>
-        )}
 
-     {!wedding ? (
-       <div style={styles.formMessage}>
-         <h3>No Wedding Found 💍</h3>
-          <p>Please create your wedding before booking a vendor.</p>
-          <button style={styles.createWeddingButton} onClick={() => navigate("/customer/wedding")}>Go to My Wedding
-          </button>
-        </div>
-    ) : (
-      <form onSubmit={handleBooking}>
-        <div style={styles.formGroup}>
-  <label style={styles.formLabel}>Selected Package</label>
+            <div style={styles.formHeader}>
+              <div>
+                <p style={styles.bookingSmall}>
+                  BOOKING REQUEST
+                </p>
 
-        {selectedPackage ? (
-          <div style={styles.selectedPackageBox}>
-          <div>
-            <strong>{selectedPackage.packageName}</strong>
-            <span>{selectedPackage.packageType} Package</span>
-           </div>
-           <strong>₹{Number(selectedPackage.price).toLocaleString("en-IN")}</strong>
+                <h2 style={styles.formTitle}>
+                  Book {vendor.businessName}
+                </h2>
+              </div>
+
+              <button
+                style={styles.closeButton}
+                onClick={() =>
+                  setShowBookingForm(false)
+                }
+              >
+                ✕
+              </button>
+            </div>
+
+            {wedding?.totalBudget > 0 &&
+              selectedPackage &&
+              selectedPackage.price >
+                wedding.totalBudget && (
+                <div style={styles.budgetWarning}>
+                  ⚠️ This package price (
+                  ₹
+                  {Number(
+                    selectedPackage.price
+                  ).toLocaleString("en-IN")}
+                  ) exceeds your total wedding budget (
+                  ₹
+                  {Number(
+                    wedding.totalBudget
+                  ).toLocaleString("en-IN")}
+                  ).
+                </div>
+              )}
+
+            {!wedding ? (
+              <div style={styles.formMessage}>
+                <h3>No Wedding Found 💍</h3>
+
+                <p>
+                  Please create your wedding before
+                  booking a vendor.
+                </p>
+
+                <button
+                  style={styles.createWeddingButton}
+                  onClick={() =>
+                    navigate("/customer/wedding")
+                  }
+                >
+                  Go to My Wedding
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleBooking}>
+
+                {/* SELECTED PACKAGE */}
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>
+                    Selected Package
+                  </label>
+
+                  {selectedPackage ? (
+                    <div style={styles.selectedPackageBox}>
+                      <div style={styles.selectedPackageInfo}>
+                        <strong>
+                          {selectedPackage.packageName}
+                        </strong>
+
+                        <span>
+                          {selectedPackage.packageType} Package
+                        </span>
+                      </div>
+
+                      <strong>
+                        ₹
+                        {Number(
+                          selectedPackage.price
+                        ).toLocaleString("en-IN")}
+                      </strong>
+                    </div>
+                  ) : (
+                    <p style={styles.noPackage}>
+                      Please select a package above
+                      before booking.
+                    </p>
+                  )}
+                </div>
+
+                {/* WEDDING */}
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>
+                    Your Wedding
+                  </label>
+
+                  <div style={styles.weddingBox}>
+                    <strong>
+                      {wedding.brideName} &{" "}
+                      {wedding.groomName}
+                    </strong>
+
+                    <span>
+                      {new Date(
+                        wedding.weddingDate
+                      ).toLocaleDateString("en-US", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* SERVICE DATE */}
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>
+                    Service Date
+                  </label>
+
+                  <input
+                    type="date"
+                    value={serviceDate}
+                    onChange={handleDateChange}
+                    style={styles.dateInput}
+                  />
+
+                  {serviceDate && (
+                    <div style={styles.slotSection}>
+                      <label style={styles.formLabel}>
+                        Available Time Slots
+                      </label>
+
+                      {availability.length === 0 ? (
+                        <p style={styles.noSlots}>
+                          No available slots for this
+                          date.
+                        </p>
+                      ) : (
+                        <div style={styles.slotGrid}>
+                          {availability.map((slot) => (
+                            <button
+                              key={slot._id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedSlot(slot)
+                              }
+                              style={{
+                                ...styles.slotButton,
+                                ...(selectedSlot?._id ===
+                                slot._id
+                                  ? styles.selectedSlot
+                                  : {}),
+                              }}
+                            >
+                              {slot.startTime} -{" "}
+                              {slot.endTime}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {bookingError && (
+                  <div style={styles.formError}>
+                    {bookingError}
+                  </div>
+                )}
+
+                {bookingSuccess && (
+                  <div style={styles.formSuccess}>
+                    {bookingSuccess}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  style={styles.submitButton}
+                  disabled={bookingLoading}
+                >
+                  {bookingLoading
+                    ? "Sending Request..."
+                    : "Send Booking Request →"}
+                </button>
+              </form>
+            )}
           </div>
-       ) : (
-          <p style={styles.noPackage}>Please select a package above before booking.</p>
         )}
-    </div>
-        <div style={styles.formGroup}>
-          <label style={styles.formLabel}>Your Wedding</label>
-          <div style={styles.weddingBox}>
-            <strong>{wedding.brideName} & {wedding.groomName}</strong>
-            <span>{new Date(wedding.weddingDate).toLocaleDateString("en-US",
-                {day: "numeric",month: "long",year: "numeric"})}</span>
-          </div>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.formLabel}>Service Date</label>
-          <input type="date" value={serviceDate} onChange={handleDateChange}
-            style={styles.dateInput} />
-
-          {serviceDate && (
-  <div style={styles.slotSection}>
-    <label style={styles.formLabel}>Available Time Slots</label>
-    {availability.length === 0 ? (
-      <p style={styles.noSlots}>No available slots for this date.</p>
-    ) : (
-      <div style={styles.slotGrid}>
-        {availability.map((slot) => (
-          <button key={slot._id} type="button" onClick={() => setSelectedSlot(slot)}
-            style={{...styles.slotButton, ...(selectedSlot?._id === slot._id
-                ? styles.selectedSlot
-                : {})}}>{slot.startTime} - {slot.endTime}
-          </button>
-        ))}
       </div>
-    )}
-  </div>
-)}
-      </div>{bookingError && (<div style={styles.formError}>{bookingError}</div>
-        )}
-        {bookingSuccess && (
-          <div style={styles.formSuccess}>{bookingSuccess}</div>
-        )}
 
-        <button type="submit" style={styles.submitButton} disabled={bookingLoading}>
-          {bookingLoading
-            ? "Sending Request..."
-            : "Send Booking Request →"}
-        </button>
+      {/* RESPONSIVE CSS */}
+      <style>{`
+        @media (max-width: 768px) {
+          .vendor-details-page {
+            padding: 25px 20px !important;
+          }
 
-      </form>
-    )}
-  </div>
-)}
-      </div>
+          .vendor-details-hero {
+            padding: 28px 25px !important;
+            gap: 18px !important;
+          }
+
+          .vendor-details-icon {
+            width: 70px !important;
+            height: 70px !important;
+            font-size: 30px !important;
+            flex-shrink: 0;
+          }
+
+          .vendor-details-title {
+            font-size: 29px !important;
+            word-break: break-word;
+          }
+
+          .vendor-details-card {
+            padding: 22px !important;
+          }
+
+          .vendor-details-package-card {
+            align-items: flex-start !important;
+          }
+
+          .vendor-details-booking-card {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .vendor-details-action-buttons {
+            width: 100%;
+          }
+
+          .vendor-details-message-button,
+          .vendor-details-book-button {
+            flex: 1;
+          }
+
+          .vendor-details-booking-form {
+            padding: 22px !important;
+          }
+
+          .vendor-details-package-box {
+            gap: 12px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .vendor-details-page {
+            padding: 20px 15px !important;
+          }
+
+          .vendor-details-back-link {
+            margin-bottom: 18px !important;
+          }
+
+          .vendor-details-hero {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 25px 20px !important;
+            border-radius: 16px !important;
+          }
+
+          .vendor-details-icon {
+            width: 60px !important;
+            height: 60px !important;
+            font-size: 27px !important;
+            border-radius: 14px !important;
+          }
+
+          .vendor-details-title {
+            font-size: 25px !important;
+            line-height: 1.25;
+          }
+
+          .vendor-details-card {
+            padding: 18px !important;
+            border-radius: 13px !important;
+          }
+
+          .vendor-details-section-title {
+            font-size: 20px !important;
+          }
+
+          .vendor-details-package-card {
+            flex-direction: column !important;
+            gap: 15px !important;
+            padding: 15px !important;
+          }
+
+          .vendor-details-package-info {
+            width: 100%;
+          }
+
+          .vendor-details-package-right {
+            width: 100%;
+            align-items: stretch !important;
+          }
+
+          .vendor-details-package-price {
+            font-size: 16px !important;
+          }
+
+          .vendor-details-select-package,
+          .vendor-details-selected-package {
+            width: 100%;
+          }
+
+          .vendor-details-review-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 5px;
+          }
+
+          .vendor-details-info-row {
+            align-items: flex-start !important;
+          }
+
+          .vendor-details-value {
+            max-width: 100%;
+            word-break: break-word;
+          }
+
+          .vendor-details-booking-card {
+            padding: 22px 18px !important;
+            border-radius: 13px !important;
+          }
+
+          .vendor-details-booking-title {
+            font-size: 20px !important;
+          }
+
+          .vendor-details-action-buttons {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100%;
+          }
+
+          .vendor-details-message-button,
+          .vendor-details-book-button {
+            width: 100%;
+            box-sizing: border-box;
+          }
+
+          .vendor-details-booking-form {
+            padding: 18px !important;
+          }
+
+          .vendor-details-form-title {
+            font-size: 20px !important;
+            max-width: 230px;
+          }
+
+          .vendor-details-selected-package-box {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px;
+          }
+
+          .vendor-details-wedding-box {
+            word-break: break-word;
+          }
+
+          .vendor-details-slot-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .vendor-details-slot-button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 8px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -461,7 +902,8 @@ const styles = {
     maxWidth: "1000px",
     margin: "0 auto 30px",
     padding: "40px",
-    background: "linear-gradient(135deg, #F5E9E8, #F8F2E9)",
+    background:
+      "linear-gradient(135deg, #F5E9E8, #F8F2E9)",
     borderRadius: "20px",
     display: "flex",
     alignItems: "center",
@@ -552,6 +994,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   label: {
@@ -633,304 +1076,352 @@ const styles = {
     color: "#FFFFFF",
     cursor: "pointer",
   },
+
   bookingForm: {
-  marginTop: "20px",
-  background: "#FFFFFF",
-  border: "1px solid #E5DFD5",
-  borderRadius: "16px",
-  padding: "28px",
-},
+    marginTop: "20px",
+    background: "#FFFFFF",
+    border: "1px solid #E5DFD5",
+    borderRadius: "16px",
+    padding: "28px",
+  },
 
-formHeader: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: "25px",
-},
+  formHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "25px",
+  },
 
-formTitle: {
-  margin: "5px 0 0",
-  fontFamily: "Georgia, serif",
-  fontSize: "24px",
-  fontWeight: 400,
-  color: "#2B2B2B",
-},
+  formTitle: {
+    margin: "5px 0 0",
+    fontFamily: "Georgia, serif",
+    fontSize: "24px",
+    fontWeight: 400,
+    color: "#2B2B2B",
+  },
 
-closeButton: {
-  border: "none",
-  background: "#F5E9E8",
-  color: "#6B6560",
-  width: "32px",
-  height: "32px",
-  borderRadius: "50%",
-  cursor: "pointer",
-},
+  closeButton: {
+    border: "none",
+    background: "#F5E9E8",
+    color: "#6B6560",
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
 
-formGroup: {
-  marginBottom: "20px",
-},
+  formGroup: {
+    marginBottom: "20px",
+  },
 
-formLabel: {
-  display: "block",
-  marginBottom: "8px",
-  color: "#6B6560",
-  fontSize: "12px",
-  fontWeight: 600,
-},
+  formLabel: {
+    display: "block",
+    marginBottom: "8px",
+    color: "#6B6560",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
 
-weddingBox: {
-  padding: "15px",
-  background: "#FBF8F3",
-  border: "1px solid #E5DFD5",
-  borderRadius: "8px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "5px",
-  color: "#3D5A50",
-},
+  weddingBox: {
+    padding: "15px",
+    background: "#FBF8F3",
+    border: "1px solid #E5DFD5",
+    borderRadius: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px",
+    color: "#3D5A50",
+  },
 
-dateInput: {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "12px",
-  border: "1px solid #D8D2C7",
-  borderRadius: "8px",
-  fontSize: "13px",
-  color: "#3A3734",
-  background: "#FFFFFF",
-},
+  dateInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px",
+    border: "1px solid #D8D2C7",
+    borderRadius: "8px",
+    fontSize: "13px",
+    color: "#3A3734",
+    background: "#FFFFFF",
+  },
 
-submitButton: {
-  width: "100%",
-  padding: "12px",
-  border: "none",
-  borderRadius: "8px",
-  background: "#3D5A50",
-  color: "#FFFFFF",
-  cursor: "pointer",
-  fontSize: "13px",
-  fontWeight: 600,
-},
+  submitButton: {
+    width: "100%",
+    padding: "12px",
+    border: "none",
+    borderRadius: "8px",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 600,
+  },
 
-formError: {
-  marginBottom: "15px",
-  padding: "10px",
-  borderRadius: "7px",
-  background: "#FBEAEA",
-  color: "#A33B3B",
-  fontSize: "12px",
-},
+  formError: {
+    marginBottom: "15px",
+    padding: "10px",
+    borderRadius: "7px",
+    background: "#FBEAEA",
+    color: "#A33B3B",
+    fontSize: "12px",
+  },
 
-formSuccess: {
-  marginBottom: "15px",
-  padding: "10px",
-  borderRadius: "7px",
-  background: "#E8F1EC",
-  color: "#3D5A50",
-  fontSize: "12px",
-},
+  formSuccess: {
+    marginBottom: "15px",
+    padding: "10px",
+    borderRadius: "7px",
+    background: "#E8F1EC",
+    color: "#3D5A50",
+    fontSize: "12px",
+  },
 
-formMessage: {
-  textAlign: "center",
-  padding: "20px",
-  color: "#6B6560",
-},
+  formMessage: {
+    textAlign: "center",
+    padding: "20px",
+    color: "#6B6560",
+  },
 
-createWeddingButton: {
-  marginTop: "10px",
-  padding: "10px 16px",
-  border: "none",
-  borderRadius: "7px",
-  background: "#3D5A50",
-  color: "#FFFFFF",
-  cursor: "pointer",
-  fontSize: "12px",
-},
-slotSection: {
-  marginTop: "14px",
-},
+  createWeddingButton: {
+    marginTop: "10px",
+    padding: "10px 16px",
+    border: "none",
+    borderRadius: "7px",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+    cursor: "pointer",
+    fontSize: "12px",
+  },
 
-noSlots: {
-  color: "#A6535D",
-  fontSize: "13px",
-  background: "#FDF0F1",
-  padding: "12px 14px",
-  borderRadius: "8px",
-  margin: 0,
-},
+  slotSection: {
+    marginTop: "14px",
+  },
 
-slotGrid: {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "10px",
-  marginTop: "10px",
-},
+  noSlots: {
+    color: "#A6535D",
+    fontSize: "13px",
+    background: "#FDF0F1",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    margin: 0,
+  },
 
-slotButton: {
-  padding: "10px 16px",
-  border: "1.5px solid #D8D2C7",
-  borderRadius: "8px",
-  background: "#FAF9F7",
-  color: "#3D5A50",
-  fontSize: "13px",
-  fontWeight: 600,
-  cursor: "pointer",
-  transition: "all 0.15s ease",
-},
+  slotGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "10px",
+  },
 
-selectedSlot: {
-  border: "1.5px solid #3D5A50",
-  background: "#3D5A50",
-  color: "#FFFFFF",
-},
-priceTag: {
-  marginTop: "8px",
-  fontSize: "20px",
-  fontWeight: 700,
-  color: "#3D5A50",
-},
-budgetWarning: {
-  background: "#FFF4DD",
-  border: "1px solid #E8D8BC",
-  borderRadius: "8px",
-  padding: "12px 16px",
-  fontSize: "13px",
-  color: "#A66B00",
-  marginBottom: "16px",
-},
-actionButtons: {
-  display: "flex",
-  gap: "10px",
-  alignItems: "center",
-  flexWrap: "wrap",
-},
+  slotButton: {
+    padding: "10px 16px",
+    border: "1.5px solid #D8D2C7",
+    borderRadius: "8px",
+    background: "#FAF9F7",
+    color: "#3D5A50",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  },
 
-messageButton: {
-  padding: "12px 20px",
-  border: "1px solid #FFFFFF",
-  borderRadius: "8px",
-  background: "transparent",
-  color: "#FFFFFF",
-  cursor: "pointer",
-  fontSize: "13px",
-  fontWeight: 600,
-  whiteSpace: "nowrap",
-},
-packageList: {
-  display: "flex",
-  flexDirection: "column",
-  gap: "12px",
-},
+  selectedSlot: {
+    border: "1.5px solid #3D5A50",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+  },
 
-packageCard: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "20px",
-  padding: "18px",
-  border: "1px solid #E5DFD5",
-  borderRadius: "12px",
-  background: "#FAF9F6",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-},
+  priceTag: {
+    marginTop: "8px",
+    fontSize: "20px",
+    fontWeight: 700,
+    color: "#3D5A50",
+  },
 
-selectedPackage: {
-  border: "2px solid #3D5A50",
-  background: "#F1F6F3",
-},
+  budgetWarning: {
+    background: "#FFF4DD",
+    border: "1px solid #E8D8BC",
+    borderRadius: "8px",
+    padding: "12px 16px",
+    fontSize: "13px",
+    color: "#A66B00",
+    marginBottom: "16px",
+  },
 
-packageInfo: {
-  flex: 1,
-},
+  actionButtons: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
 
-packageType: {
-  display: "inline-block",
-  fontSize: "10px",
-  color: "#B8935A",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "1px",
-},
+  messageButton: {
+    padding: "12px 20px",
+    border: "1px solid #FFFFFF",
+    borderRadius: "8px",
+    background: "transparent",
+    color: "#FFFFFF",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+  },
 
-packageName: {
-  margin: "5px 0",
-  fontFamily: "Georgia, serif",
-  fontSize: "18px",
-  fontWeight: 400,
-  color: "#3D5A50",
-},
+  packageList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
 
-packageDescription: {
-  margin: 0,
-  color: "#6B6560",
-  fontSize: "12px",
-  lineHeight: 1.5,
-},
+  packageCard: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "20px",
+    padding: "18px",
+    border: "1px solid #E5DFD5",
+    borderRadius: "12px",
+    background: "#FAF9F6",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
 
-packageRight: {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-end",
-  gap: "10px",
-},
+  selectedPackage: {
+    border: "2px solid #3D5A50",
+    background: "#F1F6F3",
+  },
 
-packagePrice: {
-  fontSize: "17px",
-  color: "#2B2B2B",
-},
+  packageInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
 
-selectPackageButton: {
-  padding: "9px 14px",
-  border: "1px solid #3D5A50",
-  borderRadius: "7px",
-  background: "#FFFFFF",
-  color: "#3D5A50",
-  cursor: "pointer",
-  fontSize: "11px",
-  fontWeight: 600,
-},
+  packageType: {
+    display: "inline-block",
+    fontSize: "10px",
+    color: "#B8935A",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+  },
 
-selectedPackageButton: {
-  padding: "9px 14px",
-  border: "1px solid #3D5A50",
-  borderRadius: "7px",
-  background: "#3D5A50",
-  color: "#FFFFFF",
-  cursor: "pointer",
-  fontSize: "11px",
-  fontWeight: 600,
-},
+  packageName: {
+    margin: "5px 0",
+    fontFamily: "Georgia, serif",
+    fontSize: "18px",
+    fontWeight: 400,
+    color: "#3D5A50",
+  },
 
-selectedPackageBox: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "14px",
-  background: "#F1F6F3",
-  border: "1px solid #C9DCD3",
-  borderRadius: "8px",
-  color: "#3D5A50",
-},
+  packageDescription: {
+    margin: 0,
+    color: "#6B6560",
+    fontSize: "12px",
+    lineHeight: 1.5,
+  },
 
-noPackage: {
-  margin: 0,
-  padding: "12px",
-  background: "#FDF0F1",
-  borderRadius: "8px",
-  color: "#A6535D",
-  fontSize: "12px",
-},
-packageError: {
-  marginBottom: "15px",
-  padding: "12px 14px",
-  borderRadius: "8px",
-  background: "#FFF4DD",
-  border: "1px solid #E8D8BC",
-  color: "#A66B00",
-  fontSize: "12px",
-  fontWeight: 600,
-},
-}
+  packageRight: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: "10px",
+    flexShrink: 0,
+  },
+
+  packagePrice: {
+    fontSize: "17px",
+    color: "#2B2B2B",
+  },
+
+  selectPackageButton: {
+    padding: "9px 14px",
+    border: "1px solid #3D5A50",
+    borderRadius: "7px",
+    background: "#FFFFFF",
+    color: "#3D5A50",
+    cursor: "pointer",
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+
+  selectedPackageButton: {
+    padding: "9px 14px",
+    border: "1px solid #3D5A50",
+    borderRadius: "7px",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+    cursor: "pointer",
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+
+  selectedPackageBox: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "14px",
+    background: "#F1F6F3",
+    border: "1px solid #C9DCD3",
+    borderRadius: "8px",
+    color: "#3D5A50",
+    gap: "15px",
+  },
+
+  noPackage: {
+    margin: 0,
+    padding: "12px",
+    background: "#FDF0F1",
+    borderRadius: "8px",
+    color: "#A6535D",
+    fontSize: "12px",
+  },
+
+  packageError: {
+    marginBottom: "15px",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    background: "#FFF4DD",
+    border: "1px solid #E8D8BC",
+    color: "#A66B00",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
+
+  reviewItem: {
+    borderBottom: "1px solid #EEE8DF",
+    padding: "14px 0",
+  },
+
+  reviewHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "10px",
+  },
+
+  reviewCustomer: {
+    color: "#3D5A50",
+  },
+
+  reviewRating: {
+    color: "#B8935A",
+    whiteSpace: "nowrap",
+  },
+
+  reviewComment: {
+    margin: "6px 0 0",
+    color: "#6B6560",
+    fontSize: "13px",
+    lineHeight: 1.5,
+  },
+
+  infoContent: {
+    minWidth: 0,
+  },
+
+  selectedPackageInfo: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+};
 
 export default VendorDetails;

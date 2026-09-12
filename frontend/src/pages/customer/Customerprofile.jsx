@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
-import {getProfile,updateProfile,changePassword} from "../../services/authService"
-import {getMyWedding,updateWedding } from "../../services/weddingService"
+import { getProfile, updateProfile, changePassword } from "../../services/authService";
+import { getMyWedding, updateWedding } from "../../services/weddingService";
 
 const CustomerProfile = () => {
     const [profile, setProfile] = useState(null);
     const [wedding, setWedding] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [profileData, setProfileData] = useState({name: "",phone: ""})
+
+    const [profileData, setProfileData] = useState({
+        name: "",
+        phone: ""
+    });
+
     const [weddingData, setWeddingData] = useState({
         brideName: "",
         groomName: "",
         weddingDate: "",
         guestCount: "",
         totalBudget: ""
-    })
+    });
 
     const [profileError, setProfileError] = useState("");
     const [profileSuccess, setProfileSuccess] = useState("");
@@ -26,7 +31,7 @@ const CustomerProfile = () => {
     const [passwordData, setPasswordData] = useState({
         currentPassword: "",
         newPassword: ""
-    })
+    });
 
     const [passwordError, setPasswordError] = useState("");
     const [passwordSuccess, setPasswordSuccess] = useState("");
@@ -34,33 +39,41 @@ const CustomerProfile = () => {
 
     useEffect(() => {
         fetchData();
-    }, [])
+    }, []);
 
     const fetchData = async () => {
         try {
             const [profileRes, weddingRes] = await Promise.all([
                 getProfile(),
                 getMyWedding()
-            ])
+            ]);
 
-            const profileData = profileRes.data
-            const weddingDataRes = weddingRes.data
+            const profileData = profileRes.data;
+            const weddingDataRes = weddingRes.data;
 
-            setProfile(profileData)
-            setWedding(weddingDataRes)
+            console.log("PROFILE DATA:", profileData);
+            console.log("WEDDING DATA:", weddingDataRes);
 
-            setProfileData({name: profileData?.name || "",phone: profileData?.phone || ""});
+            setProfile(profileData);
+            setWedding(weddingDataRes);
+
+            setProfileData({
+                name: profileData?.name || "",
+                phone: profileData?.phone || ""
+            });
 
             setWeddingData({
                 brideName: weddingDataRes?.brideName || "",
                 groomName: weddingDataRes?.groomName || "",
-                weddingDate: weddingDataRes?.weddingDate || "",
+                weddingDate: weddingDataRes?.weddingDate
+                    ? weddingDataRes.weddingDate.split("T")[0]
+                    : "",
                 guestCount: weddingDataRes?.guestCount || "",
                 totalBudget: weddingDataRes?.totalBudget || ""
             });
 
         } catch (error) {
-            console.error("Profile data fetch error:", error)
+            console.error("Profile data fetch error:", error);
         } finally {
             setLoading(false);
         }
@@ -70,31 +83,31 @@ const CustomerProfile = () => {
         setProfileData({
             ...profileData,
             [e.target.name]: e.target.value
-        })
-    }
+        });
+    };
 
     const handleWeddingChange = (e) => {
         setWeddingData({
             ...weddingData,
             [e.target.name]: e.target.value
-        })
-    }
+        });
+    };
 
     const handleProfileSubmit = async (e) => {
-        e.preventDefault()
+        e.preventDefault();
 
-        setProfileError("")
-        setProfileSuccess("")
-        setSavingProfile(true)
+        setProfileError("");
+        setProfileSuccess("");
+        setSavingProfile(true);
 
         try {
-            await updateProfile(profileData);
-
-            setProfile({...profile,...profileData})
-
+            const res = await updateProfile(profileData);
+            setProfile(res.data);
             setProfileSuccess("Profile updated successfully.");
         } catch (error) {
-            setProfileError(error.response?.data?.message ||"Failed to update profile");
+            setProfileError(
+                error.response?.data?.message || "Failed to update profile"
+            );
         } finally {
             setSavingProfile(false);
         }
@@ -126,14 +139,20 @@ const CustomerProfile = () => {
 
             setWeddingSuccess("Wedding details updated successfully.");
         } catch (error) {
-            setWeddingError(error.response?.data?.message ||"Failed to update wedding details")
+            setWeddingError(
+                error.response?.data?.message ||
+                "Failed to update wedding details"
+            );
         } finally {
             setSavingWedding(false);
         }
     };
 
     const handlePasswordChange = (e) => {
-        setPasswordData({...passwordData,[e.target.name]: e.target.value});
+        setPasswordData({
+            ...passwordData,
+            [e.target.name]: e.target.value
+        });
     };
 
     const handlePasswordSubmit = async (e) => {
@@ -142,9 +161,13 @@ const CustomerProfile = () => {
         setPasswordError("");
         setPasswordSuccess("");
 
-        if (!passwordData.currentPassword ||!passwordData.newPassword
+        if (
+            !passwordData.currentPassword ||
+            !passwordData.newPassword
         ) {
-            setPasswordError("Both current and new password are required.");
+            setPasswordError(
+                "Both current and new password are required."
+            );
             return;
         }
 
@@ -152,11 +175,19 @@ const CustomerProfile = () => {
 
         try {
             await changePassword(passwordData);
+
             setPasswordSuccess("Password changed successfully.");
-            setPasswordData({currentPassword: "",newPassword: ""});
+
+            setPasswordData({
+                currentPassword: "",
+                newPassword: ""
+            });
 
         } catch (error) {
-            setPasswordError(error.response?.data?.message ||"Failed to change password");
+            setPasswordError(
+                error.response?.data?.message ||
+                "Failed to change password"
+            );
         } finally {
             setSavingPassword(false);
         }
@@ -174,112 +205,255 @@ const CustomerProfile = () => {
     }
 
     const totalBudget = Number(wedding?.totalBudget || 0);
-    return (
-        <div style={styles.page}>
 
-            <div style={styles.header}>
+    return (
+        <div style={styles.page} className="customer-profile-page">
+
+            {/* Header */}
+            <div style={styles.header} className="customer-profile-header">
                 <div>
                     <p style={styles.eyebrow}>ACCOUNT</p>
-                    <h1 style={styles.heading}>My Profile</h1>
+
+                    <h1 style={styles.heading}>
+                        My Profile
+                    </h1>
+
                     <p style={styles.subtext}>
                         Manage your personal information, wedding details and budget.
                     </p>
                 </div>
             </div>
 
-            <section style={styles.profileCard}>
-                <div style={styles.profileTop}>
+            {/* Profile Summary */}
+            <section
+                style={styles.profileCard}
+                className="customer-profile-summary"
+            >
+                <div
+                    style={styles.profileTop}
+                    className="customer-profile-top"
+                >
                     <div style={styles.avatar}>
                         {profile?.name?.charAt(0)?.toUpperCase() || "?"}
                     </div>
 
-                    <div style={{ flex: 1 }}>
-                        <h2 style={styles.profileName}>{profile?.name}</h2>
-                        <p style={styles.profileEmail}>{profile?.email}</p>
+                    <div
+                        style={{ flex: 1, minWidth: 0 }}
+                        className="customer-profile-info"
+                    >
+                        <h2 style={styles.profileName}>
+                            {profile?.name}
+                        </h2>
+
+                        <p style={styles.profileEmail}>
+                            {profile?.email}
+                        </p>
                     </div>
-                    <span style={styles.badge}>CUSTOMER</span>
+
+                    <span
+                        style={styles.badge}
+                        className="customer-profile-badge"
+                    >
+                        CUSTOMER
+                    </span>
                 </div>
             </section>
-            <div style={styles.grid}>
+
+            {/* Personal + Wedding */}
+            <div
+                style={styles.grid}
+                className="customer-profile-grid"
+            >
+
+                {/* Personal Information */}
                 <section style={styles.card}>
                     <div style={styles.sectionHeader}>
                         <div>
-                            <p style={styles.sectionEyebrow}>ACCOUNT</p>
-                            <h2 style={styles.cardTitle}>Personal Information</h2>
+                            <p style={styles.sectionEyebrow}>
+                                ACCOUNT
+                            </p>
+
+                            <h2 style={styles.cardTitle}>
+                                Personal Information
+                            </h2>
                         </div>
-                        <span style={styles.iconCircle}>👤</span>
+
+                        <span style={styles.iconCircle}>
+                            👤
+                        </span>
                     </div>
+
                     {profileError && (
-                        <div style={styles.errorBox}>{profileError}</div>
+                        <div style={styles.errorBox}>
+                            {profileError}
+                        </div>
                     )}
 
                     {profileSuccess && (
-                        <div style={styles.successBox}>{profileSuccess}</div>
+                        <div style={styles.successBox}>
+                            {profileSuccess}
+                        </div>
                     )}
 
                     <form onSubmit={handleProfileSubmit}>
                         <div style={styles.field}>
-                            <label style={styles.label}>Full Name</label>
-                            <input type="text" name="name" value={profileData.name} onChange={handleProfileChange}
-                                style={styles.input} required />
-                        </div>
-                        <div style={styles.field}>
-                            <label style={styles.label}>Phone Number</label>
-                            <input type="text" name="phone" value={profileData.phone}
-                                onChange={handleProfileChange} style={styles.input} />
+                            <label style={styles.label}>
+                                Full Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="name"
+                                value={profileData.name}
+                                onChange={handleProfileChange}
+                                style={styles.input}
+                                required
+                            />
                         </div>
 
-                        <button type="submit" style={styles.primaryButton} disabled={savingProfile}>
-                            {savingProfile ? "Saving..." : "Save Personal Details"}
+                        <div style={styles.field}>
+                            <label style={styles.label}>
+                                Phone Number
+                            </label>
+
+                            <input
+                                type="text"
+                                name="phone"
+                                value={profileData.phone}
+                                onChange={handleProfileChange}
+                                style={styles.input}
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            style={styles.primaryButton}
+                            className="customer-profile-button"
+                            disabled={savingProfile}
+                        >
+                            {savingProfile
+                                ? "Saving..."
+                                : "Save Personal Details"}
                         </button>
                     </form>
                 </section>
 
+                {/* Wedding Details */}
                 <section style={styles.card}>
                     <div style={styles.sectionHeader}>
                         <div>
-                            <p style={styles.sectionEyebrow}>WEDDING</p>
-                            <h2 style={styles.cardTitle}>Wedding Details</h2>
+                            <p style={styles.sectionEyebrow}>
+                                WEDDING
+                            </p>
+
+                            <h2 style={styles.cardTitle}>
+                                Wedding Details
+                            </h2>
                         </div>
-                        <span style={styles.iconCircle}>💍</span>
+
+                        <span style={styles.iconCircle}>
+                            💍
+                        </span>
                     </div>
+
                     {weddingError && (
-                        <div style={styles.errorBox}>{weddingError}</div>
+                        <div style={styles.errorBox}>
+                            {weddingError}
+                        </div>
                     )}
+
                     {weddingSuccess && (
-                        <div style={styles.successBox}>{weddingSuccess}</div>
+                        <div style={styles.successBox}>
+                            {weddingSuccess}
+                        </div>
                     )}
+
                     <form onSubmit={handleWeddingSubmit}>
                         <div style={styles.field}>
-                            <label style={styles.label}>Bride Name</label>
-                            <input type="text" name="brideName" value={weddingData.brideName} onChange={handleWeddingChange}
-                                style={styles.input} required />
-                        </div>
-                        <div style={styles.field}>
-                            <label style={styles.label}>Groom Name</label>
-                            <input type="text" name="groomName" value={weddingData.groomName} onChange={handleWeddingChange}
-                                style={styles.input} required />
-                        </div>
-                        <div style={styles.field}>
-                            <label style={styles.label}>Wedding Date</label>
-                            <input type="date" name="weddingDate" value={weddingData.weddingDate}
-                                onChange={handleWeddingChange} style={styles.input} />
+                            <label style={styles.label}>
+                                Bride Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="brideName"
+                                value={weddingData.brideName}
+                                onChange={handleWeddingChange}
+                                style={styles.input}
+                                required
+                            />
                         </div>
 
-                        <div style={styles.twoColumns}>
+                        <div style={styles.field}>
+                            <label style={styles.label}>
+                                Groom Name
+                            </label>
+
+                            <input
+                                type="text"
+                                name="groomName"
+                                value={weddingData.groomName}
+                                onChange={handleWeddingChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.field}>
+                            <label style={styles.label}>
+                                Wedding Date
+                            </label>
+
+                            <input
+                                type="date"
+                                name="weddingDate"
+                                value={weddingData.weddingDate}
+                                onChange={handleWeddingChange}
+                                style={styles.input}
+                            />
+                        </div>
+
+                        <div
+                            style={styles.twoColumns}
+                            className="customer-profile-two-columns"
+                        >
                             <div style={styles.field}>
-                                <label style={styles.label}>Guest Count</label>
-                                <input type="number" name="guestCount" min="0"
-                                    value={weddingData.guestCount} onChange={handleWeddingChange} style={styles.input} />
+                                <label style={styles.label}>
+                                    Guest Count
+                                </label>
+
+                                <input
+                                    type="number"
+                                    name="guestCount"
+                                    min="0"
+                                    value={weddingData.guestCount}
+                                    onChange={handleWeddingChange}
+                                    style={styles.input}
+                                />
                             </div>
 
                             <div style={styles.field}>
-                                <label style={styles.label}>Wedding Budget</label>
-                                <input type="number" name="totalBudget" min="0" value={weddingData.totalBudget}
-                                    onChange={handleWeddingChange} style={styles.input} />
+                                <label style={styles.label}>
+                                    Wedding Budget
+                                </label>
+
+                                <input
+                                    type="number"
+                                    name="totalBudget"
+                                    min="0"
+                                    value={weddingData.totalBudget}
+                                    onChange={handleWeddingChange}
+                                    style={styles.input}
+                                />
                             </div>
                         </div>
-                        <button type="submit" style={styles.primaryButton} disabled={savingWedding}>
+
+                        <button
+                            type="submit"
+                            style={styles.primaryButton}
+                            className="customer-profile-button"
+                            disabled={savingWedding}
+                        >
                             {savingWedding
                                 ? "Saving..."
                                 : "Save Wedding Details"}
@@ -288,70 +462,315 @@ const CustomerProfile = () => {
                 </section>
             </div>
 
-            <section style={styles.budgetCard}>
-                <div style={styles.budgetHeader}>
-                    <div>
-                        <p style={styles.sectionEyebrow}>FINANCIAL OVERVIEW</p>
-                        <h2 style={styles.budgetTitle}>Wedding Budget</h2>
-                        <p style={styles.budgetSubtext}>Your total wedding budget</p>
+            {/* Budget */}
+            <section
+                style={styles.budgetCard}
+                className="customer-profile-budget"
+            >
+                <div
+                    style={styles.budgetHeader}
+                    className="customer-profile-budget-header"
+                >
+                    <div style={{ minWidth: 0 }}>
+                        <p style={styles.sectionEyebrow}>
+                            FINANCIAL OVERVIEW
+                        </p>
+
+                        <h2 style={styles.budgetTitle}>
+                            Wedding Budget
+                        </h2>
+
+                        <p style={styles.budgetSubtext}>
+                            Your total wedding budget
+                        </p>
                     </div>
-                    <div style={styles.budgetIcon}>₹</div>
+
+                    <div style={styles.budgetIcon}>
+                        ₹
+                    </div>
                 </div>
 
-                <div style={styles.budgetAmount}>₹{totalBudget.toLocaleString("en-IN")}</div>
+                <div style={styles.budgetAmount}>
+                    ₹{totalBudget.toLocaleString("en-IN")}
+                </div>
+
                 <div style={styles.budgetNote}>
                     You can update your total wedding budget from
                     the Wedding Details section above.
                 </div>
             </section>
 
-
+            {/* Change Password */}
             <section style={styles.card}>
                 <div style={styles.sectionHeader}>
                     <div>
-                        <p style={styles.sectionEyebrow}>SECURITY</p>
-                        <h2 style={styles.cardTitle}>Change Password</h2>
+                        <p style={styles.sectionEyebrow}>
+                            SECURITY
+                        </p>
+
+                        <h2 style={styles.cardTitle}>
+                            Change Password
+                        </h2>
                     </div>
-                    <span style={styles.iconCircle}>🔐</span>
+
+                    <span style={styles.iconCircle}>
+                        🔐
+                    </span>
                 </div>
 
                 {passwordError && (
-                    <div style={styles.errorBox}>{passwordError}</div>
+                    <div style={styles.errorBox}>
+                        {passwordError}
+                    </div>
                 )}
 
                 {passwordSuccess && (
-                    <div style={styles.successBox}>{passwordSuccess}</div>
+                    <div style={styles.successBox}>
+                        {passwordSuccess}
+                    </div>
                 )}
 
-                <form onSubmit={handlePasswordSubmit} style={styles.passwordForm}>
-
+                <form
+                    onSubmit={handlePasswordSubmit}
+                    style={styles.passwordForm}
+                    className="customer-password-form"
+                >
                     <div style={styles.field}>
-                        <label style={styles.label}>Current Password</label>
-                        <input type="password" name="currentPassword"
-                            value={passwordData.currentPassword} onChange={handlePasswordChange}
-                            style={styles.input} required />
+                        <label style={styles.label}>
+                            Current Password
+                        </label>
+
+                        <input
+                            type="password"
+                            name="currentPassword"
+                            value={passwordData.currentPassword}
+                            onChange={handlePasswordChange}
+                            style={styles.input}
+                            required
+                        />
                     </div>
 
                     <div style={styles.field}>
-                        <label style={styles.label}>New Password</label>
-                        <input type="password" name="newPassword" value={passwordData.newPassword}
-                            onChange={handlePasswordChange} style={styles.input} required />
+                        <label style={styles.label}>
+                            New Password
+                        </label>
+
+                        <input
+                            type="password"
+                            name="newPassword"
+                            value={passwordData.newPassword}
+                            onChange={handlePasswordChange}
+                            style={styles.input}
+                            required
+                        />
                     </div>
 
-                    <button type="submit" style={styles.primaryButton} disabled={savingPassword}>
+                    <button
+                        type="submit"
+                        style={styles.primaryButton}
+                        className="customer-profile-button"
+                        disabled={savingPassword}
+                    >
                         {savingPassword
                             ? "Updating..."
                             : "Update Password"}
                     </button>
                 </form>
             </section>
-        </div>
-    )
-}
 
+            {/* Responsive CSS */}
+            <style>
+                {`
+                    .customer-profile-page {
+                        width: 100%;
+                        overflow-x: hidden;
+                    }
+
+                    .customer-profile-summary,
+                    .customer-profile-grid > section,
+                    .customer-profile-budget {
+                        min-width: 0;
+                    }
+
+                    .customer-profile-info {
+                        overflow: hidden;
+                    }
+
+                    .customer-profile-info h2,
+                    .customer-profile-info p {
+                        overflow-wrap: anywhere;
+                        word-break: break-word;
+                    }
+
+                    .customer-profile-button {
+                        max-width: 100%;
+                    }
+
+                    @media (max-width: 1100px) {
+                        .customer-profile-page {
+                            padding: 30px 30px 50px !important;
+                        }
+
+                        .customer-profile-grid {
+                            gap: 18px !important;
+                        }
+
+                        .customer-profile-grid > section {
+                            padding: 23px !important;
+                        }
+                    }
+
+                    @media (max-width: 850px) {
+                        .customer-profile-page {
+                            padding: 28px 22px 45px !important;
+                        }
+
+                        .customer-profile-grid {
+                            grid-template-columns: 1fr !important;
+                        }
+
+                        .customer-profile-grid > section {
+                            margin-bottom: 0 !important;
+                        }
+
+                        .customer-profile-budget {
+                            padding: 25px !important;
+                        }
+                    }
+
+                    @media (max-width: 600px) {
+                        .customer-profile-page {
+                            padding: 22px 16px 35px !important;
+                        }
+
+                        .customer-profile-header {
+                            margin-bottom: 20px !important;
+                        }
+
+                        .customer-profile-header h1 {
+                            font-size: 27px !important;
+                        }
+
+                        .customer-profile-header p:last-child {
+                            line-height: 1.5 !important;
+                            max-width: 100%;
+                        }
+
+                        .customer-profile-summary {
+                            padding: 20px !important;
+                            margin-bottom: 18px !important;
+                        }
+
+                        .customer-profile-top {
+                            align-items: flex-start !important;
+                            flex-wrap: wrap;
+                            gap: 12px !important;
+                        }
+
+                        .customer-profile-info {
+                            flex: 1 1 calc(100% - 82px) !important;
+                        }
+
+                        .customer-profile-badge {
+                            margin-left: 76px;
+                            margin-top: -2px;
+                        }
+
+                        .customer-profile-grid {
+                            gap: 18px !important;
+                            margin-bottom: 18px !important;
+                        }
+
+                        .customer-profile-grid > section {
+                            padding: 20px !important;
+                            border-radius: 13px !important;
+                        }
+
+                        .customer-profile-grid .customer-profile-button,
+                        .customer-profile-button {
+                            width: 100%;
+                        }
+
+                        .customer-profile-two-columns {
+                            grid-template-columns: 1fr !important;
+                            gap: 0 !important;
+                        }
+
+                        .customer-profile-budget {
+                            padding: 21px !important;
+                            border-radius: 13px !important;
+                            margin-bottom: 18px !important;
+                        }
+
+                        .customer-profile-budget-header {
+                            align-items: flex-start !important;
+                            gap: 15px;
+                        }
+
+                        .customer-profile-budget-header > div:first-child {
+                            min-width: 0;
+                        }
+
+                        .customer-profile-budget-header h2 {
+                            font-size: 20px !important;
+                        }
+
+                        .customer-profile-budget-header p:last-child {
+                            line-height: 1.4;
+                        }
+
+                        .customer-profile-budget .budgetAmount {
+                            font-size: 28px !important;
+                        }
+
+                        .customer-password-form {
+                            max-width: 100% !important;
+                        }
+                    }
+
+                    @media (max-width: 380px) {
+                        .customer-profile-page {
+                            padding-left: 12px !important;
+                            padding-right: 12px !important;
+                        }
+
+                        .customer-profile-summary {
+                            padding: 17px !important;
+                        }
+
+                        .customer-profile-grid > section {
+                            padding: 17px !important;
+                        }
+
+                        .customer-profile-budget {
+                            padding: 18px !important;
+                        }
+
+                        .customer-profile-top {
+                            gap: 10px !important;
+                        }
+
+                        .customer-profile-top > div:first-child {
+                            width: 52px !important;
+                            height: 52px !important;
+                            font-size: 21px !important;
+                        }
+
+                        .customer-profile-info {
+                            flex-basis: calc(100% - 64px) !important;
+                        }
+
+                        .customer-profile-badge {
+                            margin-left: 62px;
+                        }
+                    }
+                `}
+            </style>
+        </div>
+    );
+};
 
 const styles = {
-
     page: {
         minHeight: "100vh",
         background: "#FBF8F3",
@@ -406,6 +825,7 @@ const styles = {
         color: "#77716B",
         fontSize: "14px",
         marginTop: "8px",
+        lineHeight: 1.5,
     },
 
     profileCard: {
@@ -414,6 +834,7 @@ const styles = {
         borderRadius: "16px",
         padding: "25px 28px",
         marginBottom: "22px",
+        boxSizing: "border-box",
     },
 
     profileTop: {
@@ -458,6 +879,7 @@ const styles = {
         fontSize: "10px",
         letterSpacing: "1px",
         fontWeight: 700,
+        flexShrink: 0,
     },
 
     grid: {
@@ -474,6 +896,7 @@ const styles = {
         padding: "27px",
         boxSizing: "border-box",
         marginBottom: "22px",
+        minWidth: 0,
     },
 
     sectionHeader: {
@@ -481,6 +904,7 @@ const styles = {
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: "22px",
+        gap: "12px",
     },
 
     sectionEyebrow: {
@@ -508,6 +932,7 @@ const styles = {
         alignItems: "center",
         justifyContent: "center",
         fontSize: "17px",
+        flexShrink: 0,
     },
 
     field: {
@@ -533,7 +958,9 @@ const styles = {
         background: "#FFFFFF",
         color: "#333333",
         boxSizing: "border-box",
+        minWidth: 0,
     },
+
     twoColumns: {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
@@ -550,6 +977,7 @@ const styles = {
         fontSize: "12px",
         fontWeight: 600,
         cursor: "pointer",
+        boxSizing: "border-box",
     },
 
     budgetCard: {
@@ -558,12 +986,15 @@ const styles = {
         padding: "28px 30px",
         marginBottom: "22px",
         color: "#FFFFFF",
+        boxSizing: "border-box",
+        minWidth: 0,
     },
 
     budgetHeader: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        gap: "15px",
     },
 
     budgetTitle: {
@@ -588,22 +1019,26 @@ const styles = {
         alignItems: "center",
         justifyContent: "center",
         fontSize: "20px",
+        flexShrink: 0,
     },
 
     budgetAmount: {
         fontFamily: "Georgia, serif",
         fontSize: "32px",
         marginTop: "25px",
+        overflowWrap: "anywhere",
     },
 
     budgetNote: {
         marginTop: "8px",
         fontSize: "11px",
         color: "#DCE6E1",
+        lineHeight: 1.5,
     },
 
     passwordForm: {
         maxWidth: "520px",
+        width: "100%",
     },
 
     errorBox: {
@@ -613,6 +1048,7 @@ const styles = {
         padding: "11px 13px",
         fontSize: "12px",
         marginBottom: "15px",
+        overflowWrap: "anywhere",
     },
 
     successBox: {
@@ -622,6 +1058,7 @@ const styles = {
         padding: "11px 13px",
         fontSize: "12px",
         marginBottom: "15px",
+        overflowWrap: "anywhere",
     },
 };
 
