@@ -100,213 +100,401 @@ const Reports = () => {
   );
 
   return (
-    <div>
-      <h1 style={styles.heading}>Vendor Reports</h1>
+    <>
+      <div className="reports-page">
+        <h1 style={styles.heading}>Vendor Reports</h1>
 
-      <p style={styles.subheading}>
-        Vendor-wise booking and payment performance.
-      </p>
+        <p style={styles.subheading}>
+          Vendor-wise booking and payment performance.
+        </p>
 
-    
-      <div style={styles.filterCard}>
-        <div style={styles.filterButtons}>
-          <button onClick={() => handleFilterChange("day")}
-            style={{...styles.filterButton,
-              ...(filter === "day"
-                ? styles.activeFilter
-                : {}),
-            }}>Day
-          </button>
+        {/* Filters */}
+        <div className="reports-filter-card" style={styles.filterCard}>
+          <div className="reports-filter-buttons" style={styles.filterButtons}>
+            <button
+              onClick={() => handleFilterChange("day")}
+              style={{
+                ...styles.filterButton,
+                ...(filter === "day"
+                  ? styles.activeFilter
+                  : {}),
+              }}
+            >
+              Day
+            </button>
 
-          <button onClick={() => handleFilterChange("month")}
-            style={{
-              ...styles.filterButton,
-              ...(filter === "month"
-                ? styles.activeFilter
-                : {}),
-            }}>Month
-          </button>
+            <button
+              onClick={() => handleFilterChange("month")}
+              style={{
+                ...styles.filterButton,
+                ...(filter === "month"
+                  ? styles.activeFilter
+                  : {}),
+              }}
+            >
+              Month
+            </button>
 
-          <button onClick={() => handleFilterChange("year")}
-            style={{
-              ...styles.filterButton,
-              ...(filter === "year"
-                ? styles.activeFilter
-                : {}),
-            }}>Year
-          </button>
+            <button
+              onClick={() => handleFilterChange("year")}
+              style={{
+                ...styles.filterButton,
+                ...(filter === "year"
+                  ? styles.activeFilter
+                  : {}),
+              }}
+            >
+              Year
+            </button>
 
-          <button
-            onClick={() => handleFilterChange("custom")}
-            style={{
-              ...styles.filterButton,
-              ...(filter === "custom"
-                ? styles.activeFilter
-                : {}),
-            }}>Custom Range
-          </button>
-        </div>
-
-        {filter === "custom" && (
-          <div style={styles.customFilter}>
-            <div style={styles.dateGroup}>
-              <label style={styles.dateLabel}>Start Date</label>
-
-              <input type="date" value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={styles.dateInput} />
-            </div>
-
-            <div style={styles.dateGroup}>
-              <label style={styles.dateLabel}>End Date</label>
-              <input type="date" value={endDate}
-                onChange={(e) => setEndDate(e.target.value)} style={styles.dateInput} />
-            </div>
-
-            <button onClick={handleCustomFilter} style={styles.applyButton}>
-              Apply
+            <button
+              onClick={() => handleFilterChange("custom")}
+              style={{
+                ...styles.filterButton,
+                ...(filter === "custom"
+                  ? styles.activeFilter
+                  : {}),
+              }}
+            >
+              Custom Range
             </button>
           </div>
+
+          {filter === "custom" && (
+            <div
+              className="reports-custom-filter"
+              style={styles.customFilter}
+            >
+              <div style={styles.dateGroup}>
+                <label style={styles.dateLabel}>
+                  Start Date
+                </label>
+
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) =>
+                    setStartDate(e.target.value)
+                  }
+                  style={styles.dateInput}
+                />
+              </div>
+
+              <div style={styles.dateGroup}>
+                <label style={styles.dateLabel}>
+                  End Date
+                </label>
+
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) =>
+                    setEndDate(e.target.value)
+                  }
+                  style={styles.dateInput}
+                />
+              </div>
+
+              <button
+                onClick={handleCustomFilter}
+                style={styles.applyButton}
+              >
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p style={styles.errorText}>{error}</p>
         )}
-      </div>
 
-      {error && (
-        <p style={styles.errorText}>{error}</p>
-      )}
+        {/* Summary */}
+        <div
+          className="reports-summary-grid"
+          style={styles.summaryGrid}
+        >
+          <div style={styles.summaryCard}>
+            <p style={styles.summaryLabel}>
+              Total Vendors
+            </p>
 
-      {/* Summary */}
-      <div style={styles.summaryGrid}>
-        <div style={styles.summaryCard}>
-          <p style={styles.summaryLabel}>
-            Total Vendors
-          </p>
-
-          <h2 style={styles.summaryValue}>
-            {loading ? "..." : reports.length}
-          </h2>
-        </div>
-
-        <div style={styles.summaryCard}>
-          <p style={styles.summaryLabel}>
-            Total Bookings
-          </p>
-
-          <h2 style={styles.summaryValue}>
-            {loading ? "..." : totalBookings}
-          </h2>
-        </div>
-
-        <div style={styles.summaryCard}>
-          <p style={styles.summaryLabel}>
-            Completed Events
-          </p>
-
-          <h2 style={styles.summaryValue}>
-            {loading ? "..." : totalCompleted}
-          </h2>
-        </div>
-
-        <div style={styles.summaryCard}>
-          <p style={styles.summaryLabel}>
-            Total Payments
-          </p>
-
-          <h2 style={styles.summaryValue}>
-            {loading
-              ? "..."
-              : `₹${totalPayments.toLocaleString("en-IN")}`}
-          </h2>
-        </div>
-      </div>
-
-      {/* Vendor Report Table */}
-      <div style={styles.tableCard}>
-        <h3 style={styles.tableTitle}>
-          Vendor Performance
-        </h3>
-
-        {loading ? (
-          <p style={styles.emptyText}>
-            Loading vendor reports...
-          </p>
-        ) : reports.length === 0 ? (
-          <p style={styles.emptyText}>
-            No vendor report data available for the
-            selected period.
-          </p>
-        ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Vendor</th>
-                  <th style={styles.th}>Category</th>
-                  <th style={styles.th}>Bookings</th>
-                  <th style={styles.th}>Completed</th>
-                  <th style={styles.th}>Total Payments</th>
-                  <th style={styles.th}>Paid Advance</th>
-                  <th style={styles.th}>Final Payments</th>
-                  <th style={styles.th}>Completion Rate</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {reports.map((vendor) => (
-                  <tr key={vendor.vendorId}>
-                    <td style={styles.td}>
-                      <strong>
-                        {vendor.businessName}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {vendor.category || "-"}
-                    </td>
-
-                    <td style={styles.td}>
-                      {vendor.totalBookings}
-                    </td>
-
-                    <td style={styles.td}>
-                      {vendor.completedBookings}
-                    </td>
-
-                    <td style={styles.td}>
-                      ₹
-                      {(
-                        vendor.totalPayments || 0
-                      ).toLocaleString("en-IN")}
-                    </td>
-
-                    <td style={styles.td}>
-                      ₹
-                      {(
-                        vendor.paidAdvance || 0
-                      ).toLocaleString("en-IN")}
-                    </td>
-
-                    <td style={styles.td}>
-                      ₹
-                      {(
-                        vendor.finalPayments || 0
-                      ).toLocaleString("en-IN")}
-                    </td>
-
-                    <td style={styles.td}>
-                      <span
-                        style={styles.rateBadge}
-                      >
-                        {vendor.completionRate || 0}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <h2 style={styles.summaryValue}>
+              {loading ? "..." : reports.length}
+            </h2>
           </div>
-        )}
+
+          <div style={styles.summaryCard}>
+            <p style={styles.summaryLabel}>
+              Total Bookings
+            </p>
+
+            <h2 style={styles.summaryValue}>
+              {loading ? "..." : totalBookings}
+            </h2>
+          </div>
+
+          <div style={styles.summaryCard}>
+            <p style={styles.summaryLabel}>
+              Completed Events
+            </p>
+
+            <h2 style={styles.summaryValue}>
+              {loading ? "..." : totalCompleted}
+            </h2>
+          </div>
+
+          <div style={styles.summaryCard}>
+            <p style={styles.summaryLabel}>
+              Total Payments
+            </p>
+
+            <h2
+              className="reports-payment-value"
+              style={styles.summaryValue}
+            >
+              {loading
+                ? "..."
+                : `₹${totalPayments.toLocaleString("en-IN")}`}
+            </h2>
+          </div>
+        </div>
+
+        {/* Vendor Report Table */}
+        <div
+          className="reports-table-card"
+          style={styles.tableCard}
+        >
+          <h3 style={styles.tableTitle}>
+            Vendor Performance
+          </h3>
+
+          {loading ? (
+            <p style={styles.emptyText}>
+              Loading vendor reports...
+            </p>
+          ) : reports.length === 0 ? (
+            <p style={styles.emptyText}>
+              No vendor report data available for the
+              selected period.
+            </p>
+          ) : (
+            <div
+              className="reports-table-wrapper"
+              style={styles.tableWrapper}
+            >
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Vendor</th>
+                    <th style={styles.th}>Category</th>
+                    <th style={styles.th}>Bookings</th>
+                    <th style={styles.th}>Completed</th>
+                    <th style={styles.th}>Total Payments</th>
+                    <th style={styles.th}>Paid Advance</th>
+                    <th style={styles.th}>Final Payments</th>
+                    <th style={styles.th}>Completion Rate</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {reports.map((vendor) => (
+                    <tr key={vendor.vendorId}>
+                      <td style={styles.td}>
+                        <strong>
+                          {vendor.businessName}
+                        </strong>
+                      </td>
+
+                      <td style={styles.td}>
+                        {vendor.category || "-"}
+                      </td>
+
+                      <td style={styles.td}>
+                        {vendor.totalBookings}
+                      </td>
+
+                      <td style={styles.td}>
+                        {vendor.completedBookings}
+                      </td>
+
+                      <td style={styles.td}>
+                        ₹
+                        {(
+                          vendor.totalPayments || 0
+                        ).toLocaleString("en-IN")}
+                      </td>
+
+                      <td style={styles.td}>
+                        ₹
+                        {(
+                          vendor.paidAdvance || 0
+                        ).toLocaleString("en-IN")}
+                      </td>
+
+                      <td style={styles.td}>
+                        ₹
+                        {(
+                          vendor.finalPayments || 0
+                        ).toLocaleString("en-IN")}
+                      </td>
+
+                      <td style={styles.td}>
+                        <span style={styles.rateBadge}>
+                          {vendor.completionRate || 0}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Responsive Styles */}
+      <style>
+        {`
+          .reports-page {
+            width: 100%;
+            box-sizing: border-box;
+          }
+
+          .reports-table-wrapper {
+            width: 100%;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .reports-table-wrapper table {
+            min-width: 900px;
+          }
+
+          @media (max-width: 768px) {
+            .reports-page {
+              width: 100%;
+            }
+
+            .reports-filter-card {
+              padding: 16px !important;
+            }
+
+            .reports-filter-buttons {
+              display: grid !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 10px !important;
+            }
+
+            .reports-filter-buttons button {
+              width: 100%;
+              min-height: 42px;
+            }
+
+            .reports-custom-filter {
+              display: grid !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 14px !important;
+            }
+
+            .reports-custom-filter > div {
+              width: 100%;
+            }
+
+            .reports-custom-filter input {
+              width: 100%;
+              box-sizing: border-box;
+            }
+
+            .reports-custom-filter button {
+              width: 100%;
+              min-height: 40px;
+            }
+
+            .reports-summary-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 14px !important;
+            }
+
+            .reports-table-card {
+              padding: 16px !important;
+            }
+
+            .reports-table-wrapper th,
+            .reports-table-wrapper td {
+              padding: 12px 10px !important;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .reports-page {
+              width: 100%;
+            }
+
+            .reports-page h1 {
+              font-size: 23px !important;
+              line-height: 1.2;
+            }
+
+            .reports-page > p {
+              font-size: 13px !important;
+              line-height: 1.5;
+            }
+
+            .reports-filter-card {
+              padding: 14px !important;
+              border-radius: 10px;
+            }
+
+            .reports-filter-buttons {
+              grid-template-columns: 1fr !important;
+              gap: 8px !important;
+            }
+
+            .reports-filter-buttons button {
+              width: 100%;
+            }
+
+            .reports-custom-filter {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+
+            .reports-custom-filter input {
+              width: 100%;
+            }
+
+            .reports-custom-filter button {
+              width: 100%;
+            }
+
+            .reports-summary-grid {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+
+            .reports-table-card {
+              padding: 14px !important;
+            }
+
+            .reports-table-card h3 {
+              font-size: 15px !important;
+              margin-bottom: 16px !important;
+            }
+
+            .reports-payment-value {
+              font-size: 22px !important;
+              overflow-wrap: anywhere;
+              word-break: break-word;
+            }
+
+            .reports-table-wrapper {
+              margin: 0;
+            }
+          }
+        `}
+      </style>
+    </>
   );
 };
 
@@ -329,6 +517,8 @@ const styles = {
     borderRadius: "10px",
     padding: "20px",
     marginBottom: "20px",
+    boxSizing: "border-box",
+    width: "100%",
   },
 
   filterButtons: {
@@ -344,6 +534,7 @@ const styles = {
     background: "#fff",
     cursor: "pointer",
     fontSize: "13px",
+    boxSizing: "border-box",
   },
 
   activeFilter: {
@@ -364,6 +555,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "6px",
+    minWidth: 0,
   },
 
   dateLabel: {
@@ -376,6 +568,7 @@ const styles = {
     border: "1px solid #DDD",
     borderRadius: "6px",
     fontSize: "13px",
+    boxSizing: "border-box",
   },
 
   applyButton: {
@@ -399,6 +592,7 @@ const styles = {
       "repeat(auto-fit,minmax(200px,1fr))",
     gap: "20px",
     marginBottom: "20px",
+    width: "100%",
   },
 
   summaryCard: {
@@ -406,6 +600,8 @@ const styles = {
     border: "1px solid #E5DFD5",
     borderRadius: "10px",
     padding: "20px",
+    boxSizing: "border-box",
+    minWidth: 0,
   },
 
   summaryLabel: {
@@ -420,6 +616,7 @@ const styles = {
     fontSize: "24px",
     color: "#2B2B2B",
     margin: 0,
+    overflowWrap: "anywhere",
   },
 
   tableCard: {
@@ -427,6 +624,9 @@ const styles = {
     border: "1px solid #E5DFD5",
     borderRadius: "10px",
     padding: "20px",
+    boxSizing: "border-box",
+    width: "100%",
+    minWidth: 0,
   },
 
   tableTitle: {
@@ -438,6 +638,7 @@ const styles = {
   tableWrapper: {
     width: "100%",
     overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
   },
 
   table: {
@@ -471,6 +672,7 @@ const styles = {
     color: "#3D5A50",
     fontSize: "11px",
     fontWeight: 600,
+    whiteSpace: "nowrap",
   },
 
   emptyText: {
