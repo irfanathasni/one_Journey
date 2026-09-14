@@ -177,16 +177,61 @@ const createAvailability = async(req,res,next) => {
     }
 }
 
-const getMyAvailability = async (req,res,next) => {
-    try{
-        const vendor = await Vendor.findOne({user:req.user.id})
+const getMyAvailability = async (req, res, next) => {
+    try {
+        const vendor = await Vendor.findOne({ user: req.user.id })
 
-        if(!vendor) {
-            return res.status(404).json({success:false,message:"Vendor profile not found"})
+        if (!vendor) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor profile not found"
+            })
         }
-        const slots = await VendorAvailability.find({vendor:vendor._id}).sort({date:1,startTime:1})
-          return res.status(200).json({success:true,data:slots})
-    }catch (error) {
+
+        const { page = 1, limit = 5, filter = "all" } = req.query
+
+        const currentPage = Math.max(Number(page), 1)
+        const itemsPerPage = Math.max(Number(limit), 1)
+
+        if (!["all", "available", "booked"].includes(filter)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid availability filter"
+            })
+        }
+
+        const skip = (currentPage - 1) * itemsPerPage
+
+        const query = {
+            vendor: vendor._id
+        }
+
+        if (filter === "available") {
+            query.isBooked = false
+        } else if (filter === "booked") {
+            query.isBooked = true
+        }
+
+        const totalItems = await VendorAvailability.countDocuments(query)
+
+        const slots = await VendorAvailability.find(query)
+            .sort({ date: -1, startTime: -1 })
+            .skip(skip)
+            .limit(itemsPerPage)
+
+        const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+        return res.status(200).json({
+            success: true,
+            data: slots,
+            pagination: {
+                currentPage,
+                totalPages,
+                totalItems,
+                limit: itemsPerPage
+            }
+        })
+    } catch (error) {
         next(error)
     }
 }

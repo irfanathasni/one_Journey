@@ -32,8 +32,10 @@ export const createAvailability = async (data) => {
     return res.data
 }
 
-export const getMyAvailability = async () => {
-    const res = await axiosInstance.get("/vendor/availability")
+export const getMyAvailability = async (params = {}) => {
+    const res = await axiosInstance.get("/vendor/availability", {
+        params
+    })
     return res.data
 }
 

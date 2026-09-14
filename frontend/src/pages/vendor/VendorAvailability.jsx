@@ -14,22 +14,32 @@ const VendorAvailability = () => {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [filter, setFilter] = useState("all");
+  const limit = 5;
   useEffect(() => {
     fetchAvailability();
-  }, []);
+  }, [currentPage, filter]);
 
   const fetchAvailability = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const res = await getMyAvailability();
+      const res = await getMyAvailability({
+        page: currentPage,
+        limit,
+        filter,
+      });
 
       setSlots(res.data || []);
+
+      setTotalPages(res.pagination?.totalPages || 1);
+      setTotalItems(res.pagination?.totalItems || 0);
     } catch (error) {
       console.error("Availability error:", error);
 
@@ -40,6 +50,11 @@ const VendorAvailability = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e) => {
@@ -61,15 +76,25 @@ const VendorAvailability = () => {
     try {
       setSaving(true);
 
-      const res = await createAvailability({date,startTime,endTime});
+      const res = await createAvailability({
+        date,
+        startTime,
+        endTime,
+      });
 
-      setSuccess(res.message || res.messages || "Availability slot created successfully");
+      setSuccess(
+        res.message ||
+          res.messages ||
+          "Availability slot created successfully"
+      );
 
       setDate("");
       setStartTime("");
       setEndTime("");
-
-      fetchAvailability();
+      setCurrentPage(1);
+      if (currentPage === 1) {
+        fetchAvailability();
+      }
     } catch (error) {
       console.error("Create availability error:", error);
 
@@ -89,11 +114,8 @@ const VendorAvailability = () => {
 
       await deleteAvailability(slotId);
 
-      setSlots((prev) =>
-        prev.filter((slot) => slot._id !== slotId)
-      );
-
       setSuccess("Availability deleted successfully.");
+      fetchAvailability();
     } catch (error) {
       console.error("Delete availability error:", error);
 
@@ -129,21 +151,23 @@ const VendorAvailability = () => {
               Manage Availability
             </h1>
 
-            <p style={styles.subtitle}>
+            <p
+              className="vendor-availability-subtitle"
+              style={styles.subtitle}
+            >
               Add the dates and time slots when you are available
               for wedding services.
             </p>
           </div>
         </div>
-
-        {/* ERROR */}
         {error && (
-          <div className="vendor-availability-message" style={styles.error}>
+          <div
+            className="vendor-availability-message"
+            style={styles.error}
+          >
             ⚠️ {error}
           </div>
         )}
-
-        {/* SUCCESS */}
         {success && (
           <div
             className="vendor-availability-message"
@@ -153,9 +177,16 @@ const VendorAvailability = () => {
           </div>
         )}
 
-        {/* ADD AVAILABILITY */}
-        <section style={styles.card}>
-          <h2 style={styles.cardTitle}>Add Availability</h2>
+        <section
+          className="vendor-availability-card"
+          style={styles.card}
+        >
+          <h2
+            className="vendor-availability-card-title"
+            style={styles.cardTitle}
+          >
+            Add Availability
+          </h2>
 
           <form onSubmit={handleSubmit}>
             <div
@@ -207,8 +238,10 @@ const VendorAvailability = () => {
           </form>
         </section>
 
-        {/* AVAILABILITY LIST */}
-        <section style={styles.card}>
+        <section
+          className="vendor-availability-card"
+          style={styles.card}
+        >
           <div
             className="vendor-availability-list-header"
             style={styles.listHeader}
@@ -216,14 +249,38 @@ const VendorAvailability = () => {
             <div>
               <p style={styles.eyebrow}>YOUR SCHEDULE</p>
 
-              <h2 style={styles.cardTitle}>
+              <h2
+                className="vendor-availability-card-title"
+                style={styles.cardTitle}
+              >
                 Available Time Slots
               </h2>
             </div>
 
             <span style={styles.count}>
-              {slots.length} slots
+              {totalItems} slots
             </span>
+          </div>
+
+          <div
+            className="vendor-availability-filter"
+            style={styles.filterContainer}
+          >
+            <label style={styles.filterLabel}>
+              Filter:
+            </label>
+
+            <select
+              value={filter}
+              onChange={(e) =>
+                handleFilterChange(e.target.value)
+              }
+              style={styles.filterSelect}
+            >
+              <option value="all">All</option>
+              <option value="available">Available</option>
+              <option value="booked">Booked</option>
+            </select>
           </div>
 
           {loading ? (
@@ -231,54 +288,110 @@ const VendorAvailability = () => {
               Loading availability...
             </p>
           ) : slots.length === 0 ? (
-            <div className="vendor-availability-empty" style={styles.empty}>
+            <div
+              className="vendor-availability-empty"
+              style={styles.empty}
+            >
               <div style={styles.emptyIcon}>📅</div>
 
               <h3 style={styles.emptyTitle}>
-                No availability added
+                No availability found
               </h3>
 
               <p style={styles.emptyText}>
-                Add your available dates and time slots above.
+                {filter === "all"
+                  ? "Add your available dates and time slots above."
+                  : `No ${filter} time slots found.`}
               </p>
             </div>
           ) : (
-            <div style={styles.slotList}>
-              {slots.map((slot) => (
-                <div
-                  key={slot._id}
-                  className="vendor-availability-slot"
-                  style={styles.slot}
-                >
-                  <div className="vendor-availability-slot-info">
-                    <strong style={styles.slotDate}>
-                      📅 {formatDate(slot.date)}
-                    </strong>
-
-                    <p style={styles.time}>
-                      🕐 {slot.startTime} - {slot.endTime}
-                    </p>
-                  </div>
-
-                  <div className="vendor-availability-slot-action">
-                    {slot.isBooked ? (
-                      <span style={styles.booked}>
-                        Booked
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          handleDelete(slot._id)
-                        }
-                        style={styles.deleteButton}
+            <>
+              <div style={styles.slotList}>
+                {slots.map((slot) => (
+                  <div
+                    key={slot._id}
+                    className="vendor-availability-slot"
+                    style={styles.slot}
+                  >
+                    <div className="vendor-availability-slot-info">
+                      <strong
+                        className="vendor-availability-slot-date"
+                        style={styles.slotDate}
                       >
-                        Delete
-                      </button>
-                    )}
+                        📅 {formatDate(slot.date)}
+                      </strong>
+
+                      <p
+                        className="vendor-availability-time"
+                        style={styles.time}
+                      >
+                        🕐 {slot.startTime} - {slot.endTime}
+                      </p>
+                    </div>
+
+                    <div className="vendor-availability-slot-action">
+                      {slot.isBooked ? (
+                        <span style={styles.booked}>
+                          Booked
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            handleDelete(slot._id)
+                          }
+                          style={styles.deleteButton}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div
+                  className="vendor-availability-pagination"
+                  style={styles.pagination}
+                >
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() =>
+                      setCurrentPage((prev) => prev - 1)
+                    }
+                    style={{
+                      ...styles.paginationButton,
+                      ...(currentPage === 1
+                        ? styles.disabledButton
+                        : {}),
+                    }}
+                  >
+                    ← Previous
+                  </button>
+
+                  <span style={styles.pageInfo}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((prev) => prev + 1)
+                    }
+                    style={{
+                      ...styles.paginationButton,
+                      ...(currentPage === totalPages
+                        ? styles.disabledButton
+                        : {}),
+                    }}
+                  >
+                    Next →
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </section>
       </main>
@@ -307,6 +420,18 @@ const VendorAvailability = () => {
 
         .vendor-availability-slot:hover {
           background: #f7f5f1;
+        }
+
+        .vendor-availability-filter select {
+          cursor: pointer;
+        }
+
+        .vendor-availability-pagination button {
+          transition: opacity 0.2s ease, background 0.2s ease;
+        }
+
+        .vendor-availability-pagination button:hover:not(:disabled) {
+          opacity: 0.9;
         }
 
         @media (max-width: 900px) {
@@ -344,6 +469,19 @@ const VendorAvailability = () => {
           .vendor-availability-list-header {
             align-items: flex-start !important;
             gap: 15px !important;
+          }
+
+          .vendor-availability-filter {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .vendor-availability-filter select {
+            width: 100% !important;
+          }
+
+          .vendor-availability-pagination {
+            gap: 10px !important;
           }
         }
 
@@ -396,6 +534,19 @@ const VendorAvailability = () => {
 
           .vendor-availability-empty {
             padding: 35px 12px !important;
+          }
+
+          .vendor-availability-pagination {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .vendor-availability-pagination button {
+            width: 100% !important;
+          }
+
+          .vendor-availability-page-info {
+            text-align: center;
           }
         }
 
@@ -551,6 +702,29 @@ const styles = {
     whiteSpace: "nowrap",
   },
 
+  filterContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+
+  filterLabel: {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#3D5A50",
+  },
+
+  filterSelect: {
+    padding: "9px 12px",
+    border: "1px solid #E5DFD5",
+    borderRadius: "7px",
+    background: "#FAF9F7",
+    color: "#3D5A50",
+    fontSize: "13px",
+    outline: "none",
+  },
+
   slotList: {
     display: "flex",
     flexDirection: "column",
@@ -650,6 +824,39 @@ const styles = {
     fontSize: "14px",
   },
 
+  pagination: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "18px",
+    marginTop: "24px",
+    paddingTop: "20px",
+    borderTop: "1px solid #E5DFD5",
+  },
+
+  paginationButton: {
+    padding: "9px 15px",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+    border: "none",
+    borderRadius: "7px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+  },
+
+  disabledButton: {
+    opacity: 0.4,
+    cursor: "not-allowed",
+  },
+
+  pageInfo: {
+    color: "#6B6560",
+    fontSize: "13px",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
+  },
+
   loadingCard: {
     background: "#FFFFFF",
     padding: "40px",
@@ -660,4 +867,3 @@ const styles = {
 };
 
 export default VendorAvailability;
-
