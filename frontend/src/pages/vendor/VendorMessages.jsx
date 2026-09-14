@@ -32,9 +32,15 @@ const VendorMessages = () => {
     try {
       setSelectedConversation(conversation);
 
-      setUnreadCounts((prev) => ({...prev,[conversation._id]: 0,}));
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [conversation._id]: 0,
+      }));
 
-      const res = await axiosInstance.get(`/chat/messages/${conversation._id}`);
+      const res = await axiosInstance.get(
+        `/chat/messages/${conversation._id}`
+      );
+
       setMessages(res.data.data || []);
 
       socket.emit("joinConversation", conversation._id);
@@ -44,71 +50,74 @@ const VendorMessages = () => {
     }
   };
 
- useEffect(() => {
+  useEffect(() => {
     const handleReceiveMessage = (newMessage) => {
-        const conversationId =
-            newMessage.conversation?._id || newMessage.conversation;
+      const conversationId =
+        newMessage.conversation?._id || newMessage.conversation;
 
-        if (conversationId === selectedConversation?._id) {
-            setMessages((prev) => {
-                if (prev.some((msg) => msg._id === newMessage._id)) {
-                    return prev;
-                }
+      if (conversationId === selectedConversation?._id) {
+        setMessages((prev) => {
+          if (prev.some((msg) => msg._id === newMessage._id)) {
+            return prev;
+          }
 
-                return [...prev, newMessage];
-            });
+          return [...prev, newMessage];
+        });
 
-            // Message received while conversation is open
-            if (
-                newMessage.receiver?._id?.toString() ===
-                selectedConversation.customer?._id?.toString()
-            ) {
-                socket.emit("markMessagesAsRead", conversationId);
-            }
-        } else {
-            setUnreadCounts((prev) => ({
-                ...prev,
-                [conversationId]: (prev[conversationId] || 0) + 1,
-            }));
+        if (
+          newMessage.receiver?._id?.toString() ===
+          selectedConversation.customer?._id?.toString()
+        ) {
+          socket.emit("markMessagesAsRead", conversationId);
         }
+      } else {
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || 0) + 1,
+        }));
+      }
 
-        setConversations((prev) =>
-            prev.map((conversation) =>
-                conversation._id === conversationId
-                    ? {
-                          ...conversation,
-                          lastMessage: newMessage.message,
-                          lastMessageAt: newMessage.createdAt,
-                      }
-                    : conversation
-            )
-        );
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          conversation._id === conversationId
+            ? {
+                ...conversation,
+                lastMessage: newMessage.message,
+                lastMessageAt: newMessage.createdAt,
+              }
+            : conversation
+        )
+      );
     };
 
     const handleUserStatus = ({ userId, status }) => {
-        setOnlineUsers((prev) => ({
-            ...prev,
-            [userId]: status === "online",
-        }));
+      setOnlineUsers((prev) => ({
+        ...prev,
+        [userId]: status === "online",
+      }));
     };
 
     const handleMessagesRead = ({ conversationId }) => {
-    if (conversationId !== selectedConversation?._id) return;
-    setMessages((prev) => prev.map((msg) => ({
-                  ...msg,isRead: true}))
-    );
-};
+      if (conversationId !== selectedConversation?._id) return;
+
+      setMessages((prev) =>
+        prev.map((msg) => ({
+          ...msg,
+          isRead: true,
+        }))
+      );
+    };
 
     socket.on("receiveMessage", handleReceiveMessage);
     socket.on("userStatusChanged", handleUserStatus);
     socket.on("messagesRead", handleMessagesRead);
 
     return () => {
-        socket.off("receiveMessage", handleReceiveMessage);
-        socket.off("userStatusChanged", handleUserStatus);
-        socket.off("messagesRead", handleMessagesRead);
+      socket.off("receiveMessage", handleReceiveMessage);
+      socket.off("userStatusChanged", handleUserStatus);
+      socket.off("messagesRead", handleMessagesRead);
     };
-}, [selectedConversation]);
+  }, [selectedConversation]);
 
   const sendMessage = (e) => {
     e.preventDefault();
@@ -123,180 +132,472 @@ const VendorMessages = () => {
     setMessage("");
   };
 
+  const backToConversations = () => {
+    setSelectedConversation(null);
+    setMessages([]);
+  };
+
   return (
     <>
-    <VendorNavbar />
-    <div className="responsive-page" style={styles.page}>      
-    <div style={styles.header}>
-        <p style={styles.eyebrow}>MESSAGES</p>
-        <h1 style={styles.title}>Messages</h1>
-        <p style={styles.subtitle}>Chat with your customers.</p>
-      </div>
+      <VendorNavbar />
 
-    <div className="chat-container" style={styles.chatContainer}>
-        <div className="conversation-panel" style={styles.conversationPanel}>
+      <div
+        className="responsive-page vendor-messages-page"
+        style={styles.page}
+      >
+        <div
+          className="vendor-messages-header"
+          style={styles.header}
+        >
+          <p style={styles.eyebrow}>MESSAGES</p>
 
-          <h3 style={styles.panelTitle}>Conversations</h3>
+          <h1
+            className="vendor-messages-title"
+            style={styles.title}
+          >
+            Messages
+          </h1>
 
-          {loading ? (
-            <p style={styles.emptyText}>Loading...</p>
-          ) : conversations.length === 0 ? (
-            <p style={styles.emptyText}>No conversations yet.</p>
-          ) : (
-            conversations.map((conversation) => (
+          <p
+            className="vendor-messages-subtitle"
+            style={styles.subtitle}
+          >
+            Chat with your customers.
+          </p>
+        </div>
 
-              <div
-                key={conversation._id}
-                onClick={() => openConversation(conversation)}
-                style={{
-                  ...styles.conversation,
-                  ...(selectedConversation?._id === conversation._id
-                    ? styles.selectedConversation
-                    : {}),
-                }}>
+        <div
+          className={`chat-container ${
+            selectedConversation
+              ? "mobile-chat-selected"
+              : "mobile-chat-list"
+          }`}
+          style={styles.chatContainer}
+        >
+          {/* =========================
+              CONVERSATION PANEL
+          ========================= */}
 
-                <div style={styles.avatar}>
-                  {conversation.customer?.name
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </div>
+          <div
+            className="conversation-panel"
+            style={styles.conversationPanel}
+          >
+            <h3 style={styles.panelTitle}>
+              Conversations
+            </h3>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-
-                  <div style={styles.conversationTop}>
-
-                    <strong>{conversation.customer?.name || "Customer"}</strong>
-
-                    {unreadCounts[conversation._id] > 0 && (
-                      <span style={styles.unreadBadge}>
-                        {unreadCounts[conversation._id]}
-                      </span>
-                    )}
-
+            {loading ? (
+              <p style={styles.emptyText}>Loading...</p>
+            ) : conversations.length === 0 ? (
+              <p style={styles.emptyText}>
+                No conversations yet.
+              </p>
+            ) : (
+              conversations.map((conversation) => (
+                <div
+                  key={conversation._id}
+                  onClick={() =>
+                    openConversation(conversation)
+                  }
+                  style={{
+                    ...styles.conversation,
+                    ...(selectedConversation?._id ===
+                    conversation._id
+                      ? styles.selectedConversation
+                      : {}),
+                  }}
+                >
+                  <div style={styles.avatar}>
+                    {conversation.customer?.name
+                      ?.charAt(0)
+                      .toUpperCase()}
                   </div>
 
-                  <p style={styles.lastMessage}>
-                    {conversation.lastMessage || "Start chatting"}
-                  </p>
-
-                </div>
-
-              </div>
-
-            ))
-          )}
-
-        </div>
-
-        <div className="chat-panel" style={styles.chatPanel}>
-          {!selectedConversation ? (
-
-            <div style={styles.noChat}>
-              <div style={styles.chatIcon}>💬</div>
-              <h3>Select a conversation</h3>
-              <p>Choose a customer to start chatting.</p>
-            </div>
-
-          ) : (
-            
-            <>
-
-              <div style={styles.chatHeader}>
-                <div style={styles.avatar}>
-                  {selectedConversation.customer?.name
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </div>
-
-              <div>
-                  <strong>{selectedConversation.customer?.name}</strong>
-                  <p style={{ ...styles.onlineText,
-                      color: onlineUsers[selectedConversation.customer?._id]
-                        ? "#2E8B57"
-                        : "#999"}}>
-                   {onlineUsers[selectedConversation.customer?._id]
-                      ? "● Online"
-                      : "○ Offline"}
-                  </p>          
-              </div>
-
-              </div>
-
-              <div style={styles.messagesArea}>
-                {messages.length === 0 ? (
-                  <div style={styles.emptyChat}>No messages yet. Say hello 👋</div>
-                ) : (
-
-                  messages.map((msg) => {
-                    const isMine =
-                      msg.sender?._id?.toString() ===
-                      selectedConversation.vendor?._id?.toString();
-
-                    return (
-                      <div
-                        key={msg._id}
-                        style={{ ...styles.messageRow,
-                          justifyContent: isMine
-                            ? "flex-end"
-                            : "flex-start",
-                        }}
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={styles.conversationTop}>
+                      <strong
+                        className="conversation-name"
+                        style={styles.conversationName}
                       >
+                        {conversation.customer?.name ||
+                          "Customer"}
+                      </strong>
 
+                      {unreadCounts[conversation._id] >
+                        0 && (
+                        <span style={styles.unreadBadge}>
+                          {unreadCounts[
+                            conversation._id
+                          ]}
+                        </span>
+                      )}
+                    </div>
+
+                    <p style={styles.lastMessage}>
+                      {conversation.lastMessage ||
+                        "Start chatting"}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+
+          <div
+            className="chat-panel"
+            style={styles.chatPanel}
+          >
+            {!selectedConversation ? (
+              <div style={styles.noChat}>
+                <div style={styles.chatIcon}>💬</div>
+
+                <h3>Select a conversation</h3>
+
+                <p>
+                  Choose a customer to start chatting.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div
+                  className="mobile-back-button"
+                  onClick={backToConversations}
+                >
+                  ← Conversations
+                </div>
+
+                <div
+                  className="vendor-chat-header"
+                  style={styles.chatHeader}
+                >
+                  <div style={styles.avatar}>
+                    {selectedConversation.customer?.name
+                      ?.charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                  <div style={styles.chatHeaderInfo}>
+                    <strong
+                      className="chat-customer-name"
+                      style={styles.chatCustomerName}
+                    >
+                      {selectedConversation.customer?.name}
+                    </strong>
+
+                    <p
+                      style={{
+                        ...styles.onlineText,
+                        color: onlineUsers[
+                          selectedConversation.customer?._id
+                        ]
+                          ? "#2E8B57"
+                          : "#999",
+                      }}
+                    >
+                      {onlineUsers[
+                        selectedConversation.customer?._id
+                      ]
+                        ? "● Online"
+                        : "○ Offline"}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className="messages-area"
+                  style={styles.messagesArea}
+                >
+                  {messages.length === 0 ? (
+                    <div style={styles.emptyChat}>
+                      No messages yet. Say hello 👋
+                    </div>
+                  ) : (
+                    messages.map((msg) => {
+                      const isMine =
+                        msg.sender?._id?.toString() ===
+                        selectedConversation.vendor?._id?.toString();
+
+                      return (
                         <div
+                          key={msg._id}
                           style={{
-                            ...styles.messageBubble,
-                            ...(isMine
-                              ? styles.myMessage
-                              : styles.theirMessage),
+                            ...styles.messageRow,
+                            justifyContent: isMine
+                              ? "flex-end"
+                              : "flex-start",
                           }}
                         >
+                          <div
+                            className="message-bubble"
+                            style={{
+                              ...styles.messageBubble,
+                              ...(isMine
+                                ? styles.myMessage
+                                : styles.theirMessage),
+                            }}
+                          >
+                            <div>{msg.message}</div>
 
-                          <div>{msg.message}</div>
+                            <span
+                              style={styles.messageTime}
+                            >
+                              {new Date(
+                                msg.createdAt
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
 
-                     <span style={styles.messageTime}>
-                             {new Date(msg.createdAt).toLocaleTimeString([], {
-                               hour: "2-digit",
-                               minute: "2-digit",
-                          })}
-
-                         {isMine && (
-                        <span style={{ marginLeft: "5px" }}>
-                           {msg.isRead ? "✓✓" : "✓"}
-                        </span>
-                            )}
-                    </span>
-
+                              {isMine && (
+                                <span
+                                  style={{
+                                    marginLeft: "5px",
+                                  }}
+                                >
+                                  {msg.isRead
+                                    ? "✓✓"
+                                    : "✓"}
+                                </span>
+                              )}
+                            </span>
+                          </div>
                         </div>
+                      );
+                    })
+                  )}
+                </div>
 
-                      </div>
-                    );
-                  })
+                <form
+                  onSubmit={sendMessage}
+                  className="vendor-message-input-area"
+                  style={styles.inputArea}
+                >
+                  <input
+                    value={message}
+                    onChange={(e) =>
+                      setMessage(e.target.value)
+                    }
+                    placeholder="Type a message..."
+                    style={styles.messageInput}
+                  />
 
-                )}
-
-              </div>
-
-              <form onSubmit={sendMessage} style={styles.inputArea}>
-                <input value={message} onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..." style={styles.messageInput} />
-                <button type="submit" style={styles.sendButton}>Send</button>
-              </form>
-
-            </>
-
-          )}
-
+                  <button
+                    type="submit"
+                    style={styles.sendButton}
+                  >
+                    Send
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
         </div>
 
-      </div>
+        <style>{`
+          /* =========================
+             TABLET
+          ========================= */
 
-    </div>
+          @media (max-width: 900px) {
+            .vendor-messages-page {
+              padding: 30px 24px !important;
+            }
+
+            .conversation-panel {
+              width: 260px !important;
+              flex-shrink: 0;
+            }
+
+            .message-bubble {
+              max-width: 75% !important;
+            }
+          }
+
+          /* =========================
+             MOBILE
+          ========================= */
+
+          @media (max-width: 700px) {
+            .vendor-messages-page {
+              padding: 24px 16px !important;
+            }
+
+            .vendor-messages-title {
+              font-size: 28px !important;
+            }
+
+            .vendor-messages-subtitle {
+              font-size: 12px !important;
+            }
+
+            .chat-container {
+              height: calc(100vh - 190px) !important;
+              min-height: 500px;
+              position: relative;
+            }
+
+            /*
+              When no conversation is selected,
+              show only the conversation list.
+            */
+            .mobile-chat-list .conversation-panel {
+              width: 100% !important;
+              border-right: none !important;
+              display: block !important;
+            }
+
+            .mobile-chat-list .chat-panel {
+              display: none !important;
+            }
+
+            /*
+              When conversation is selected,
+              show only the chat.
+            */
+            .mobile-chat-selected .conversation-panel {
+              display: none !important;
+            }
+
+            .mobile-chat-selected .chat-panel {
+              display: flex !important;
+              width: 100% !important;
+            }
+
+            .conversation-panel {
+              padding: 16px !important;
+            }
+
+            .panelTitle {
+              font-size: 17px !important;
+            }
+
+            .conversation {
+              padding: 11px !important;
+            }
+
+            .conversation-name {
+              font-size: 13px;
+            }
+
+            .lastMessage {
+              max-width: 100% !important;
+            }
+
+            .vendor-chat-header {
+              padding: 13px 15px !important;
+            }
+
+            .chat-customer-name {
+              font-size: 13px;
+            }
+
+            .messages-area {
+              padding: 14px !important;
+            }
+
+            .message-bubble {
+              max-width: 82% !important;
+              padding: 9px 12px !important;
+              font-size: 12px !important;
+            }
+
+            .vendor-message-input-area {
+              padding: 10px !important;
+              gap: 7px !important;
+            }
+
+            .vendor-message-input-area input {
+              min-width: 0;
+              padding: 10px !important;
+            }
+
+            .vendor-message-input-area button {
+              padding: 10px 15px !important;
+            }
+
+            .mobile-back-button {
+              display: block !important;
+            }
+          }
+
+          /* =========================
+             SMALL MOBILE
+          ========================= */
+
+          @media (max-width: 380px) {
+            .vendor-messages-page {
+              padding: 20px 12px !important;
+            }
+
+            .vendor-messages-title {
+              font-size: 25px !important;
+            }
+
+            .chat-container {
+              height: calc(100vh - 175px) !important;
+              min-height: 460px;
+            }
+
+            .conversation-panel {
+              padding: 13px !important;
+            }
+
+            .conversation {
+              gap: 9px !important;
+              padding: 10px !important;
+            }
+
+            .conversation .avatar {
+              width: 36px !important;
+              height: 36px !important;
+              font-size: 13px !important;
+            }
+
+            .messages-area {
+              padding: 11px !important;
+            }
+
+            .message-bubble {
+              max-width: 88% !important;
+            }
+
+            .vendor-message-input-area {
+              padding: 8px !important;
+            }
+
+            .vendor-message-input-area button {
+              padding: 10px 12px !important;
+            }
+          }
+
+          /*
+            Hidden on desktop/tablet.
+            Visible only when a conversation is selected
+            on mobile.
+          */
+          .mobile-back-button {
+            display: none;
+            padding: 10px 15px;
+            border-bottom: 1px solid #E5DFD5;
+            background: #FFFFFF;
+            color: #3D5A50;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+        `}</style>
+      </div>
     </>
-  )
-}
+  );
+};
 
 const styles = {
-
   page: {
     padding: "35px",
     minHeight: "100vh",
@@ -343,6 +644,8 @@ const styles = {
     borderRight: "1px solid #E5DFD5",
     padding: "20px",
     overflowY: "auto",
+    boxSizing: "border-box",
+    flexShrink: 0,
   },
 
   panelTitle: {
@@ -360,6 +663,7 @@ const styles = {
     borderRadius: "9px",
     cursor: "pointer",
     marginBottom: "5px",
+    boxSizing: "border-box",
   },
 
   selectedConversation: {
@@ -373,6 +677,12 @@ const styles = {
     gap: "10px",
   },
 
+  conversationName: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
   unreadBadge: {
     minWidth: "20px",
     height: "20px",
@@ -384,6 +694,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     fontWeight: "600",
+    flexShrink: 0,
   },
 
   avatar: {
@@ -418,6 +729,7 @@ const styles = {
     flex: 1,
     display: "flex",
     flexDirection: "column",
+    minWidth: 0,
   },
 
   chatHeader: {
@@ -426,6 +738,15 @@ const styles = {
     gap: "12px",
     padding: "15px 20px",
     borderBottom: "1px solid #E5DFD5",
+    flexShrink: 0,
+  },
+
+  chatHeaderInfo: {
+    minWidth: 0,
+  },
+
+  chatCustomerName: {
+    overflowWrap: "anywhere",
   },
 
   onlineText: {
@@ -439,6 +760,7 @@ const styles = {
     padding: "20px",
     overflowY: "auto",
     background: "#FCFBF9",
+    minHeight: 0,
   },
 
   messageRow: {
@@ -452,6 +774,7 @@ const styles = {
     borderRadius: "12px",
     fontSize: "13px",
     wordBreak: "break-word",
+    overflowWrap: "anywhere",
   },
 
   myMessage: {
@@ -481,6 +804,7 @@ const styles = {
     justifyContent: "center",
     color: "#999",
     fontSize: "13px",
+    textAlign: "center",
   },
 
   noChat: {
@@ -490,6 +814,8 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     color: "#777",
+    textAlign: "center",
+    padding: "20px",
   },
 
   chatIcon: {
@@ -502,14 +828,17 @@ const styles = {
     gap: "10px",
     padding: "15px",
     borderTop: "1px solid #E5DFD5",
+    flexShrink: 0,
   },
 
   messageInput: {
     flex: 1,
+    minWidth: 0,
     padding: "11px 13px",
     border: "1px solid #DCD5CA",
     borderRadius: "8px",
     outline: "none",
+    boxSizing: "border-box",
   },
 
   sendButton: {
@@ -519,8 +848,9 @@ const styles = {
     background: "#174D40",
     color: "#FFFFFF",
     cursor: "pointer",
+    flexShrink: 0,
   },
-
 };
 
 export default VendorMessages;
+

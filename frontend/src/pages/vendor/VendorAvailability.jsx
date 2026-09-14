@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import {createAvailability,
+import {
+  createAvailability,
   getMyAvailability,
   deleteAvailability,
 } from "../../services/vendorService";
@@ -34,7 +35,7 @@ const VendorAvailability = () => {
 
       setError(
         error.response?.data?.message ||
-        "Failed to load availability"
+          "Failed to load availability"
       );
     } finally {
       setLoading(false);
@@ -60,25 +61,21 @@ const VendorAvailability = () => {
     try {
       setSaving(true);
 
-      const res = await createAvailability({date,startTime,endTime });
-      setSuccess(
-        res.message ||
-        res.messages ||
-        "Availability slot created successfully"
-      );
+      const res = await createAvailability({date,startTime,endTime});
+
+      setSuccess(res.message || res.messages || "Availability slot created successfully");
 
       setDate("");
       setStartTime("");
       setEndTime("");
 
       fetchAvailability();
-
     } catch (error) {
       console.error("Create availability error:", error);
 
       setError(
         error.response?.data?.message ||
-        "Failed to create availability"
+          "Failed to create availability"
       );
     } finally {
       setSaving(false);
@@ -97,13 +94,12 @@ const VendorAvailability = () => {
       );
 
       setSuccess("Availability deleted successfully.");
-
     } catch (error) {
       console.error("Delete availability error:", error);
 
       setError(
         error.response?.data?.message ||
-        "Failed to delete availability"
+          "Failed to delete availability"
       );
     }
   };
@@ -118,13 +114,21 @@ const VendorAvailability = () => {
 
   return (
     <div style={styles.page}>
-        <VendorNavbar />
-      <main style={styles.main}>
+      <VendorNavbar />
 
-        <div style={styles.header}>
+      <main className="vendor-availability-main" style={styles.main}>
+        {/* HEADER */}
+        <div className="vendor-availability-header" style={styles.header}>
           <div>
             <p style={styles.eyebrow}>VENDOR</p>
-            <h1 style={styles.title}>Manage Availability</h1>
+
+            <h1
+              className="vendor-availability-title"
+              style={styles.title}
+            >
+              Manage Availability
+            </h1>
+
             <p style={styles.subtitle}>
               Add the dates and time slots when you are available
               for wedding services.
@@ -132,107 +136,307 @@ const VendorAvailability = () => {
           </div>
         </div>
 
+        {/* ERROR */}
         {error && (
-          <div style={styles.error}>
+          <div className="vendor-availability-message" style={styles.error}>
             ⚠️ {error}
           </div>
         )}
 
+        {/* SUCCESS */}
         {success && (
-          <div style={styles.success}>
+          <div
+            className="vendor-availability-message"
+            style={styles.success}
+          >
             ✓ {success}
           </div>
         )}
 
+        {/* ADD AVAILABILITY */}
         <section style={styles.card}>
           <h2 style={styles.cardTitle}>Add Availability</h2>
+
           <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
+            <div
+              className="vendor-availability-form-grid"
+              style={styles.formGrid}
+            >
               <div>
                 <label style={styles.label}>Date</label>
-                <input type="date" value={date}
+
+                <input
+                  type="date"
+                  value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  style={styles.input} />
+                  style={styles.input}
+                />
               </div>
 
               <div>
                 <label style={styles.label}>Start Time</label>
-                <input type="time" value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}style={styles.input} />
+
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  style={styles.input}
+                />
               </div>
 
               <div>
                 <label style={styles.label}>End Time</label>
-                <input type="time" value={endTime}
+
+                <input
+                  type="time"
+                  value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  style={styles.input} />
+                  style={styles.input}
+                />
               </div>
             </div>
 
-            <button type="submit" disabled={saving} style={styles.addButton}>
-              {saving
-                ? "Adding..."
-                : "+ Add Availability"}
+            <button
+              type="submit"
+              disabled={saving}
+              className="vendor-availability-add-button"
+              style={styles.addButton}
+            >
+              {saving ? "Adding..." : "+ Add Availability"}
             </button>
-
           </form>
-
         </section>
+
+        {/* AVAILABILITY LIST */}
         <section style={styles.card}>
-          <div style={styles.listHeader}>
+          <div
+            className="vendor-availability-list-header"
+            style={styles.listHeader}
+          >
             <div>
               <p style={styles.eyebrow}>YOUR SCHEDULE</p>
-              <h2 style={styles.cardTitle}>Available Time Slots</h2>
+
+              <h2 style={styles.cardTitle}>
+                Available Time Slots
+              </h2>
             </div>
-            <span style={styles.count}>{slots.length} slots</span>
+
+            <span style={styles.count}>
+              {slots.length} slots
+            </span>
           </div>
+
           {loading ? (
-            <p>Loading availability...</p>
+            <p style={styles.loadingText}>
+              Loading availability...
+            </p>
           ) : slots.length === 0 ? (
-            <div style={styles.empty}>
-              <div style={styles.emptyIcon}>
-                📅
-              </div>
-              <h3>No availability added</h3>
-              <p> Add your available dates and time slots above.</p>
+            <div className="vendor-availability-empty" style={styles.empty}>
+              <div style={styles.emptyIcon}>📅</div>
+
+              <h3 style={styles.emptyTitle}>
+                No availability added
+              </h3>
+
+              <p style={styles.emptyText}>
+                Add your available dates and time slots above.
+              </p>
             </div>
           ) : (
             <div style={styles.slotList}>
               {slots.map((slot) => (
-                <div key={slot._id} style={styles.slot}>
-                  <div>
-                    <strong>
+                <div
+                  key={slot._id}
+                  className="vendor-availability-slot"
+                  style={styles.slot}
+                >
+                  <div className="vendor-availability-slot-info">
+                    <strong style={styles.slotDate}>
                       📅 {formatDate(slot.date)}
                     </strong>
+
                     <p style={styles.time}>
                       🕐 {slot.startTime} - {slot.endTime}
                     </p>
                   </div>
 
-                  <div>
+                  <div className="vendor-availability-slot-action">
                     {slot.isBooked ? (
                       <span style={styles.booked}>
                         Booked
                       </span>
                     ) : (
-                      <button onClick={() => handleDelete(slot._id)}
-                        style={styles.deleteButton}>Delete
+                      <button
+                        onClick={() =>
+                          handleDelete(slot._id)
+                        }
+                        style={styles.deleteButton}
+                      >
+                        Delete
                       </button>
                     )}
                   </div>
                 </div>
-
               ))}
-
             </div>
           )}
-
         </section>
-
       </main>
+
+      {/* RESPONSIVE CSS */}
+      <style>{`
+        * {
+          box-sizing: border-box;
+        }
+
+        .vendor-availability-main {
+          width: 100%;
+        }
+
+        .vendor-availability-add-button {
+          transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .vendor-availability-add-button:hover:not(:disabled) {
+          opacity: 0.9;
+        }
+
+        .vendor-availability-slot {
+          transition: background 0.2s ease;
+        }
+
+        .vendor-availability-slot:hover {
+          background: #f7f5f1;
+        }
+
+        @media (max-width: 900px) {
+          .vendor-availability-main {
+            padding: 32px 24px !important;
+          }
+
+          .vendor-availability-form-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .vendor-availability-main {
+            padding: 28px 18px !important;
+          }
+
+          .vendor-availability-header {
+            margin-bottom: 24px !important;
+          }
+
+          .vendor-availability-title {
+            font-size: 32px !important;
+          }
+
+          .vendor-availability-form-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          .vendor-availability-add-button {
+            width: 100%;
+          }
+
+          .vendor-availability-list-header {
+            align-items: flex-start !important;
+            gap: 15px !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .vendor-availability-main {
+            padding: 24px 14px !important;
+          }
+
+          .vendor-availability-title {
+            font-size: 28px !important;
+            line-height: 1.2 !important;
+          }
+
+          .vendor-availability-header {
+            margin-bottom: 20px !important;
+          }
+
+          .vendor-availability-message {
+            font-size: 13px !important;
+            padding: 11px 13px !important;
+          }
+
+          .vendor-availability-card {
+            padding: 20px !important;
+          }
+
+          .vendor-availability-list-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .vendor-availability-slot {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 14px !important;
+            padding: 16px !important;
+          }
+
+          .vendor-availability-slot-action {
+            width: 100%;
+          }
+
+          .vendor-availability-slot-action button {
+            width: 100%;
+          }
+
+          .vendor-availability-slot-action span {
+            display: inline-flex;
+          }
+
+          .vendor-availability-empty {
+            padding: 35px 12px !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .vendor-availability-main {
+            padding: 20px 10px !important;
+          }
+
+          .vendor-availability-title {
+            font-size: 25px !important;
+          }
+
+          .vendor-availability-subtitle {
+            font-size: 13px !important;
+          }
+
+          .vendor-availability-card {
+            padding: 17px !important;
+          }
+
+          .vendor-availability-card-title {
+            font-size: 20px !important;
+          }
+
+          .vendor-availability-slot {
+            padding: 14px !important;
+          }
+
+          .vendor-availability-slot-date {
+            font-size: 13px !important;
+          }
+
+          .vendor-availability-time {
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -271,6 +475,7 @@ const styles = {
     marginTop: "10px",
     fontSize: "15px",
     lineHeight: "1.6",
+    maxWidth: "650px",
   },
 
   card: {
@@ -343,6 +548,7 @@ const styles = {
     borderRadius: "20px",
     fontSize: "12px",
     fontWeight: "600",
+    whiteSpace: "nowrap",
   },
 
   slotList: {
@@ -359,6 +565,13 @@ const styles = {
     border: "1px solid #E5DFD5",
     borderRadius: "9px",
     background: "#FAF9F7",
+    gap: "15px",
+  },
+
+  slotDate: {
+    color: "#3D5A50",
+    fontSize: "14px",
+    overflowWrap: "anywhere",
   },
 
   time: {
@@ -385,6 +598,7 @@ const styles = {
     borderRadius: "20px",
     fontSize: "12px",
     fontWeight: "600",
+    whiteSpace: "nowrap",
   },
 
   empty: {
@@ -396,6 +610,19 @@ const styles = {
   emptyIcon: {
     fontSize: "40px",
     marginBottom: "10px",
+  },
+
+  emptyTitle: {
+    color: "#3D5A50",
+    margin: "0 0 8px",
+    fontFamily: "Georgia, serif",
+    fontWeight: "600",
+  },
+
+  emptyText: {
+    margin: 0,
+    fontSize: "14px",
+    lineHeight: "1.6",
   },
 
   error: {
@@ -418,6 +645,11 @@ const styles = {
     fontSize: "14px",
   },
 
+  loadingText: {
+    color: "#6B6560",
+    fontSize: "14px",
+  },
+
   loadingCard: {
     background: "#FFFFFF",
     padding: "40px",
@@ -425,5 +657,7 @@ const styles = {
     border: "1px solid #E5DFD5",
     textAlign: "center",
   },
-}
+};
+
 export default VendorAvailability;
+

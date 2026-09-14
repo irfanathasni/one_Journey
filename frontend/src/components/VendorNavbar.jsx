@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, NavLink } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
@@ -7,9 +8,12 @@ const VendorNavbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const handleLogout = async () => {
     try {
       const refreshToken = localStorage.getItem("refreshToken");
+
       await axiosInstance.post("/auth/logout", {
         refreshToken,
       });
@@ -21,55 +25,283 @@ const VendorNavbar = () => {
     }
   };
 
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
   return (
-    <header className="vendor-navbar" style={styles.navbar}>      <div style={styles.logo}>One_Journey</div>
-      <nav className="vendor-nav-links" style={styles.navLinks}>        <NavLink
-          to="/vendor/dashboard"
-          style={({ isActive }) =>
-            isActive ? styles.activeNav : styles.navLink}>Dashboard
-        </NavLink>
+    <>
+      <header className="vendor-navbar" style={styles.navbar}>
+        {/* Logo */}
+        <div style={styles.logo}>One_Journey</div>
 
-        <NavLink to="/vendor/bookings"
-          style={({ isActive }) =>
-            isActive ? styles.activeNav : styles.navLink}>
-          Bookings
-        </NavLink>
+        {/* Desktop Navigation */}
+        <nav className="vendor-nav-links" style={styles.navLinks}>
+          <NavLink
+            to="/vendor/dashboard"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            Dashboard
+          </NavLink>
 
-        <NavLink to="/vendor/availability"
-         style={({ isActive}) => 
-          isActive ? styles.activeNav :styles.navLink}>
-             Availability
-        </NavLink>
-        
-        <NavLink
-          to="/vendor/profile"
-          style={({ isActive }) =>
-            isActive ? styles.activeNav : styles.navLink}>
-          My Profile
-        </NavLink>
+          <NavLink
+            to="/vendor/bookings"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            Bookings
+          </NavLink>
 
-        <NavLink to="/vendor/messages"
-          style={({ isActive }) => isActive ? styles.activeNav : styles.navLink
-          }>Messages
-        </NavLink>
+          <NavLink
+            to="/vendor/availability"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            Availability
+          </NavLink>
 
-        <NavLink to="/vendor/wallet"
-          style={({ isActive }) => 
-            isActive ? styles.activeNav : styles.navLink}>
-        Wallet
-        </NavLink>
+          <NavLink
+            to="/vendor/profile"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            My Profile
+          </NavLink>
 
-          
-      </nav>
-      <div className="vendor-profile" style={styles.profileSection}>   
-             <div style={styles.avatar}>V</div>
-        <div style={styles.profileText}>
-          <strong>Vendor</strong>
-          <span>Business Account</span>
+          <NavLink
+            to="/vendor/messages"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            Messages
+          </NavLink>
+
+          <NavLink
+            to="/vendor/wallet"
+            onClick={closeMenu}
+            style={({ isActive }) =>
+              isActive ? styles.activeNav : styles.navLink
+            }
+          >
+            Wallet
+          </NavLink>
+        </nav>
+
+        {/* Profile */}
+        <div className="vendor-profile" style={styles.profileSection}>
+          <div style={styles.avatar}>V</div>
+
+          <div style={styles.profileText}>
+            <strong>Vendor</strong>
+            <span>Business Account</span>
+          </div>
+
+          <button onClick={handleLogout} style={styles.logoutButton}>
+            Logout
+          </button>
         </div>
-        <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
-      </div>
-    </header>
+
+        {/* Mobile Menu Button */}
+        <button
+          className="vendor-menu-button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle navigation"
+        >
+          ☰
+        </button>
+      </header>
+
+      {/* Mobile Navigation */}
+      {menuOpen && (
+        <div className="vendor-mobile-menu">
+          <NavLink
+            to="/vendor/dashboard"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            Dashboard
+          </NavLink>
+
+          <NavLink
+            to="/vendor/bookings"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            Bookings
+          </NavLink>
+
+          <NavLink
+            to="/vendor/availability"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            Availability
+          </NavLink>
+
+          <NavLink
+            to="/vendor/profile"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            My Profile
+          </NavLink>
+
+          <NavLink
+            to="/vendor/messages"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            Messages
+          </NavLink>
+
+          <NavLink
+            to="/vendor/wallet"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "vendor-mobile-link active" : "vendor-mobile-link"
+            }
+          >
+            Wallet
+          </NavLink>
+
+          <button
+            className="vendor-mobile-logout"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        .vendor-navbar {
+          position: relative;
+          z-index: 1000;
+        }
+
+        .vendor-menu-button {
+          display: none;
+          border: none;
+          background: transparent;
+          color: #3D5A50;
+          font-size: 28px;
+          cursor: pointer;
+          padding: 4px;
+          line-height: 1;
+        }
+
+        .vendor-mobile-menu {
+          display: none;
+        }
+
+        @media (max-width: 900px) {
+          .vendor-navbar {
+            padding: 14px 24px !important;
+          }
+
+          .vendor-nav-links {
+            gap: 16px !important;
+          }
+
+          .vendor-profile {
+            gap: 7px !important;
+          }
+
+          .vendor-profile button {
+            margin-left: 4px !important;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .vendor-navbar {
+            padding: 12px 16px !important;
+          }
+
+          .vendor-nav-links {
+            display: none !important;
+          }
+
+          .vendor-profile {
+            display: none !important;
+          }
+
+          .vendor-menu-button {
+            display: block;
+          }
+
+          .vendor-mobile-menu {
+            display: flex;
+            flex-direction: column;
+            background: #FFFFFF;
+            border-bottom: 1px solid #E5DFD5;
+            padding: 8px 16px 14px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+            position: relative;
+            z-index: 999;
+          }
+
+          .vendor-mobile-link {
+            text-decoration: none;
+            color: #6B6560;
+            font-size: 14px;
+            padding: 12px 10px;
+            border-bottom: 1px solid #F0EBE4;
+          }
+
+          .vendor-mobile-link.active {
+            color: #3D5A50;
+            font-weight: 600;
+            background: #F8F5F0;
+          }
+
+          .vendor-mobile-logout {
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid #C97B84;
+            border-radius: 6px;
+            color: #C97B84;
+            cursor: pointer;
+            font-size: 13px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .vendor-navbar {
+            padding: 10px 12px !important;
+          }
+
+          .vendor-navbar > div:first-child {
+            font-size: 19px !important;
+          }
+
+          .vendor-menu-button {
+            font-size: 25px;
+          }
+        }
+      `}</style>
+    </>
   );
 };
 
@@ -88,6 +320,7 @@ const styles = {
     fontSize: "22px",
     fontWeight: "600",
     color: "#3D5A50",
+    flexShrink: 0,
   },
 
   navLinks: {
@@ -116,6 +349,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "10px",
+    flexShrink: 0,
   },
 
   avatar: {
@@ -128,6 +362,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     fontWeight: "600",
+    flexShrink: 0,
   },
 
   profileText: {
