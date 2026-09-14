@@ -20,11 +20,18 @@ export const updateVendorStatus = async (vendorId, status) => {
   return res.data;
 }
 
-export const getAllUsers = async(page = 1,limit = 10,search = "") => {
-    return axiosInstance.get("/admin/users",{
-        params:{page,limit,search}
-    })
-}
+export const getAllUsers = async (page = 1,limit = 10,search = "",status = "") => {
+  const res = await axiosInstance.get("/admin/users", {
+    params: {
+      page,
+      limit,
+      search,
+      status,
+    },
+  });
+
+  return res.data;
+};
 
 export const updateUserStatus = (userId) =>{
     return axiosInstance.put(`/admin/users/${userId}/status`)

@@ -11,31 +11,30 @@ const UserManagement = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [status, setStatus] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page]);
+ useEffect(() => {
+  fetchUsers();
+}, [page, status]);
 
-  const fetchUsers = async () => {
-    setLoading(true);
+const fetchUsers = async () => {
+  setLoading(true);
 
-    try {
-      const res = await getAllUsers(page, 10, search);
+  try {
+    const res = await getAllUsers(page, 10, search, status);
+    setUsers(res.data || []);
+    setTotalPages(res.totalPages || 1);
+    setError("");
+  } catch (err) {
+    console.error("GET USERS ERROR:", err);
 
-      setUsers(
-        Array.isArray(res.data.data) ? res.data.data : []
-      );
-
-      setTotalPages(res.data.totalPages || 1);
-      setError("");
-    } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to load users"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    setError(
+      err.response?.data?.message || "Failed to load users"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleStatusChange = async (userId) => {
     try {
@@ -52,7 +51,6 @@ const UserManagement = () => {
   return (
     <>
       <div className="user-management" style={styles.container}>
-        {/* Header */}
         <div className="user-header" style={styles.header}>
           <div>
             <h2 style={styles.title}>User Management</h2>
@@ -70,15 +68,22 @@ const UserManagement = () => {
               onChange={(e) => setSearch(e.target.value)}
               style={styles.searchInput}
             />
+            <select value={status}
+               onChange={(e) => {setStatus(e.target.value);
+                setPage(1);
+            }}
+               style={styles.searchInput}>
+               <option value="">All Users</option>
+               <option value="active">Active</option>
+               <option value="blocked">Blocked</option>
+            </select>
 
             <button
               style={styles.searchButton}
               onClick={() => {
                 setPage(1);
                 fetchUsers();
-              }}
-            >
-              Search
+              }}>Search
             </button>
           </div>
         </div>
@@ -121,8 +126,7 @@ const UserManagement = () => {
                   <td
                     colSpan="5"
                     style={styles.empty}
-                  >
-                    No users found
+                  >No users found
                   </td>
                 </tr>
               ) : (

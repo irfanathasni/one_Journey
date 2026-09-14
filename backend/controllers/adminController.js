@@ -136,29 +136,47 @@ const updateVendorStatus = async (req, res, next) => {
   }
 }
 
-const getAllUsers = async(req,res,next) => {
-    try{
-        const page = parseInt(req.query.page) ||  1
+const getAllUsers = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1
         const limit = parseInt(req.query.limit) || 10
-        const search = req.query.search ||""
-        const skip = (page -1) *limit
-        const query = {role:ROLES.CUSTOMER}
-    if(search) {
-        query.$or = [
-            { name :{ $regex:search,$options:"i"}},
-            {email:{ $regex :search,$options:"i"}}
-        ]
-    }
-    const totalUsers = await User.countDocuments(query)
-    const users = await User.find(query)
-        .select(" -password")
-        .skip(skip)
-        .limit(limit)
-        .lean()
-    const totalPages = Math.ceil(totalUsers / limit)
-    return res.status(200).json({success:true,data:users,totalUsers,totalPages,currentPage:page}) 
-    }catch(error){
-       next(error)
+        const search = req.query.search || ""
+        const status = req.query.status || ""
+        const skip = (page - 1) * limit
+        const query = {role: ROLES.CUSTOMER}
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } }
+            ]
+        }
+        if (status === "active") {
+            query.isActive = true
+        } else if (status === "blocked") {
+            query.isActive = false
+        }
+
+        const totalUsers = await User.countDocuments(query)
+
+        const users = await User.find(query)
+            .select("-password")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+
+        const totalPages = Math.ceil(totalUsers / limit)
+
+        return res.status(200).json({
+            success: true,
+            data: users,
+            totalUsers,
+            totalPages,
+            currentPage: page
+        })
+
+    } catch (error) {
+        next(error)
     }
 }
 
