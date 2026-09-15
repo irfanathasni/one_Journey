@@ -43,10 +43,19 @@ function App() {
  useEffect(() => {
   const refreshAuth = async () => {
     try {
-      const res = await axiosInstance.post("/auth/refresh") 
-      const { accessToken,role,user } = res.data
-      dispatch(
-        setCredentials({token: accessToken,role,user}))
+     const res = await axiosInstance.post("/auth/refresh");
+
+const { accessToken, role, user } = res.data;
+
+localStorage.setItem("accessToken", accessToken);
+
+dispatch(
+  setCredentials({
+    token: accessToken,
+    role,
+    user,
+  })
+);
     } catch (error) {
       console.log("Refresh token failed -user not logged in ");
     } finally {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import EmojiPicker from "emoji-picker-react";
 import socket from "../../socket/socket";
 import axiosInstance from "../../services/axiosInstance";
 import VendorNavbar from "../../components/VendorNavbar";
@@ -9,9 +10,13 @@ const VendorMessages = () => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+
   const [unreadCounts, setUnreadCounts] = useState({});
   const [onlineUsers, setOnlineUsers] = useState({});
-  const [readMessages, setReadMessages] = useState({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
 
   useEffect(() => {
     fetchConversations();
@@ -64,12 +69,7 @@ const VendorMessages = () => {
           return [...prev, newMessage];
         });
 
-        if (
-          newMessage.receiver?._id?.toString() ===
-          selectedConversation.customer?._id?.toString()
-        ) {
-          socket.emit("markMessagesAsRead", conversationId);
-        }
+        socket.emit("markMessagesAsRead", conversationId);
       } else {
         setUnreadCounts((prev) => ({
           ...prev,
@@ -82,7 +82,13 @@ const VendorMessages = () => {
           conversation._id === conversationId
             ? {
                 ...conversation,
-                lastMessage: newMessage.message,
+                lastMessage:
+                  newMessage.message ||
+                  (newMessage.attachment?.type === "image"
+                    ? "📷 Image"
+                    : newMessage.attachment?.type === "video"
+                    ? "🎥 Video"
+                    : ""),
                 lastMessageAt: newMessage.createdAt,
               }
             : conversation
@@ -119,22 +125,108 @@ const VendorMessages = () => {
     };
   }, [selectedConversation]);
 
-  const sendMessage = (e) => {
-    e.preventDefault();
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
 
-    if (!message.trim() || !selectedConversation) return;
+    if (!file) return;
 
-    socket.emit("sendMessage", {
-      conversationId: selectedConversation._id,
-      message: message.trim(),
+    if (
+      !file.type.startsWith("image/") &&
+      !file.type.startsWith("video/")
+    ) {
+      alert("Only image and video files are allowed.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File size must be less than 50 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setAttachmentPreview({
+      url: previewUrl,
+      type: file.type.startsWith("video/") ? "video" : "image",
+      name: file.name,
     });
 
-    setMessage("");
+    e.target.value = "";
+  };
+
+  const removeAttachment = () => {
+    if (attachmentPreview?.url) {
+      URL.revokeObjectURL(attachmentPreview.url);
+    }
+
+    setSelectedFile(null);
+    setAttachmentPreview(null);
+  };
+
+  const handleEmojiClick = (emojiData) => {
+    setMessage((prev) => prev + emojiData.emoji);
+  };
+
+
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+
+    if (
+      (!message.trim() && !selectedFile) ||
+      !selectedConversation
+    ) {
+      return;
+    }
+
+    try {
+      let attachment = null;
+
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("attachment", selectedFile);
+
+        const uploadResponse = await axiosInstance.post(
+          "/chat/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        attachment = uploadResponse.data.data;
+      }
+
+      socket.emit("sendMessage", {
+        conversationId: selectedConversation._id,
+        message: message.trim(),
+        attachment,
+      });
+
+      setMessage("");
+      removeAttachment();
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to send message. Please try again."
+      );
+    }
   };
 
   const backToConversations = () => {
     setSelectedConversation(null);
     setMessages([]);
+    removeAttachment();
+    setShowEmojiPicker(false);
   };
 
   return (
@@ -145,6 +237,7 @@ const VendorMessages = () => {
         className="responsive-page vendor-messages-page"
         style={styles.page}
       >
+
         <div
           className="vendor-messages-header"
           style={styles.header}
@@ -174,9 +267,6 @@ const VendorMessages = () => {
           }`}
           style={styles.chatContainer}
         >
-          {/* =========================
-              CONVERSATION PANEL
-          ========================= */}
 
           <div
             className="conversation-panel"
@@ -248,7 +338,6 @@ const VendorMessages = () => {
             )}
           </div>
 
-
           <div
             className="chat-panel"
             style={styles.chatPanel}
@@ -265,6 +354,7 @@ const VendorMessages = () => {
               </div>
             ) : (
               <>
+
                 <div
                   className="mobile-back-button"
                   onClick={backToConversations}
@@ -287,7 +377,8 @@ const VendorMessages = () => {
                       className="chat-customer-name"
                       style={styles.chatCustomerName}
                     >
-                      {selectedConversation.customer?.name}
+                      {selectedConversation.customer?.name ||
+                        "Customer"}
                     </strong>
 
                     <p
@@ -326,12 +417,11 @@ const VendorMessages = () => {
                       return (
                         <div
                           key={msg._id}
-                          style={{
-                            ...styles.messageRow,
-                            justifyContent: isMine
-                              ? "flex-end"
-                              : "flex-start",
-                          }}
+                          className={`vendor-message-row ${
+                            isMine
+                              ? "my-message-row"
+                              : "their-message-row"
+                          }`}
                         >
                           <div
                             className="message-bubble"
@@ -342,7 +432,36 @@ const VendorMessages = () => {
                                 : styles.theirMessage),
                             }}
                           >
-                            <div>{msg.message}</div>
+
+                            {msg.attachment?.url && (
+                              <div className="message-attachment">
+                                {msg.attachment.type ===
+                                "image" ? (
+                                  <img
+                                    src={msg.attachment.url}
+                                    alt={
+                                      msg.attachment.name ||
+                                      "Attachment"
+                                    }
+                                    className="chat-image"
+                                  />
+                                ) : (
+                                  <video
+                                    src={msg.attachment.url}
+                                    controls
+                                    className="chat-video"
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                            {/* TEXT */}
+
+                            {msg.message && (
+                              <div className="message-text">
+                                {msg.message}
+                              </div>
+                            )}
 
                             <span
                               style={styles.messageTime}
@@ -373,11 +492,83 @@ const VendorMessages = () => {
                   )}
                 </div>
 
+                {attachmentPreview && (
+                  <div className="attachment-preview">
+                    <div className="attachment-preview-content">
+                      {attachmentPreview.type === "image" ? (
+                        <img
+                          src={attachmentPreview.url}
+                          alt="Preview"
+                        />
+                      ) : (
+                        <video
+                          src={attachmentPreview.url}
+                          controls
+                        />
+                      )}
+
+                      <div className="attachment-info">
+                        <span>
+                          {attachmentPreview.name}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={removeAttachment}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form
                   onSubmit={sendMessage}
                   className="vendor-message-input-area"
                   style={styles.inputArea}
                 >
+
+                  <div className="emoji-wrapper">
+                    <button
+                      type="button"
+                      className="emoji-button"
+                      onClick={() =>
+                        setShowEmojiPicker((prev) => !prev)
+                      }
+                    >
+                      😊
+                    </button>
+
+                    {showEmojiPicker && (
+                      <div className="emoji-picker-container">
+                        <EmojiPicker
+                          onEmojiClick={handleEmojiClick}
+                          width={300}
+                          height={350}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+
+                  <label
+                    htmlFor="vendor-chat-file"
+                    className="attachment-button"
+                    title="Attach image or video"
+                  >
+                    📎
+                  </label>
+
+                  <input
+                    id="vendor-chat-file"
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+
+
                   <input
                     value={message}
                     onChange={(e) =>
@@ -386,6 +577,8 @@ const VendorMessages = () => {
                     placeholder="Type a message..."
                     style={styles.messageInput}
                   />
+
+                  {/* SEND */}
 
                   <button
                     type="submit"
@@ -399,7 +592,155 @@ const VendorMessages = () => {
           </div>
         </div>
 
+        {/* =========================
+            RESPONSIVE CSS
+        ========================= */}
+
         <style>{`
+          /* =========================
+             MESSAGE ALIGNMENT
+          ========================= */
+
+          .vendor-message-row {
+            display: flex;
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+          }
+
+          .their-message-row {
+            justify-content: flex-start !important;
+          }
+
+          .my-message-row {
+            justify-content: flex-end !important;
+          }
+
+          .message-bubble {
+            width: fit-content;
+            max-width: 65%;
+          }
+
+          .message-text {
+            white-space: pre-wrap;
+          }
+
+          /* =========================
+             ATTACHMENTS
+          ========================= */
+
+          .message-attachment {
+            margin-bottom: 5px;
+          }
+
+          .chat-image {
+            display: block;
+            max-width: 250px;
+            max-height: 250px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            object-fit: cover;
+          }
+
+          .chat-video {
+            display: block;
+            width: 250px;
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            object-fit: cover;
+          }
+
+          /* =========================
+             ATTACHMENT PREVIEW
+          ========================= */
+
+          .attachment-preview {
+            padding: 10px 15px;
+            border-top: 1px solid #E5DFD5;
+            background: #FFFFFF;
+          }
+
+          .attachment-preview-content {
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            max-width: 180px;
+            border: 1px solid #E5DFD5;
+            border-radius: 9px;
+            overflow: hidden;
+            background: #FCFBF9;
+          }
+
+          .attachment-preview-content img,
+          .attachment-preview-content video {
+            width: 180px;
+            height: 120px;
+            object-fit: cover;
+          }
+
+          .attachment-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 8px;
+            font-size: 10px;
+            color: #555;
+          }
+
+          .attachment-info span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+          }
+
+          .attachment-info button {
+            border: none;
+            background: transparent;
+            color: #C97B84;
+            cursor: pointer;
+            font-size: 13px;
+          }
+
+          /* =========================
+             EMOJI
+          ========================= */
+
+          .emoji-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+          }
+
+          .emoji-button,
+          .attachment-button {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            flex-shrink: 0;
+          }
+
+          .attachment-button {
+            color: #3D5A50;
+            font-size: 20px;
+          }
+
+          .emoji-picker-container {
+            position: absolute;
+            bottom: 45px;
+            left: 0;
+            z-index: 1000;
+          }
+
           /* =========================
              TABLET
           ========================= */
@@ -416,6 +757,16 @@ const VendorMessages = () => {
 
             .message-bubble {
               max-width: 75% !important;
+            }
+
+            .chat-image {
+              max-width: 220px;
+              max-height: 220px;
+            }
+
+            .chat-video {
+              width: 220px;
+              max-height: 220px;
             }
           }
 
@@ -442,10 +793,6 @@ const VendorMessages = () => {
               position: relative;
             }
 
-            /*
-              When no conversation is selected,
-              show only the conversation list.
-            */
             .mobile-chat-list .conversation-panel {
               width: 100% !important;
               border-right: none !important;
@@ -456,10 +803,6 @@ const VendorMessages = () => {
               display: none !important;
             }
 
-            /*
-              When conversation is selected,
-              show only the chat.
-            */
             .mobile-chat-selected .conversation-panel {
               display: none !important;
             }
@@ -507,9 +850,19 @@ const VendorMessages = () => {
               font-size: 12px !important;
             }
 
+            .chat-image {
+              max-width: 180px;
+              max-height: 180px;
+            }
+
+            .chat-video {
+              width: 180px;
+              max-height: 180px;
+            }
+
             .vendor-message-input-area {
               padding: 10px !important;
-              gap: 7px !important;
+              gap: 4px !important;
             }
 
             .vendor-message-input-area input {
@@ -517,8 +870,32 @@ const VendorMessages = () => {
               padding: 10px !important;
             }
 
-            .vendor-message-input-area button {
-              padding: 10px 15px !important;
+            .vendor-message-input-area button[type="submit"] {
+              padding: 10px 13px !important;
+            }
+
+            .emoji-button,
+            .attachment-button {
+              width: 32px;
+              height: 32px;
+              font-size: 17px;
+            }
+
+            .emoji-picker-container {
+              position: fixed;
+              bottom: 65px;
+              left: 50%;
+              transform: translateX(-50%);
+            }
+
+            .attachment-preview {
+              padding: 8px 10px;
+            }
+
+            .attachment-preview-content img,
+            .attachment-preview-content video {
+              width: 140px;
+              height: 95px;
             }
 
             .mobile-back-button {
@@ -567,20 +944,35 @@ const VendorMessages = () => {
               max-width: 88% !important;
             }
 
+            .chat-image {
+              max-width: 150px;
+              max-height: 150px;
+            }
+
+            .chat-video {
+              width: 150px;
+              max-height: 150px;
+            }
+
             .vendor-message-input-area {
               padding: 8px !important;
             }
 
-            .vendor-message-input-area button {
-              padding: 10px 12px !important;
+            .vendor-message-input-area button[type="submit"] {
+              padding: 10px 11px !important;
+            }
+
+            .emoji-button,
+            .attachment-button {
+              width: 28px;
+              font-size: 16px;
             }
           }
 
-          /*
-            Hidden on desktop/tablet.
-            Visible only when a conversation is selected
-            on mobile.
-          */
+          /* =========================
+             BACK BUTTON
+          ========================= */
+
           .mobile-back-button {
             display: none;
             padding: 10px 15px;
@@ -763,11 +1155,6 @@ const styles = {
     minHeight: 0,
   },
 
-  messageRow: {
-    display: "flex",
-    marginBottom: "10px",
-  },
-
   messageBubble: {
     maxWidth: "65%",
     padding: "10px 14px",
@@ -784,8 +1171,9 @@ const styles = {
   },
 
   theirMessage: {
-    background: "#F5E9E8",
+    background: "#FFFFFF",
     color: "#333333",
+    border: "1px solid #E5DFD5",
     borderBottomLeftRadius: "3px",
   },
 
@@ -825,7 +1213,8 @@ const styles = {
 
   inputArea: {
     display: "flex",
-    gap: "10px",
+    alignItems: "center",
+    gap: "8px",
     padding: "15px",
     borderTop: "1px solid #E5DFD5",
     flexShrink: 0,
@@ -853,4 +1242,3 @@ const styles = {
 };
 
 export default VendorMessages;
-

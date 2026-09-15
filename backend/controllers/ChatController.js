@@ -1,5 +1,6 @@
 const Conversation = require("../models/conversationModel");
 const Message = require("../models/messageModel");
+const cloudinary = require("../config/cloudinary");
 
 const getOrCreateConversation = async (req, res, next) => {
   try {
@@ -122,9 +123,51 @@ const sendMessage = async (req, res, next) => {
 };
 
 
+const uploadChatAttachment = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({success: false,message: "File is required"});
+    }
+
+    const isImage = req.file.mimetype.startsWith("image/");
+    const isVideo = req.file.mimetype.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      return res.status(400).json({success: false,message: "Only image and video files are allowed",});
+    }
+
+    const resourceType = isVideo ? "video" : "image";
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {folder: "onejourney/chat",resource_type: resourceType},
+        (error, result) => {
+          if (error) {reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    return res.status(200).json({success: true,data: {
+        url: result.secure_url,
+        type: isVideo ? "video" : "image",
+        name: req.file.originalname,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 module.exports = {
   getOrCreateConversation,
   getMyConversations,
   getMessages,
-  sendMessage
+  sendMessage,
+  uploadChatAttachment
 };

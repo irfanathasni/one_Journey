@@ -61,16 +61,22 @@ const io = new Server(httpServer, {
 io.use(async (socket, next) => {
     try {
         const token = socket.handshake.auth.token;
+        console.log("🔐 SOCKET TOKEN RECEIVED:", token ? "YES" : "NO");
+
         if (!token) {
+              console.log("❌ SOCKET TOKEN MISSING");
             return next(new Error("Authentication required"));
         }
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("✅ SOCKET TOKEN VERIFIED:", decoded);
         const user = await User.findById(decoded.userId).select("-password");
         if (!user) {
+             console.log("❌ SOCKET USER NOT FOUND");
             return next(new Error("User not found"));
         }
 
         if (!user.isActive) {
+             console.log("❌ SOCKET USER BLOCKED");
             return next(new Error("Your account has been blocked"));
         }
 
@@ -83,6 +89,7 @@ io.use(async (socket, next) => {
         };
         next();
     } catch (error) {
+        console.error("❌ SOCKET AUTH ERROR:", error.message);
         next(new Error("Invalid or expired token"));
     }
 })
@@ -90,6 +97,7 @@ io.use(async (socket, next) => {
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
+    console.log("🟢 SOCKET CONNECTED:", socket.id);
     const userId = socket.user.id.toString();
     onlineUsers.set(userId, socket.id);
 
@@ -116,51 +124,72 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("sendMessage", async ({ conversationId, message }) => {
-        try {
-            if (!conversationId || !message?.trim()) {
-                return
-            }
-            const Conversation = require("./models/conversationModel");
-            const Message = require("./models/messageModel");
-
-            const conversation = await Conversation.findById(conversationId);
-            if (!conversation) {
-                return;
-            }
-            const isCustomer = conversation.customer.toString() === userId;
-            const isVendor = conversation.vendor.toString() === userId;
-            if (!isCustomer && !isVendor) {
-                return;
-            }
-            const receiverId = isCustomer
-                ? conversation.vendor
-                : conversation.customer;
-
-            const newMessage = await Message.create({
-                conversation: conversationId,
-                sender: socket.user.id,
-                receiver: receiverId,
-                message: message.trim(),
+  socket.on("sendMessage", async ({ conversationId, message, attachment }) => {
+        console.log("📩 SEND MESSAGE EVENT RECEIVED:", {
+            conversationId,
+                message,
+                 attachment,
+             userId,
             });
+             try {
+      if (!conversationId || (!message?.trim() && !attachment?.url)) {
+        return;
+      }
 
-            conversation.lastMessage = message.trim();
-            conversation.lastMessageAt = new Date();
+      const Conversation = require("./models/conversationModel");
+      const Message = require("./models/messageModel");
 
-            await conversation.save();
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return;
+      }
 
-            const populatedMessage = await Message.findById(newMessage._id)
-                    .populate("sender", "name email role")
-                    .populate("receiver", "name email role");
+      const isCustomer = conversation.customer.toString() === userId;
+      const isVendor = conversation.vendor.toString() === userId;
+      if (!isCustomer && !isVendor) {
+        return;
+      }
 
-            const roomName = `conversation_${conversationId}`;
+      const receiverId = isCustomer
+        ? conversation.vendor
+        : conversation.customer;
 
-            io.to(roomName).emit("receiveMessage",populatedMessage);
+      const newMessage = await Message.create({
+        conversation: conversationId,
+        sender: socket.user.id,
+        receiver: receiverId,
+        message: message?.trim() || "",
+        attachment: attachment
+          ? {
+              url: attachment.url,
+              type: attachment.type,
+              name: attachment.name,
+            }
+          : undefined,
+      });
 
-        } catch (error) {
-            console.error("Send message error:", error);
-        }
-    });
+      conversation.lastMessage =
+        message?.trim() ||
+        (attachment?.type === "image"
+          ? "📷 Image"
+          : "🎥 Video");
+
+      conversation.lastMessageAt = new Date();
+      await conversation.save();
+      const populatedMessage = await Message.findById(newMessage._id)
+        .populate("sender", "name email role")
+        .populate("receiver", "name email role");
+
+      const roomName = `conversation_${conversationId}`;
+      io.to(roomName).emit("receiveMessage",populatedMessage);
+    } catch (error) {
+      console.error(
+        "Send message error:",
+        error
+      );
+    }
+  }
+);
        
     socket.on("markMessagesAsRead", async (conversationId) => {
         try {

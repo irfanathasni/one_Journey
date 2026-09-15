@@ -22,8 +22,23 @@ const messageSchema = new mongoose.Schema(
 
     message: {
       type: String,
-      required: true,
       trim: true,
+      default:""
+    },
+    attachment:{
+      url:{
+        type:String,
+        default:null,
+      },
+      type:{
+        type:String,
+        enum:["image","video"],
+        default:null,
+      },
+      name:{
+        type:String,
+        default:null
+      },
     },
 
     isRead: {

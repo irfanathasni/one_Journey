@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import EmojiPicker from "emoji-picker-react";
+
 import socket from "../../socket/socket";
 import axiosInstance from "../../services/axiosInstance";
-import { useSelector } from "react-redux";
+
 import "./CustomerMessages.css";
 
 const CustomerMessages = () => {
@@ -12,10 +15,21 @@ const CustomerMessages = () => {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] =
     useState(location.state?.conversation || null);
+
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
+
   const [loading, setLoading] = useState(true);
+
   const [onlineUsers, setOnlineUsers] = useState({});
+
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchConversations();
@@ -24,6 +38,7 @@ const CustomerMessages = () => {
   const fetchConversations = async () => {
     try {
       const res = await axiosInstance.get("/chat/conversations");
+
       const data = res.data.data || [];
 
       setConversations(data);
@@ -76,17 +91,17 @@ const CustomerMessages = () => {
   };
 
   useEffect(() => {
-    if (selectedConversation?._id) {
-      socket.emit(
-        "joinConversation",
-        selectedConversation._id
-      );
+    if (!selectedConversation?._id) return;
 
-      socket.emit(
-        "markMessagesAsRead",
-        selectedConversation._id
-      );
-    }
+    socket.emit(
+      "joinConversation",
+      selectedConversation._id
+    );
+
+    socket.emit(
+      "markMessagesAsRead",
+      selectedConversation._id
+    );
   }, [selectedConversation]);
 
   useEffect(() => {
@@ -99,11 +114,11 @@ const CustomerMessages = () => {
         conversationId === selectedConversation?._id
       ) {
         setMessages((prev) => {
-          if (
-            prev.some(
-              (msg) => msg._id === newMessage._id
-            )
-          ) {
+          const alreadyExists = prev.some(
+            (msg) => msg._id === newMessage._id
+          );
+
+          if (alreadyExists) {
             return prev;
           }
 
@@ -126,8 +141,17 @@ const CustomerMessages = () => {
           conversation._id === conversationId
             ? {
                 ...conversation,
+
                 lastMessage:
-                  newMessage.message,
+                  newMessage.message ||
+                  (newMessage.attachment?.type ===
+                  "image"
+                    ? "📷 Image"
+                    : newMessage.attachment?.type ===
+                      "video"
+                    ? "🎥 Video"
+                    : ""),
+
                 lastMessageAt:
                   newMessage.createdAt,
               }
@@ -169,51 +193,151 @@ const CustomerMessages = () => {
       handleReceiveMessage
     );
 
-    socket.on(
-      "userStatusChanged",
-      handleUserStatus
-    );
-
-    socket.on(
-      "messagesRead",
-      handleMessagesRead
-    );
+    socket.on("userStatusChanged",handleUserStatus);
+    socket.on("messagesRead",handleMessagesRead);
 
     return () => {
-      socket.off(
-        "receiveMessage",
-        handleReceiveMessage
-      );
-
-      socket.off(
-        "userStatusChanged",
-        handleUserStatus
-      );
-
-      socket.off(
-        "messagesRead",
-        handleMessagesRead
-      );
+      socket.off("receiveMessage",handleReceiveMessage);
+      socket.off("userStatusChanged",handleUserStatus);
+      socket.off("messagesRead",handleMessagesRead);
     };
-  }, [selectedConversation, user?._id]);
+  }, [
+    selectedConversation,
+    user?._id,
+  ]);
 
-  const sendMessage = (e) => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo =file.type.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      alert("Only image and video files are allowed");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File size should be less than 50MB");
+
+      e.target.value = "";
+      return;
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    const url = URL.createObjectURL(file);
+
+    setSelectedFile(file);
+    setPreviewUrl(url);
+  };
+
+  const removeSelectedFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setSelectedFile(null);
+    setPreviewUrl("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleEmojiClick = (emojiData) => {
+    setMessage(
+      (prev) => prev + emojiData.emoji
+    );
+  };
+
+  const sendMessage = async (e) => {
     e.preventDefault();
 
+    if (!selectedConversation) {
+      return;
+    }
+
     if (
-      !message.trim() ||
-      !selectedConversation
+      !message.trim() &&
+      !selectedFile
     ) {
       return;
     }
 
-    socket.emit("sendMessage", {
-      conversationId:
-        selectedConversation._id,
-      message: message.trim(),
-    });
+    try {
+      setUploading(true);
 
-    setMessage("");
+      let attachment = null;
+
+      if (selectedFile) {
+        const formData = new FormData();
+
+        formData.append(
+          "attachment",
+          selectedFile
+        );
+
+        const response =
+          await axiosInstance.post(
+            "/chat/upload",
+            formData,
+            {
+              headers: {
+                "Content-Type":
+                  "multipart/form-data",
+              },
+            }
+          );
+
+        attachment =
+          response.data.data;
+      }
+
+      console.log(
+        "Sending message:",
+        {
+          conversationId:
+            selectedConversation._id,
+
+          message: message.trim(),
+
+          attachment,
+        }
+      );
+
+      // Send through Socket.IO
+      socket.emit("sendMessage", {
+        conversationId:
+          selectedConversation._id,
+
+        message: message.trim(),
+
+        attachment,
+      });
+
+      setMessage("");
+
+      removeSelectedFile();
+
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error(
+        "Failed to send message:",
+        error
+      );
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to send message"
+      );
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -222,11 +346,14 @@ const CustomerMessages = () => {
       style={styles.page}
     >
       {/* HEADER */}
+
       <div
         style={styles.header}
         className="customer-messages-header"
       >
-        <p style={styles.eyebrow}>MESSAGES</p>
+        <p style={styles.eyebrow}>
+          MESSAGES
+        </p>
 
         <h1
           style={styles.title}
@@ -240,12 +367,12 @@ const CustomerMessages = () => {
         </p>
       </div>
 
-      {/* CHAT CONTAINER */}
+
       <div
         className="chat-container customer-chat-container"
         style={styles.chatContainer}
       >
-        {/* CONVERSATION PANEL */}
+
         <div
           className="conversation-panel customer-conversation-panel"
           style={styles.conversationPanel}
@@ -263,87 +390,109 @@ const CustomerMessages = () => {
               No conversations yet.
             </p>
           ) : (
-            conversations.map((conversation) => (
-              <div
-                key={conversation._id}
-                onClick={() =>
-                  openConversation(conversation)
-                }
-                style={{
-                  ...styles.conversation,
-                  ...(selectedConversation?._id ===
-                  conversation._id
-                    ? styles.selectedConversation
-                    : {}),
-                }}
-                className="customer-conversation-item"
-              >
-                <div style={styles.avatar}>
-                  {conversation.vendor?.name
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </div>
-
+            conversations.map(
+              (conversation) => (
                 <div
-                  style={styles.conversationInfo}
-                  className="customer-conversation-info"
-                >
-                  <strong>
-                    {conversation.vendor?.name ||
-                      "Vendor"}
-                  </strong>
+                  key={conversation._id}
+                  onClick={() =>
+                    openConversation(
+                      conversation
+                    )
+                  }
+                  style={{
+                    ...styles.conversation,
 
-                  <p style={styles.lastMessage}>
-                    {conversation.lastMessage ||
-                      "Start chatting"}
-                  </p>
+                    ...(selectedConversation?._id ===
+                    conversation._id
+                      ? styles.selectedConversation
+                      : {}),
+                  }}
+                  className="customer-conversation-item"
+                >
+                  <div
+                    style={styles.avatar}
+                  >
+                    {conversation.vendor?.name
+                      ?.charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                  <div
+                    style={
+                      styles.conversationInfo
+                    }
+                    className="customer-conversation-info"
+                  >
+                    <strong>
+                      {conversation.vendor
+                        ?.name ||
+                        "Vendor"}
+                    </strong>
+
+                    <p
+                      style={
+                        styles.lastMessage
+                      }
+                    >
+                      {conversation.lastMessage ||
+                        "Start chatting"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              )
+            )
           )}
         </div>
 
-        {/* CHAT PANEL */}
+
         <div
           className="chat-panel customer-chat-panel"
           style={styles.chatPanel}
         >
           {!selectedConversation ? (
             <div style={styles.noChat}>
-              <div style={styles.chatIcon}>
+              <div
+                style={styles.chatIcon}
+              >
                 💬
               </div>
 
-              <h3>Select a conversation</h3>
+              <h3>
+                Select a conversation
+              </h3>
 
               <p>
-                Choose a vendor to start chatting.
+                Choose a vendor to start
+                chatting.
               </p>
             </div>
           ) : (
             <>
-              {/* CHAT HEADER */}
+
               <div
                 style={styles.chatHeader}
                 className="customer-chat-header"
               >
-                <div style={styles.avatar}>
-                  {selectedConversation.vendor?.name
+                <div
+                  style={styles.avatar}
+                >
+                  {selectedConversation
+                    .vendor?.name
                     ?.charAt(0)
                     .toUpperCase()}
                 </div>
 
-                <div
-                  className="customer-chat-header-info"
-                >
+                <div className="customer-chat-header-info">
                   <strong>
-                    {selectedConversation.vendor
-                      ?.name || "Vendor"}
+                    {selectedConversation
+                      .vendor?.name ||
+                      "Vendor"}
                   </strong>
 
                   <p
                     style={{
                       ...styles.onlineText,
+
                       color:
                         onlineUsers[
                           selectedConversation
@@ -354,7 +503,8 @@ const CustomerMessages = () => {
                     }}
                   >
                     {onlineUsers[
-                      selectedConversation.vendor?._id
+                      selectedConversation
+                        .vendor?._id
                     ]
                       ? "● Online"
                       : "○ Offline"}
@@ -362,14 +512,19 @@ const CustomerMessages = () => {
                 </div>
               </div>
 
-              {/* MESSAGES */}
               <div
                 className="messagesArea customer-messages-area"
                 style={styles.messagesArea}
               >
                 {messages.length === 0 ? (
-                  <div style={styles.emptyChat}>
-                    No messages yet. Say hello 👋
+                  <div
+                    style={
+                      styles.emptyChat
+                    }
+                  >
+                    No messages yet.
+                    <br />
+                    Say hello 👋
                   </div>
                 ) : (
                   messages.map((msg) => {
@@ -378,34 +533,77 @@ const CustomerMessages = () => {
                       msg.sender;
 
                     const isMine =
-                      senderId?.toString() ===
+                      senderId
+                        ?.toString() ===
                       user?._id?.toString();
 
                     return (
                       <div
                         key={msg._id}
-                        style={{
-                          ...styles.messageRow,
-                          justifyContent: isMine
-                            ? "flex-end"
-                            : "flex-start",
-                        }}
-                        className="customer-message-row"
+                        className={`customer-message-row ${
+                          isMine
+                            ? "my-message-row"
+                            : "their-message-row"
+                        }`}
                       >
                         <div
                           className="messageBubble"
                           style={{
                             ...styles.messageBubble,
+
                             ...(isMine
                               ? styles.myMessage
                               : styles.theirMessage),
                           }}
                         >
-                          <div
-                            className="customer-message-text"
-                          >
-                            {msg.message}
-                          </div>
+                          {/* ATTACHMENT */}
+
+                          {msg.attachment
+                            ?.url && (
+                            <div className="message-attachment">
+                              {msg
+                                .attachment
+                                .type ===
+                              "image" ? (
+                                <img
+                                  src={
+                                    msg
+                                      .attachment
+                                      .url
+                                  }
+                                  alt={
+                                    msg
+                                      .attachment
+                                      .name ||
+                                    "Attachment"
+                                  }
+                                  className="message-attachment-image"
+                                />
+                              ) : (
+                                <video
+                                  src={
+                                    msg
+                                      .attachment
+                                      .url
+                                  }
+                                  controls
+                                  className="message-attachment-video"
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {/* TEXT */}
+
+                          {msg.message && (
+                            <div className="customer-message-text">
+                              {
+                                msg.message
+                              }
+                            </div>
+                          )}
+
+                          {/* TIME */}
 
                           <span
                             style={
@@ -418,14 +616,18 @@ const CustomerMessages = () => {
                               [],
                               {
                                 hour: "2-digit",
-                                minute: "2-digit",
+                                minute:
+                                  "2-digit",
                               }
                             )}
+
+                            {/* READ RECEIPT */}
 
                             {isMine && (
                               <span
                                 style={{
-                                  marginLeft: "5px",
+                                  marginLeft:
+                                    "5px",
                                 }}
                               >
                                 {msg.isRead
@@ -441,28 +643,124 @@ const CustomerMessages = () => {
                 )}
               </div>
 
-              {/* MESSAGE INPUT */}
+              {selectedFile && (
+                <div className="attachment-preview">
+                  {selectedFile.type.startsWith(
+                    "image/"
+                  ) ? (
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="attachment-preview-image"
+                    />
+                  ) : (
+                    <video
+                      src={previewUrl}
+                      controls
+                      className="attachment-preview-video"
+                    />
+                  )}
+
+                  <div className="attachment-preview-info">
+                    <span>
+                      {selectedFile.name}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={
+                        removeSelectedFile
+                      }
+                      title="Remove attachment"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <form
                 onSubmit={sendMessage}
                 className="inputArea customer-message-input-area"
                 style={styles.inputArea}
               >
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*,video/*"
+                  onChange={
+                    handleFileChange
+                  }
+                  style={{
+                    display: "none",
+                  }}
+                />
+
+
+                <button
+                  type="button"
+                  className="chat-action-button"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  title="Attach image or video"
+                >
+                  📎
+                </button>
+
+
+                <div className="emoji-wrapper">
+                  <button
+                    type="button"
+                    className="chat-action-button"
+                    onClick={() =>
+                      setShowEmojiPicker(
+                        (prev) => !prev
+                      )
+                    }
+                    title="Add emoji"
+                  >😊
+                  </button>
+
+                  {showEmojiPicker && (
+                    <div className="emoji-picker-container">
+                      <EmojiPicker
+                        onEmojiClick={
+                          handleEmojiClick
+                        }
+                        width={300}
+                        height={350}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <input
                   className="messageInput customer-message-input"
                   value={message}
                   onChange={(e) =>
-                    setMessage(e.target.value)
+                    setMessage(
+                      e.target.value
+                    )
                   }
                   placeholder="Type a message..."
-                  style={styles.messageInput}
+                  style={
+                    styles.messageInput
+                  }
                 />
 
                 <button
                   type="submit"
                   className="sendButton customer-send-button"
-                  style={styles.sendButton}
+                  style={
+                    styles.sendButton
+                  }
+                  disabled={uploading}
                 >
-                  Send
+                  {uploading
+                    ? "Uploading..."
+                    : "Send"}
                 </button>
               </form>
             </>
@@ -470,9 +768,140 @@ const CustomerMessages = () => {
         </div>
       </div>
 
-      {/* RESPONSIVE CSS */}
       <style>{`
+
+        .customer-message-row {
+          display: flex;
+          width: 100%;
+          margin-bottom: 10px;
+          box-sizing: border-box;
+        }
+
+        /* RECEIVED = LEFT */
+
+        .their-message-row {
+          justify-content: flex-start !important;
+        }
+
+        /* SENT = RIGHT */
+
+        .my-message-row {
+          justify-content: flex-end !important;
+        }
+
+        .messageBubble {
+          width: fit-content;
+          max-width: 65%;
+        }
+
+
+        .chat-action-button {
+          width: 40px;
+          height: 40px;
+          border: 1px solid #DCD5CA;
+          border-radius: 8px;
+          background: #FFFFFF;
+          cursor: pointer;
+          font-size: 18px;
+          flex-shrink: 0;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .chat-action-button:hover {
+          background: #F5E9E8;
+        }
+
+        .emoji-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .emoji-picker-container {
+          position: absolute;
+          bottom: 50px;
+          left: 0;
+          z-index: 100;
+        }
+
+        .attachment-preview {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 15px;
+          background: #FCFBF9;
+          border-top: 1px solid #E5DFD5;
+        }
+
+        .attachment-preview-image,
+        .attachment-preview-video {
+          width: 75px;
+          height: 75px;
+          object-fit: cover;
+          border-radius: 8px;
+        }
+
+        .attachment-preview-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .attachment-preview-info span {
+          font-size: 12px;
+          color: #666;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .attachment-preview button {
+          border: none;
+          background: #C97B84;
+          color: white;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          cursor: pointer;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .message-attachment {
+          margin-bottom: 5px;
+        }
+
+        .message-attachment-image,
+        .message-attachment-video {
+          display: block;
+          max-width: 240px;
+          max-height: 300px;
+          border-radius: 8px;
+          object-fit: cover;
+        }
+
+        .message-attachment-video {
+          background: #000;
+        }
+
+        .customer-message-text {
+          line-height: 1.45;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+
+        /* ============================== */
+        /* TABLET */
+        /* ============================== */
+
         @media (max-width: 1024px) {
+
           .customer-messages-page {
             padding: 30px 25px !important;
           }
@@ -484,9 +913,14 @@ const CustomerMessages = () => {
           .customer-conversation-panel {
             width: 270px !important;
           }
+
+          .messageBubble {
+            max-width: 70% !important;
+          }
         }
 
         @media (max-width: 768px) {
+
           .customer-messages-page {
             padding: 28px 20px !important;
           }
@@ -539,6 +973,7 @@ const CustomerMessages = () => {
         }
 
         @media (max-width: 600px) {
+
           .customer-messages-page {
             padding: 22px 15px !important;
           }
@@ -574,21 +1009,12 @@ const CustomerMessages = () => {
           }
 
           .customer-conversation-item {
-            display: flex !important;
             padding: 8px !important;
             margin-bottom: 3px !important;
           }
 
-          .customer-conversation-item .avatar {
-            width: 34px !important;
-            height: 34px !important;
-          }
-
-          .customer-conversation-panel .customer-conversation-info {
-            min-width: 0;
-          }
-
-          .customer-conversation-panel .lastMessage {
+          .customer-conversation-panel
+          .lastMessage {
             max-width: 100% !important;
           }
 
@@ -600,11 +1026,6 @@ const CustomerMessages = () => {
             padding: 12px 14px !important;
           }
 
-          .customer-chat-header .avatar {
-            width: 36px !important;
-            height: 36px !important;
-          }
-
           .customer-messages-area {
             padding: 13px !important;
           }
@@ -613,6 +1034,12 @@ const CustomerMessages = () => {
             max-width: 82% !important;
             padding: 9px 12px !important;
             font-size: 12px !important;
+          }
+
+          .message-attachment-image,
+          .message-attachment-video {
+            max-width: 190px !important;
+            max-height: 240px !important;
           }
 
           .customer-message-input-area {
@@ -628,21 +1055,32 @@ const CustomerMessages = () => {
 
           .customer-send-button {
             padding: 10px 15px !important;
-            flex-shrink: 0;
           }
 
-          .customer-messages-page .noChat h3 {
-            font-size: 16px;
+          .chat-action-button {
+            width: 36px !important;
+            height: 36px !important;
+            font-size: 16px !important;
           }
 
-          .customer-messages-page .noChat p {
-            font-size: 12px;
-            text-align: center;
-            padding: 0 20px;
+          .emoji-picker-container {
+            left: auto;
+            right: 0;
+          }
+
+          .attachment-preview {
+            padding: 8px 10px;
+          }
+
+          .attachment-preview-image,
+          .attachment-preview-video {
+            width: 60px;
+            height: 60px;
           }
         }
 
         @media (max-width: 380px) {
+
           .customer-messages-page {
             padding: 18px 12px !important;
           }
@@ -693,6 +1131,7 @@ const CustomerMessages = () => {
     </div>
   );
 };
+
 
 const styles = {
   page: {
@@ -822,7 +1261,6 @@ const styles = {
   onlineText: {
     margin: "3px 0 0",
     fontSize: "11px",
-    color: "#777",
   },
 
   messagesArea: {
@@ -830,41 +1268,49 @@ const styles = {
     minHeight: 0,
     padding: "20px",
     overflowY: "auto",
-    background: "#FCFBF9",
+    background: "#F8F6F2",
     boxSizing: "border-box",
   },
 
   messageRow: {
     display: "flex",
+    width: "100%",
     marginBottom: "10px",
     minWidth: 0,
+    boxSizing: "border-box",
   },
 
   messageBubble: {
+    width: "fit-content",
     maxWidth: "65%",
     padding: "10px 14px",
-    borderRadius: "12px",
+    borderRadius: "14px",
     fontSize: "13px",
-    minWidth: 0,
+    minWidth: "70px",
     overflowWrap: "anywhere",
     boxSizing: "border-box",
+    boxShadow:
+      "0 1px 3px rgba(0,0,0,0.05)",
   },
 
   myMessage: {
     background: "#3D5A50",
     color: "#FFFFFF",
+    borderBottomRightRadius: "4px",
   },
 
   theirMessage: {
-    background: "#E7F2EC",
-    color: "#333",
+    background: "#FFFFFF",
+    color: "#333333",
+    border: "1px solid #E5DFD5",
+    borderBottomLeftRadius: "4px",
   },
 
   messageTime: {
     display: "block",
     fontSize: "9px",
-    marginTop: "4px",
-    opacity: 0.7,
+    marginTop: "5px",
+    opacity: 0.65,
     textAlign: "right",
     whiteSpace: "nowrap",
   },
@@ -898,9 +1344,11 @@ const styles = {
 
   inputArea: {
     display: "flex",
+    alignItems: "center",
     gap: "10px",
     padding: "15px",
     borderTop: "1px solid #E5DFD5",
+    background: "#FFFFFF",
     boxSizing: "border-box",
     minWidth: 0,
   },
@@ -927,3 +1375,4 @@ const styles = {
 };
 
 export default CustomerMessages;
+
