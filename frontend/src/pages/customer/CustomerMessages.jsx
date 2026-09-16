@@ -972,161 +972,216 @@ const CustomerMessages = () => {
           }
         }
 
-        @media (max-width: 600px) {
+       /* ============================== */
+/* MOBILE */
+/* ============================== */
 
-          .customer-messages-page {
-            padding: 22px 15px !important;
-          }
+@media (max-width: 600px) {
+  .customer-messages-page {
+    padding: 18px 12px !important;
+    min-height: 100vh !important;
+  }
 
-          .customer-messages-header {
-            margin-bottom: 18px !important;
-          }
+  .customer-messages-header {
+    margin-bottom: 15px !important;
+  }
 
-          .customer-messages-title {
-            font-size: 27px !important;
-          }
+  .customer-messages-title {
+    font-size: 27px !important;
+  }
 
-          .customer-chat-container {
-            height: 650px !important;
-            min-height: 0 !important;
-            flex-direction: column !important;
-          }
+  .customer-chat-container {
+    width: 100% !important;
+    height: calc(100vh - 155px) !important;
+    min-height: 520px !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
 
-          .customer-conversation-panel {
-            width: 100% !important;
-            height: 175px !important;
-            max-height: 175px !important;
-            border-right: none !important;
-            border-bottom: 1px solid #E5DFD5;
-            padding: 12px !important;
-            box-sizing: border-box;
-            flex-shrink: 0;
-          }
+  .customer-conversation-panel {
+    width: 100% !important;
+    height: 145px !important;
+    min-height: 145px !important;
+    max-height: 145px !important;
+    padding: 10px !important;
+    box-sizing: border-box;
+    flex-shrink: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E5DFD5;
+    overflow-y: auto;
+  }
 
-          .customer-conversation-panel h3 {
-            margin-bottom: 8px !important;
-            font-size: 16px !important;
-          }
+  .customer-conversation-panel h3 {
+    margin-bottom: 7px !important;
+    font-size: 16px !important;
+  }
 
-          .customer-conversation-item {
-            padding: 8px !important;
-            margin-bottom: 3px !important;
-          }
+  .customer-conversation-item {
+    padding: 7px !important;
+    margin-bottom: 3px !important;
+  }
 
-          .customer-conversation-panel
-          .lastMessage {
-            max-width: 100% !important;
-          }
+  .customer-conversation-info {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
 
-          .customer-chat-panel {
-            min-height: 0 !important;
-          }
+  .customer-conversation-info strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-          .customer-chat-header {
-            padding: 12px 14px !important;
-          }
+  .customer-chat-panel {
+    flex: 1 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
 
-          .customer-messages-area {
-            padding: 13px !important;
-          }
+  .customer-chat-header {
+    padding: 10px 12px !important;
+    flex-shrink: 0 !important;
+  }
 
-          .messageBubble {
-            max-width: 82% !important;
-            padding: 9px 12px !important;
-            font-size: 12px !important;
-          }
+  .customer-messages-area {
+    flex: 1 !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    overflow-y: auto !important;
+  }
 
-          .message-attachment-image,
-          .message-attachment-video {
-            max-width: 190px !important;
-            max-height: 240px !important;
-          }
+  .messageBubble {
+    max-width: 82% !important;
+    padding: 9px 12px !important;
+    font-size: 12px !important;
+  }
 
-          .customer-message-input-area {
-            gap: 7px !important;
-            padding: 10px !important;
-          }
+  .message-attachment-image,
+  .message-attachment-video {
+    max-width: 190px !important;
+    max-height: 240px !important;
+  }
 
-          .customer-message-input {
-            min-width: 0;
-            padding: 10px !important;
-            font-size: 13px;
-          }
+  .attachment-preview {
+    padding: 7px 10px !important;
+    flex-shrink: 0 !important;
+  }
 
-          .customer-send-button {
-            padding: 10px 15px !important;
-          }
+  .attachment-preview-image,
+  .attachment-preview-video {
+    width: 55px !important;
+    height: 55px !important;
+  }
 
-          .chat-action-button {
-            width: 36px !important;
-            height: 36px !important;
-            font-size: 16px !important;
-          }
+  /* MESSAGE INPUT */
+  .customer-message-input-area {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 8px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+  }
 
-          .emoji-picker-container {
-            left: auto;
-            right: 0;
-          }
+  .chat-action-button {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    font-size: 16px !important;
+  }
 
-          .attachment-preview {
-            padding: 8px 10px;
-          }
+  .customer-message-input {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 9px 10px !important;
+    font-size: 13px !important;
+  }
 
-          .attachment-preview-image,
-          .attachment-preview-video {
-            width: 60px;
-            height: 60px;
-          }
-        }
+  .customer-send-button {
+    padding: 9px 12px !important;
+    min-width: 52px !important;
+    white-space: nowrap !important;
+  }
 
-        @media (max-width: 380px) {
+  .emoji-picker-container {
+    left: auto !important;
+    right: 0 !important;
+    bottom: 45px !important;
+  }
+}
 
-          .customer-messages-page {
-            padding: 18px 12px !important;
-          }
+@media (max-width: 380px) {
+  .customer-messages-page {
+    padding: 15px 8px !important;
+  }
 
-          .customer-messages-title {
-            font-size: 24px !important;
-          }
+  .customer-messages-title {
+    font-size: 24px !important;
+  }
 
-          .customer-chat-container {
-            height: 620px !important;
-          }
+  .customer-chat-container {
+    height: calc(100vh - 140px) !important;
+    min-height: 500px !important;
+  }
 
-          .customer-conversation-panel {
-            height: 155px !important;
-            max-height: 155px !important;
-          }
+  .customer-conversation-panel {
+    height: 130px !important;
+    min-height: 130px !important;
+    max-height: 130px !important;
+    padding: 8px !important;
+  }
 
-          .customer-conversation-panel h3 {
-            font-size: 15px !important;
-          }
+  .customer-conversation-panel h3 {
+    font-size: 14px !important;
+  }
 
-          .customer-conversation-item {
-            padding: 7px !important;
-          }
+  .customer-conversation-item {
+    padding: 6px !important;
+  }
 
-          .customer-chat-header {
-            padding: 10px 12px !important;
-          }
+  .customer-chat-header {
+    padding: 8px 10px !important;
+  }
 
-          .customer-messages-area {
-            padding: 10px !important;
-          }
+  .customer-messages-area {
+    padding: 8px !important;
+  }
 
-          .messageBubble {
-            max-width: 88% !important;
-            font-size: 12px !important;
-          }
+  .messageBubble {
+    max-width: 88% !important;
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+  }
 
-          .customer-message-input-area {
-            padding: 8px !important;
-          }
+  .customer-message-input-area {
+    gap: 4px !important;
+    padding: 6px !important;
+  }
 
-          .customer-send-button {
-            padding: 9px 12px !important;
-          }
-        }
+  .chat-action-button {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    font-size: 15px !important;
+  }
+
+  .customer-message-input {
+    padding: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .customer-send-button {
+    padding: 8px 9px !important;
+    min-width: 48px !important;
+    font-size: 12px !important;
+  }
+}
       `}</style>
     </div>
   );

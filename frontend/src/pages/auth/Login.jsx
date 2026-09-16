@@ -43,12 +43,15 @@ const Login = () => {
         setLoading(true)
     
         try {
-            const data = await loginUser({email,password})
-            dispatch(setCredentials({
-              user:data.user,
-              token:data.accessToken,
-              role:data.role
-            }))
+          const data = await loginUser({email,password})
+
+        localStorage.setItem("accessToken", data.accessToken)
+
+          dispatch(setCredentials({
+            user: data.user,
+             token: data.accessToken,
+             role: data.role
+        }))
           redirectByRole(data.role)
         }catch (err) {
     setError(err.response?.data?.message || "Login failed")
@@ -66,8 +69,14 @@ const Login = () => {
             return
         }
 
-        dispatch(setCredentials({user:res.data.user,token:res.data.accessToken,role:res.data.role}))
-        redirectByRole(res.data.role)
+          localStorage.setItem("accessToken", res.data.accessToken)
+
+            dispatch(setCredentials({
+             user: res.data.user,
+             token: res.data.accessToken,
+             role: res.data.role
+          }))     
+   redirectByRole(res.data.role)
     }catch(error) {
         setError(error.response?.data?.message || "Google login failed")
     }
@@ -76,7 +85,13 @@ const Login = () => {
 const handleRoleSelect = async (role) => {
     try{
         const res = await axiosInstance.post("/auth/google", { idToken: pendingIdToken, role })
-        dispatch(setCredentials({user:res.data.user,token:res.data.accessToken,role:res.data.role}))
+      localStorage.setItem("accessToken", res.data.accessToken)
+
+      dispatch(setCredentials({
+         user: res.data.user,
+         token: res.data.accessToken,
+         role: res.data.role
+      }))
         setShowRoleModal(false)
         redirectByRole(res.data.role)
     }catch(error) {

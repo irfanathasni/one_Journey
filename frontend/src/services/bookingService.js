@@ -10,8 +10,10 @@ export const getMyBookings = async () => {
     return res.data
 }
 
-export const getVendorBookings = async () => {
-    const res = await axiosInstance.get("/booking/vendor-bookings")
+export const getVendorBookings = async (params = {}) => {
+    const res = await axiosInstance.get("/booking/vendor-bookings", {
+        params
+    })
     return res.data
 }
 

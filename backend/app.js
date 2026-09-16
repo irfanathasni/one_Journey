@@ -20,15 +20,17 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const razorpayWebhookRoutes = require("./routes/razorpayWebhookRoutes");
 
 const app = express();
 
 app.use(
-    cors({
-        origin: process.env.CLIENT_URL,
-        credentials: true
-    })
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  }),
 );
+app.use("/api/v1/webhook", razorpayWebhookRoutes);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -45,93 +47,86 @@ app.use("/api/v1/review", reviewRoutes);
 app.use("/api/v1/chat", chatRoutes);
 
 app.get("/", (req, res) => {
-    res.send("One_Journey API running");
-})
+  res.send("One_Journey API running");
+});
 app.use(errorHandler);
 
 const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
-    cors: {
-        origin: process.env.CLIENT_URL,
-        credentials: true
-    }
+  cors: {
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  },
 });
 
 io.use(async (socket, next) => {
-    try {
-        const token = socket.handshake.auth.token;
-        console.log("🔐 SOCKET TOKEN RECEIVED:", token ? "YES" : "NO");
+  try {
+    const token = socket.handshake.auth.token;
 
-        if (!token) {
-              console.log("❌ SOCKET TOKEN MISSING");
-            return next(new Error("Authentication required"));
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("✅ SOCKET TOKEN VERIFIED:", decoded);
-        const user = await User.findById(decoded.userId).select("-password");
-        if (!user) {
-             console.log("❌ SOCKET USER NOT FOUND");
-            return next(new Error("User not found"));
-        }
-
-        if (!user.isActive) {
-             console.log("❌ SOCKET USER BLOCKED");
-            return next(new Error("Your account has been blocked"));
-        }
-
-        socket.user = {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            isActive: user.isActive
-        };
-        next();
-    } catch (error) {
-        console.error("❌ SOCKET AUTH ERROR:", error.message);
-        next(new Error("Invalid or expired token"));
+    if (!token) {
+      return next(new Error("Authentication required"));
     }
-})
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
+      return next(new Error("User not found"));
+    }
+
+    if (!user.isActive) {
+      return next(new Error("Your account has been blocked"));
+    }
+
+    socket.user = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+    };
+    next();
+  } catch (error) {
+    console.error("❌ SOCKET AUTH ERROR:", error.message);
+    next(new Error("Invalid or expired token"));
+  }
+});
 
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-    console.log("🟢 SOCKET CONNECTED:", socket.id);
-    const userId = socket.user.id.toString();
-    onlineUsers.set(userId, socket.id);
+  const userId = socket.user.id.toString();
+  onlineUsers.set(userId, socket.id);
 
-    io.emit("userStatusChanged", {userId,status: "online"})
-    console.log(`User online: ${socket.user.name}`);
+  io.emit("userStatusChanged", { userId, status: "online" });
 
-    socket.on("joinConversation", async (conversationId) => {
-        try {
-            if (!conversationId) return;
-            const Conversation = require("./models/conversationModel");
-            const conversation = await Conversation.findById(conversationId);
-            if (!conversation) {
-                return;
-            }
-            const isCustomer = conversation.customer.toString() === userId;
-            const isVendor = conversation.vendor.toString() === userId;
-            if (!isCustomer && !isVendor) {
-                return;
-            }
-            const roomName = `conversation_${conversationId}`;
-            socket.join(roomName)
-        } catch (error) {
-            console.error("Join conversation error:", error);
-        }
-    });
+  socket.on("joinConversation", async (conversationId) => {
+    try {
+      if (!conversationId) return;
+      const Conversation = require("./models/conversationModel");
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return;
+      }
+      const isCustomer = conversation.customer.toString() === userId;
+      const isVendor = conversation.vendor.toString() === userId;
+      if (!isCustomer && !isVendor) {
+        return;
+      }
+      const roomName = `conversation_${conversationId}`;
+      socket.join(roomName);
+    } catch (error) {
+      console.error("Join conversation error:", error);
+    }
+  });
 
   socket.on("sendMessage", async ({ conversationId, message, attachment }) => {
-        console.log("📩 SEND MESSAGE EVENT RECEIVED:", {
-            conversationId,
-                message,
-                 attachment,
-             userId,
-            });
-             try {
+    console.log("📩 SEND MESSAGE EVENT RECEIVED:", {
+      conversationId,
+      message,
+      attachment,
+      userId,
+    });
+    try {
       if (!conversationId || (!message?.trim() && !attachment?.url)) {
         return;
       }
@@ -170,9 +165,7 @@ io.on("connection", (socket) => {
 
       conversation.lastMessage =
         message?.trim() ||
-        (attachment?.type === "image"
-          ? "📷 Image"
-          : "🎥 Video");
+        (attachment?.type === "image" ? "📷 Image" : "🎥 Video");
 
       conversation.lastMessageAt = new Date();
       await conversation.save();
@@ -181,63 +174,58 @@ io.on("connection", (socket) => {
         .populate("receiver", "name email role");
 
       const roomName = `conversation_${conversationId}`;
-      io.to(roomName).emit("receiveMessage",populatedMessage);
+      io.to(roomName).emit("receiveMessage", populatedMessage);
     } catch (error) {
-      console.error(
-        "Send message error:",
-        error
-      );
+      console.error("Send message error:", error);
     }
-  }
-);
-       
-    socket.on("markMessagesAsRead", async (conversationId) => {
-        try {
-            if (!conversationId) return;
-            const Conversation = require("./models/conversationModel");
-            const Message = require("./models/messageModel");
-            const conversation = await Conversation.findById(conversationId);
-            if (!conversation) return;
+  });
 
-            const isCustomer = conversation.customer.toString() === userId;
-            const isVendor = conversation.vendor.toString() === userId;
-            if (!isCustomer && !isVendor) return;
-            const updatedMessages = await Message.updateMany(
-                {
-                    conversation: conversationId,
-                    receiver: socket.user.id,
-                    isRead: false
-                },
-                {$set: { isRead: true }}
-            )
+  socket.on("markMessagesAsRead", async (conversationId) => {
+    try {
+      if (!conversationId) return;
+      const Conversation = require("./models/conversationModel");
+      const Message = require("./models/messageModel");
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) return;
 
-            if (updatedMessages.modifiedCount > 0) {
-                const roomName = `conversation_${conversationId}`;
-                io.to(roomName).emit("messagesRead", {conversationId,readBy: userId});
-            }
+      const isCustomer = conversation.customer.toString() === userId;
+      const isVendor = conversation.vendor.toString() === userId;
+      if (!isCustomer && !isVendor) return;
+      const updatedMessages = await Message.updateMany(
+        {
+          conversation: conversationId,
+          receiver: socket.user.id,
+          isRead: false,
+        },
+        { $set: { isRead: true } },
+      );
 
-        } catch (error) {
-            console.error("Mark messages as read error:", error);
-        }
-    });
-    socket.on("disconnect", () => {
-        onlineUsers.delete(userId);
-        io.emit("userStatusChanged", {userId,status: "offline"});
+      if (updatedMessages.modifiedCount > 0) {
+        const roomName = `conversation_${conversationId}`;
+        io.to(roomName).emit("messagesRead", {
+          conversationId,
+          readBy: userId,
+        });
+      }
+    } catch (error) {
+      console.error("Mark messages as read error:", error);
+    }
+  });
+  socket.on("disconnect", () => {
+    onlineUsers.delete(userId);
+    io.emit("userStatusChanged", { userId, status: "offline" });
 
-        console.log(
-            `User offline: ${socket.user.name}`
-        );
-    });
-
+    console.log(`User offline: ${socket.user.name}`);
+  });
 });
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
-    await connectDB();
+  await connectDB();
 
-    httpServer.listen(PORT, () => {
-        console.log(`server running on port ${PORT}`);
-    });
+  httpServer.listen(PORT, () => {
+    console.log(`server running on port ${PORT}`);
+  });
 };
 
 startServer();

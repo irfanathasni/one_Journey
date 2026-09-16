@@ -53,3 +53,7 @@ export const deletePackage = async (packageId) => {
     const res = await axiosInstance.delete(`/vendor/packages/${packageId}`)
     return res.data
 }
+export const setupVendorPayout = async (data) => {
+    const res = await axiosInstance.post("/vendor/payout/setup", data)
+    return res.data
+}

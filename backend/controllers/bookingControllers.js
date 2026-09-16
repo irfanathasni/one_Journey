@@ -147,21 +147,54 @@ const getMyBookings = async (req, res, next) => {
 }
 const getVendorBookings = async (req, res, next) => {
   try {
-    const vendor = await Vendor.findOne({
-      user: req.user.id
-    })
+    const vendor = await Vendor.findOne({user: req.user.id})
 
     if (!vendor) {
       return res.status(404).json({success: false,message: "Vendor profile not found."})
     }
-   const bookings = await Booking.find({ vendor: vendor._id })
-  .populate("customer", "name email phone")
-  .populate(
-    "wedding",
-    "brideName groomName weddingDate guestCount venue location"
-  )
-  .sort({serviceDate: 1,createdAt: -1})
-    return res.status(200).json({success: true,data: bookings})
+
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1)
+    const limit = Math.min(
+      Math.max(Number.parseInt(req.query.limit, 10) || 5, 1),
+      50
+    )
+
+    const skip = (page - 1) * limit
+    const filter = {vendor: vendor._id}
+
+    if (req.query.status) {
+      const allowedStatuses = Object.values(BOOKING_STATUS)
+      if (!allowedStatuses.includes(req.query.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid booking status"
+        })
+      }
+
+      filter.status = req.query.status
+    }
+
+    const totalItems = await Booking.countDocuments(filter)
+    const bookings = await Booking.find(filter)
+      .populate("customer", "name email phone")
+      .populate(
+        "wedding",
+        "brideName groomName weddingDate guestCount venue location"
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+
+    const totalPages = Math.ceil(totalItems / limit)
+
+    return res.status(200).json({success: true,data: bookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        limit
+      }
+    })
 
   } catch (error) {
     next(error)
