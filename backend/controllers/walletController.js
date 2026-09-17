@@ -1,6 +1,7 @@
 const Wallet = require("../models/Wallet");
 const Vendor = require("../models/Vendor");
 const { createPayout } = require("../services/payoutService");
+
 const getMyWallet = async (req, res, next) => {
   try {
     const vendor = await Vendor.findOne({ user: req.user.id });

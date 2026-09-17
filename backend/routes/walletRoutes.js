@@ -8,5 +8,4 @@ const {
 
 router.get("/my-wallet", protect, getMyWallet);
 router.post("/withdraw", protect, withdrawFromWallet);
-
 module.exports = router;

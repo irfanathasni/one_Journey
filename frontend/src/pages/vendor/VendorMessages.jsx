@@ -42,9 +42,7 @@ const VendorMessages = () => {
         [conversation._id]: 0,
       }));
 
-      const res = await axiosInstance.get(
-        `/chat/messages/${conversation._id}`
-      );
+      const res = await axiosInstance.get(`/chat/messages/${conversation._id}`);
 
       setMessages(res.data.data || []);
 
@@ -87,12 +85,12 @@ const VendorMessages = () => {
                   (newMessage.attachment?.type === "image"
                     ? "📷 Image"
                     : newMessage.attachment?.type === "video"
-                    ? "🎥 Video"
-                    : ""),
+                      ? "🎥 Video"
+                      : ""),
                 lastMessageAt: newMessage.createdAt,
               }
-            : conversation
-        )
+            : conversation,
+        ),
       );
     };
 
@@ -110,7 +108,7 @@ const VendorMessages = () => {
         prev.map((msg) => ({
           ...msg,
           isRead: true,
-        }))
+        })),
       );
     };
 
@@ -130,10 +128,7 @@ const VendorMessages = () => {
 
     if (!file) return;
 
-    if (
-      !file.type.startsWith("image/") &&
-      !file.type.startsWith("video/")
-    ) {
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
       alert("Only image and video files are allowed.");
       e.target.value = "";
       return;
@@ -171,15 +166,10 @@ const VendorMessages = () => {
     setMessage((prev) => prev + emojiData.emoji);
   };
 
-
-
   const sendMessage = async (e) => {
     e.preventDefault();
 
-    if (
-      (!message.trim() && !selectedFile) ||
-      !selectedConversation
-    ) {
+    if ((!message.trim() && !selectedFile) || !selectedConversation) {
       return;
     }
 
@@ -197,7 +187,7 @@ const VendorMessages = () => {
             headers: {
               "Content-Type": "multipart/form-data",
             },
-          }
+          },
         );
 
         attachment = uploadResponse.data.data;
@@ -217,7 +207,7 @@ const VendorMessages = () => {
 
       alert(
         error.response?.data?.message ||
-          "Failed to send message. Please try again."
+          "Failed to send message. Please try again.",
       );
     }
   };
@@ -233,104 +223,63 @@ const VendorMessages = () => {
     <>
       <VendorNavbar />
 
-      <div
-        className="responsive-page vendor-messages-page"
-        style={styles.page}
-      >
-
-        <div
-          className="vendor-messages-header"
-          style={styles.header}
-        >
+      <div className="responsive-page vendor-messages-page" style={styles.page}>
+        <div className="vendor-messages-header" style={styles.header}>
           <p style={styles.eyebrow}>MESSAGES</p>
-
-          <h1
-            className="vendor-messages-title"
-            style={styles.title}
-          >
+          <h1 className="vendor-messages-title" style={styles.title}>
             Messages
           </h1>
-
-          <p
-            className="vendor-messages-subtitle"
-            style={styles.subtitle}
-          >
+          <p className="vendor-messages-subtitle" style={styles.subtitle}>
             Chat with your customers.
           </p>
         </div>
 
         <div
           className={`chat-container ${
-            selectedConversation
-              ? "mobile-chat-selected"
-              : "mobile-chat-list"
+            selectedConversation ? "mobile-chat-selected" : "mobile-chat-list"
           }`}
           style={styles.chatContainer}
         >
-
-          <div
-            className="conversation-panel"
-            style={styles.conversationPanel}
-          >
-            <h3 style={styles.panelTitle}>
-              Conversations
-            </h3>
-
+          <div className="conversation-panel" style={styles.conversationPanel}>
+            <h3 style={styles.panelTitle}>Conversations</h3>
             {loading ? (
               <p style={styles.emptyText}>Loading...</p>
             ) : conversations.length === 0 ? (
-              <p style={styles.emptyText}>
-                No conversations yet.
-              </p>
+              <p style={styles.emptyText}>No conversations yet.</p>
             ) : (
               conversations.map((conversation) => (
                 <div
                   key={conversation._id}
-                  onClick={() =>
-                    openConversation(conversation)
-                  }
+                  onClick={() => openConversation(conversation)}
                   style={{
                     ...styles.conversation,
-                    ...(selectedConversation?._id ===
-                    conversation._id
+                    ...(selectedConversation?._id === conversation._id
                       ? styles.selectedConversation
                       : {}),
                   }}
                 >
                   <div style={styles.avatar}>
-                    {conversation.customer?.name
-                      ?.charAt(0)
-                      .toUpperCase()}
+                    {conversation.customer?.name?.charAt(0).toUpperCase()}
                   </div>
 
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={styles.conversationTop}>
                       <strong
                         className="conversation-name"
                         style={styles.conversationName}
                       >
-                        {conversation.customer?.name ||
-                          "Customer"}
+                        {conversation.customer?.name || "Customer"}
                       </strong>
 
-                      {unreadCounts[conversation._id] >
-                        0 && (
+                      {unreadCounts[conversation._id] > 0 && (
                         <span style={styles.unreadBadge}>
-                          {unreadCounts[
-                            conversation._id
-                          ]}
+                          {unreadCounts[conversation._id]}
                         </span>
                       )}
                     </div>
 
                     <p style={styles.lastMessage}>
-                      {conversation.lastMessage ||
-                        "Start chatting"}
+                      {conversation.lastMessage || "Start chatting"}
                     </p>
                   </div>
                 </div>
@@ -338,23 +287,15 @@ const VendorMessages = () => {
             )}
           </div>
 
-          <div
-            className="chat-panel"
-            style={styles.chatPanel}
-          >
+          <div className="chat-panel" style={styles.chatPanel}>
             {!selectedConversation ? (
               <div style={styles.noChat}>
                 <div style={styles.chatIcon}>💬</div>
-
                 <h3>Select a conversation</h3>
-
-                <p>
-                  Choose a customer to start chatting.
-                </p>
+                <p>Choose a customer to start chatting.</p>
               </div>
             ) : (
               <>
-
                 <div
                   className="mobile-back-button"
                   onClick={backToConversations}
@@ -362,10 +303,7 @@ const VendorMessages = () => {
                   ← Conversations
                 </div>
 
-                <div
-                  className="vendor-chat-header"
-                  style={styles.chatHeader}
-                >
+                <div className="vendor-chat-header" style={styles.chatHeader}>
                   <div style={styles.avatar}>
                     {selectedConversation.customer?.name
                       ?.charAt(0)
@@ -377,33 +315,25 @@ const VendorMessages = () => {
                       className="chat-customer-name"
                       style={styles.chatCustomerName}
                     >
-                      {selectedConversation.customer?.name ||
-                        "Customer"}
+                      {selectedConversation.customer?.name || "Customer"}
                     </strong>
 
                     <p
                       style={{
                         ...styles.onlineText,
-                        color: onlineUsers[
-                          selectedConversation.customer?._id
-                        ]
+                        color: onlineUsers[selectedConversation.customer?._id]
                           ? "#2E8B57"
                           : "#999",
                       }}
                     >
-                      {onlineUsers[
-                        selectedConversation.customer?._id
-                      ]
+                      {onlineUsers[selectedConversation.customer?._id]
                         ? "● Online"
                         : "○ Offline"}
                     </p>
                   </div>
                 </div>
 
-                <div
-                  className="messages-area"
-                  style={styles.messagesArea}
-                >
+                <div className="messages-area" style={styles.messagesArea}>
                   {messages.length === 0 ? (
                     <div style={styles.emptyChat}>
                       No messages yet. Say hello 👋
@@ -418,9 +348,7 @@ const VendorMessages = () => {
                         <div
                           key={msg._id}
                           className={`vendor-message-row ${
-                            isMine
-                              ? "my-message-row"
-                              : "their-message-row"
+                            isMine ? "my-message-row" : "their-message-row"
                           }`}
                         >
                           <div
@@ -432,17 +360,12 @@ const VendorMessages = () => {
                                 : styles.theirMessage),
                             }}
                           >
-
                             {msg.attachment?.url && (
                               <div className="message-attachment">
-                                {msg.attachment.type ===
-                                "image" ? (
+                                {msg.attachment.type === "image" ? (
                                   <img
                                     src={msg.attachment.url}
-                                    alt={
-                                      msg.attachment.name ||
-                                      "Attachment"
-                                    }
+                                    alt={msg.attachment.name || "Attachment"}
                                     className="chat-image"
                                   />
                                 ) : (
@@ -458,17 +381,11 @@ const VendorMessages = () => {
                             {/* TEXT */}
 
                             {msg.message && (
-                              <div className="message-text">
-                                {msg.message}
-                              </div>
+                              <div className="message-text">{msg.message}</div>
                             )}
 
-                            <span
-                              style={styles.messageTime}
-                            >
-                              {new Date(
-                                msg.createdAt
-                              ).toLocaleTimeString([], {
+                            <span style={styles.messageTime}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -479,9 +396,7 @@ const VendorMessages = () => {
                                     marginLeft: "5px",
                                   }}
                                 >
-                                  {msg.isRead
-                                    ? "✓✓"
-                                    : "✓"}
+                                  {msg.isRead ? "✓✓" : "✓"}
                                 </span>
                               )}
                             </span>
@@ -496,26 +411,15 @@ const VendorMessages = () => {
                   <div className="attachment-preview">
                     <div className="attachment-preview-content">
                       {attachmentPreview.type === "image" ? (
-                        <img
-                          src={attachmentPreview.url}
-                          alt="Preview"
-                        />
+                        <img src={attachmentPreview.url} alt="Preview" />
                       ) : (
-                        <video
-                          src={attachmentPreview.url}
-                          controls
-                        />
+                        <video src={attachmentPreview.url} controls />
                       )}
 
                       <div className="attachment-info">
-                        <span>
-                          {attachmentPreview.name}
-                        </span>
+                        <span>{attachmentPreview.name}</span>
 
-                        <button
-                          type="button"
-                          onClick={removeAttachment}
-                        >
+                        <button type="button" onClick={removeAttachment}>
                           ✕
                         </button>
                       </div>
@@ -528,14 +432,11 @@ const VendorMessages = () => {
                   className="vendor-message-input-area"
                   style={styles.inputArea}
                 >
-
                   <div className="emoji-wrapper">
                     <button
                       type="button"
                       className="emoji-button"
-                      onClick={() =>
-                        setShowEmojiPicker((prev) => !prev)
-                      }
+                      onClick={() => setShowEmojiPicker((prev) => !prev)}
                     >
                       😊
                     </button>
@@ -550,7 +451,6 @@ const VendorMessages = () => {
                       </div>
                     )}
                   </div>
-
 
                   <label
                     htmlFor="vendor-chat-file"
@@ -568,22 +468,16 @@ const VendorMessages = () => {
                     style={{ display: "none" }}
                   />
 
-
                   <input
                     value={message}
-                    onChange={(e) =>
-                      setMessage(e.target.value)
-                    }
+                    onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
                     style={styles.messageInput}
                   />
 
                   {/* SEND */}
 
-                  <button
-                    type="submit"
-                    style={styles.sendButton}
-                  >
+                  <button type="submit" style={styles.sendButton}>
                     Send
                   </button>
                 </form>

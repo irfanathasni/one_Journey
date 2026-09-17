@@ -26,8 +26,6 @@ const handleRazorpayXWebhook = async (req, res) => {
 
     const event = JSON.parse(req.body.toString());
 
-    console.log("RAZORPAYX WEBHOOK:", event.event);
-
     if (
       event.event === "payout.processed" ||
       event.event === "payout.failed" ||
