@@ -15,6 +15,8 @@ const VendorBookings = () => {
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -24,8 +26,12 @@ const VendorBookings = () => {
   });
 
   useEffect(() => {
-    fetchBookings();
-  }, [currentPage, statusFilter]);
+    const timer = setTimeout(() => {
+      fetchBookings();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [currentPage, statusFilter, search, sortBy]);
 
   const fetchBookings = async () => {
     try {
@@ -35,9 +41,16 @@ const VendorBookings = () => {
       const res = await getVendorBookings({
         page: currentPage,
         limit: 5,
+
         ...(statusFilter && {
           status: statusFilter,
         }),
+
+        ...(search.trim() && {
+          search: search.trim(),
+        }),
+
+        sortBy,
       });
 
       console.log("BOOKING DATA:", res.data);
@@ -50,24 +63,23 @@ const VendorBookings = () => {
           totalPages: 1,
           totalItems: 0,
           limit: 5,
-        }
+        },
       );
     } catch (error) {
       console.error(
         "Failed to fetch vendor bookings:",
-        error.response?.data || error
+        error.response?.data || error,
       );
 
       setError(
-        error.response?.data?.message ||
-          "Failed to load booking requests."
+        error.response?.data?.message || "Failed to load booking requests.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-   const handleBookingStatus = async (bookingId, status) => {
+  const handleBookingStatus = async (bookingId, status) => {
     try {
       setUpdatingId(bookingId);
       setError("");
@@ -76,8 +88,7 @@ const VendorBookings = () => {
       await fetchBookings();
     } catch (error) {
       setError(
-        error.response?.data?.message ||
-          "Failed to update booking status."
+        error.response?.data?.message || "Failed to update booking status.",
       );
     } finally {
       setUpdatingId(null);
@@ -93,8 +104,7 @@ const VendorBookings = () => {
       await fetchBookings();
     } catch (error) {
       setError(
-        error.response?.data?.message ||
-          "Failed to mark event as completed."
+        error.response?.data?.message || "Failed to mark event as completed.",
       );
     } finally {
       setUpdatingId(null);
@@ -110,24 +120,20 @@ const VendorBookings = () => {
       await fetchBookings();
     } catch (error) {
       setError(
-        error.response?.data?.message ||
-          "Failed to request final payment."
+        error.response?.data?.message || "Failed to request final payment.",
       );
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const getCustomerName = (booking) =>
-    booking.customer?.name || "Customer";
+  const getCustomerName = (booking) => booking.customer?.name || "Customer";
 
   const getWeddingName = (booking) => {
     const brideName = booking.wedding?.brideName || "";
     const groomName = booking.wedding?.groomName || "";
 
-    return brideName && groomName
-      ? `${brideName} & ${groomName}`
-      : "Wedding";
+    return brideName && groomName ? `${brideName} & ${groomName}` : "Wedding";
   };
 
   const formatDate = (date) => {
@@ -159,16 +165,11 @@ const VendorBookings = () => {
       <div style={styles.page}>
         <VendorNavbar />
 
-       <main
-  className="vendor-bookings-main"
-  style={styles.main}
->
+        <main className="vendor-bookings-main" style={styles.main}>
           <div style={styles.loadingCard}>
             <div style={styles.loadingIcon}>💍</div>
 
-            <h2 style={styles.loadingTitle}>
-              Loading booking requests...
-            </h2>
+            <h2 style={styles.loadingTitle}>Loading booking requests...</h2>
 
             <p style={styles.loadingText}>
               Please wait while we fetch your bookings.
@@ -183,76 +184,89 @@ const VendorBookings = () => {
     <div style={styles.page}>
       <VendorNavbar />
 
-      <main
-  className="vendor-bookings-main"
-  style={styles.main}
->
-        <section
-  className="vendor-booking-header"
-  style={styles.header}
->
+      <main className="vendor-bookings-main" style={styles.main}>
+        <section className="vendor-booking-header" style={styles.header}>
           <div style={styles.headerContent}>
             <p style={styles.eyebrow}>YOUR BOOKINGS</p>
 
-           <h1
-  className="vendor-booking-title"
-  style={styles.title}
->
-  Booking Requests
-</h1>
+            <h1 className="vendor-booking-title" style={styles.title}>
+              Booking Requests
+            </h1>
 
-          <p
-  className="vendor-booking-subtitle"
-  style={styles.subtitle}
->
-              Manage booking requests, track events, and handle
-              payments — all in one place.
+            <p className="vendor-booking-subtitle" style={styles.subtitle}>
+              Manage booking requests, track events, and handle payments — all
+              in one place.
             </p>
           </div>
 
-          <div
-  className="vendor-booking-total"
-  style={styles.totalBox}
->
+          <div className="vendor-booking-total" style={styles.totalBox}>
             <span style={styles.totalLabel}>Total Requests</span>
 
-            <strong style={styles.totalValue}>
-                {pagination.totalItems}
-            </strong>
+            <strong style={styles.totalValue}>{pagination.totalItems}</strong>
           </div>
         </section>
-     <div
-  className="vendor-booking-filter-bar"
-  style={styles.filterBar}
->
-  <div>
-    <label style={styles.filterLabel}>Filter by Status</label>
-  <select
-  className="vendor-booking-filter-select"
-  value={statusFilter}
-      onChange={(e) => {
-        setStatusFilter(e.target.value);
-        setCurrentPage(1);
-        setExpandedId(null);
-      }}
-      style={styles.filterSelect}
-    >
-      <option value="">All Bookings</option>
-      <option value="pending">Pending</option>
-      <option value="approved">Approved</option>
-      <option value="completed">Completed</option>
-      <option value="rejected">Rejected</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-  </div>
+        <div className="vendor-booking-filter-bar" style={styles.filterBar}>
+          <div className="vendor-booking-search-wrapper">
+            <label style={styles.filterLabel}>Search Bookings</label>
 
-  <div
-  className="vendor-booking-result-info"
-  style={styles.resultInfo}
->
-    Showing {bookings.length} of {pagination.totalItems} bookings
-  </div>
-</div>
+            <input
+              className="vendor-booking-search-input"
+              type="text"
+              placeholder="Search customer or couple..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              style={styles.searchInput}
+            />
+          </div>
+
+          <div>
+            <label style={styles.filterLabel}>Filter by Status</label>
+
+            <select
+              className="vendor-booking-filter-select"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              style={styles.filterSelect}
+            >
+              <option value="">All Bookings</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={styles.filterLabel}>Sort By</label>
+            <select
+              className="vendor-booking-sort-select"
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCurrentPage(1);
+                setExpandedId(null);
+              }}
+              style={styles.filterSelect}
+            >
+              <option value="newest">Newest Bookings</option>
+              <option value="oldest">Oldest Bookings</option>
+              <option value="serviceDateAsc">Service Date: Earliest</option>
+              <option value="serviceDateDesc">Service Date: Latest</option>
+            </select>
+          </div>
+          <div className="vendor-booking-result-info" style={styles.resultInfo}>
+            Showing {bookings.length} of {pagination.totalItems} bookings
+          </div>
+        </div>
 
         {error && (
           <div style={styles.errorBox}>
@@ -261,580 +275,512 @@ const VendorBookings = () => {
           </div>
         )}
 
+        {bookings.length === 0 ? (
+          <div className="vendor-booking-empty" style={styles.emptyCard}>
+            <div style={styles.emptyIcon}>♡</div>
 
-{bookings.length === 0 ? (
-  <div
-  className="vendor-booking-empty"
-  style={styles.emptyCard}
->
-    <div style={styles.emptyIcon}>♡</div>
+            <h2 style={styles.emptyTitle}>
+              {statusFilter ? "No bookings found" : "No booking requests yet"}
+            </h2>
 
-    <h2 style={styles.emptyTitle}>
-      {statusFilter
-        ? "No bookings found"
-        : "No booking requests yet"}
-    </h2>
-
-    <p style={styles.emptyText}>
-      {statusFilter
-        ? `There are no ${statusFilter} bookings at the moment.`
-        : "When couples request your services, their booking requests will appear here."}
-    </p>
-  </div>
-) : (
-  <>
-    <div style={styles.bookingList}>
-      {bookings.map((booking) => {
-        const customerName = getCustomerName(booking);
-        const weddingName = getWeddingName(booking);
-        const status = booking.status || "pending";
-        const isUpdating = updatingId === booking._id;
-        const isExpanded = expandedId === booking._id;
-
-        const remaining =
-          (booking.amount || 0) -
-          (booking.advanceAmount || 0);
-
-        return (
-          <div
-            key={booking._id}
-            style={styles.bookingCard}
-          >
-<div
-  className="vendor-booking-top-row"
-  style={styles.cardTopRow}
-  onClick={() =>
-    setExpandedId(
-      isExpanded ? null : booking._id
-    )
-  }
->
-  <div style={styles.customerSection}>
-    <div
-  className="vendor-booking-customer-avatar"
-  style={styles.customerAvatar}
->
-      {customerName.charAt(0).toUpperCase()}
-    </div>
-
-    <div style={styles.customerInfo}>
-      <h3
-  className="vendor-booking-customer-name"
-  style={styles.customerName}
->
-        {customerName}
-      </h3>
-
-     <p
-  className="vendor-booking-wedding"
-  style={styles.weddingInfo}
->
-        {weddingName}
-      </p>
-    </div>
-  </div>
-
-  <div style={styles.dateSection}>
-    <span style={styles.dateLabel}>
-      SERVICE DATE
-    </span>
-
-   <strong
-  className="vendor-booking-date-value"
-  style={styles.dateValue}
->
-      {formatDate(booking.serviceDate)}
-    </strong>
-
-    {booking.startTime &&
-      booking.endTime && (
-       <div
-  className="vendor-booking-time"
-  style={styles.timeSlot}
->
-          🕐 {formatTime(booking.startTime)} -{" "}
-          {formatTime(booking.endTime)}
-        </div>
-      )}
-  </div>
-
-  <span
-  className="vendor-booking-status"
-  style={{
-      ...styles.bookingStatus,
-      ...(status === "approved"
-        ? styles.approvedStatus
-        : status === "completed"
-        ? styles.completedStatus
-        : status === "rejected"
-        ? styles.rejectedStatus
-        : status === "cancelled"
-        ? styles.cancelledStatus
-        : styles.pendingStatus),
-    }}
-  >
-    {status}
-  </span>
-
-  <span style={styles.expandIcon}>
-    {isExpanded ? "▲" : "▼"}
-  </span>
-</div>
-
-{isExpanded && (
- <div
-  className="vendor-booking-detail-panel"
-  style={styles.detailPanel}
->
-
-    <div className="vendor-detail-cards" style={styles.detailCardsRow}>
-
-      {/* CONTACT */}
-     <div
-  className="vendor-booking-info-card"
-  style={styles.infoCard}
->
-        <p style={styles.infoCardTitle}>
-          👤 Contact Details
-        </p>
-
-        <div
-  className="vendor-booking-info-row"
-  style={styles.infoRow}
->
-          <span style={styles.infoLabel}>
-            Email
-          </span>
-
-          <strong
-            className="vendor-booking-info-value"
-             style={styles.infoValue}>
-           {booking.customer?.phone || "Not specified"}
-          </strong>
-        </div>
-
-       <div className="vendor-booking-info-row"
-         style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Phone
-          </span>
-
-          <strong style={styles.infoValue}>
-            {booking.customer?.phone ||
-              "Not specified"}
-          </strong>
-        </div>
-      </div>
-
-      {/* EVENT */}
-      <div style={styles.infoCard}>
-        <p style={styles.infoCardTitle}>
-          📍 Event Details
-        </p>
-
-        <div
-  className="vendor-booking-info-row"
-  style={styles.infoRow}
->
-          <span style={styles.infoLabel}>
-            Guests
-          </span>
-
-          <strong style={styles.infoValue}>
-            {booking.wedding?.guestCount ||
-              "Not specified"}
-          </strong>
-        </div>
-
-        <div className="vendor-booking-info-row"
-          style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Venue
-          </span>
-
-          <strong style={styles.infoValue}>
-            {booking.wedding?.venue ||
-              "Not specified"}
-          </strong>
-        </div>
-
-        <div className="vendor-booking-info-row"
-          style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Location
-          </span>
-
-          <strong style={styles.infoValue}>
-            {booking.wedding?.location ||
-              "Not specified"}
-          </strong>
-        </div>
-
-        <div className="vendor-booking-info-row"
-          style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Wedding Date
-          </span>
-
-          <strong style={styles.infoValue}>
-            {formatDate(
-              booking.wedding?.weddingDate
-            )}
-          </strong>
-        </div>
-      </div>
-
-      {/* PACKAGE */}
-      <div style={styles.infoCard}>
-        <p style={styles.infoCardTitle}>
-          📦 Selected Package
-        </p>
-
-        <div className="vendor-booking-info-row"
-         style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Package Type
-          </span>
-
-          <strong className="vendor-booking-info-value"
-           style={styles.infoValue}>
-            {booking.package?.packageType ||
-              "Not specified"}
-          </strong>
-        </div>
-
-       <div className="vendor-booking-info-row"
-         style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Package Name
-          </span>
-
-          <strong
-  className="vendor-booking-info-value"
-  style={styles.infoValue}
->
-            {booking.package?.packageName ||
-              "Not specified"}
-          </strong>
-        </div>
-
-        <div className="vendor-booking-info-row"
-           style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Description
-          </span>
-
-         <strong className="vendor-booking-info-value"
-           style={{...styles.infoValue,maxWidth: "65%",
-         }}>
-            {booking.package?.description ||
-              "Not specified"}
-          </strong>
-        </div>
-
-        <div className="vendor-booking-info-row"
-           style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Package Price
-          </span>
-
-          <strong style={styles.infoValue}>
-            ₹
-            {Number(
-              booking.package?.price || 0
-            ).toLocaleString("en-IN")}
-          </strong>
-        </div>
-      </div>
-
-      {/* PAYMENT */}
-      <div style={styles.infoCard}>
-        <p style={styles.infoCardTitle}>
-          💰 Payment Summary
-        </p>
-
-       <div className="vendor-booking-info-row"
-         style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Total Amount
-          </span>
-
-          <strong style={styles.infoValue}>
-            ₹
-            {(booking.amount || 0).toLocaleString(
-              "en-IN"
-            )}
-          </strong>
-        </div>
-
-       <div className="vendor-booking-info-row"
-           style={styles.infoRow}>
-          <span style={styles.infoLabel}>
-            Advance
-          </span>
-
-          <strong
-            style={{
-              ...styles.infoValue,
-              color:
-                booking.paymentStatus === "paid"
-                  ? "#2E7D50"
-                  : "#A66B00",
-            }}
-          >
-            ₹
-            {(
-              booking.advanceAmount || 0
-            ).toLocaleString("en-IN")}{" "}
-            ·{" "}
-            {booking.paymentStatus === "paid"
-              ? "Paid"
-              : "Pending"}
-          </strong>
-        </div>
-
-        {status === "completed" && (
-          <div className="vendor-booking-info-row"
-             style={styles.infoRow}>
-            <span style={styles.infoLabel}>
-              Remaining
-            </span>
-
-            <strong
-              style={{
-                ...styles.infoValue,
-                color:
-                  booking.finalPaymentStatus ===
-                  "paid"
-                    ? "#2E7D50"
-                    : "#A66B00",
-              }}
-            >
-              ₹
-              {remaining.toLocaleString(
-                "en-IN"
-              )}{" "}
-              ·{" "}
-              {booking.finalPaymentStatus ===
-              "paid"
-                ? "Paid"
-                : booking.finalPaymentStatus ===
-                  "requested"
-                ? "Requested"
-                : "Not requested"}
-            </strong>
+            <p style={styles.emptyText}>
+              {statusFilter
+                ? `There are no ${statusFilter} bookings at the moment.`
+                : "When couples request your services, their booking requests will appear here."}
+            </p>
           </div>
+        ) : (
+          <>
+            <div style={styles.bookingList}>
+              {bookings.map((booking) => {
+                const customerName = getCustomerName(booking);
+                const weddingName = getWeddingName(booking);
+                const status = booking.status || "pending";
+                const isUpdating = updatingId === booking._id;
+                const isExpanded = expandedId === booking._id;
+
+                const remaining =
+                  (booking.amount || 0) - (booking.advanceAmount || 0);
+
+                return (
+                  <div key={booking._id} style={styles.bookingCard}>
+                    <div
+                      className="vendor-booking-top-row"
+                      style={styles.cardTopRow}
+                      onClick={() =>
+                        setExpandedId(isExpanded ? null : booking._id)
+                      }
+                    >
+                      <div style={styles.customerSection}>
+                        <div
+                          className="vendor-booking-customer-avatar"
+                          style={styles.customerAvatar}
+                        >
+                          {customerName.charAt(0).toUpperCase()}
+                        </div>
+
+                        <div style={styles.customerInfo}>
+                          <h3
+                            className="vendor-booking-customer-name"
+                            style={styles.customerName}
+                          >
+                            {customerName}
+                          </h3>
+
+                          <p
+                            className="vendor-booking-wedding"
+                            style={styles.weddingInfo}
+                          >
+                            {weddingName}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={styles.dateSection}>
+                        <span style={styles.dateLabel}>SERVICE DATE</span>
+
+                        <strong
+                          className="vendor-booking-date-value"
+                          style={styles.dateValue}
+                        >
+                          {formatDate(booking.serviceDate)}
+                        </strong>
+
+                        {booking.startTime && booking.endTime && (
+                          <div
+                            className="vendor-booking-time"
+                            style={styles.timeSlot}
+                          >
+                            🕐 {formatTime(booking.startTime)} -{" "}
+                            {formatTime(booking.endTime)}
+                          </div>
+                        )}
+                      </div>
+
+                      <span
+                        className="vendor-booking-status"
+                        style={{
+                          ...styles.bookingStatus,
+                          ...(status === "approved"
+                            ? styles.approvedStatus
+                            : status === "completed"
+                              ? styles.completedStatus
+                              : status === "rejected"
+                                ? styles.rejectedStatus
+                                : status === "cancelled"
+                                  ? styles.cancelledStatus
+                                  : styles.pendingStatus),
+                        }}
+                      >
+                        {status}
+                      </span>
+
+                      <span style={styles.expandIcon}>
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </div>
+
+                    {isExpanded && (
+                      <div
+                        className="vendor-booking-detail-panel"
+                        style={styles.detailPanel}
+                      >
+                        <div
+                          className="vendor-detail-cards"
+                          style={styles.detailCardsRow}
+                        >
+                          {/* CONTACT */}
+                          <div
+                            className="vendor-booking-info-card"
+                            style={styles.infoCard}
+                          >
+                            <p style={styles.infoCardTitle}>
+                              👤 Contact Details
+                            </p>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Email</span>
+
+                              <strong
+                                className="vendor-booking-info-value"
+                                style={styles.infoValue}
+                              >
+                                {booking.customer?.phone || "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Phone</span>
+
+                              <strong style={styles.infoValue}>
+                                {booking.customer?.phone || "Not specified"}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* EVENT */}
+                          <div style={styles.infoCard}>
+                            <p style={styles.infoCardTitle}>📍 Event Details</p>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Guests</span>
+
+                              <strong style={styles.infoValue}>
+                                {booking.wedding?.guestCount || "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Venue</span>
+
+                              <strong style={styles.infoValue}>
+                                {booking.wedding?.venue || "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Location</span>
+
+                              <strong style={styles.infoValue}>
+                                {booking.wedding?.location || "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Wedding Date</span>
+
+                              <strong style={styles.infoValue}>
+                                {formatDate(booking.wedding?.weddingDate)}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* PACKAGE */}
+                          <div style={styles.infoCard}>
+                            <p style={styles.infoCardTitle}>
+                              📦 Selected Package
+                            </p>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Package Type</span>
+
+                              <strong
+                                className="vendor-booking-info-value"
+                                style={styles.infoValue}
+                              >
+                                {booking.package?.packageType ||
+                                  "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Package Name</span>
+
+                              <strong
+                                className="vendor-booking-info-value"
+                                style={styles.infoValue}
+                              >
+                                {booking.package?.packageName ||
+                                  "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Description</span>
+
+                              <strong
+                                className="vendor-booking-info-value"
+                                style={{ ...styles.infoValue, maxWidth: "65%" }}
+                              >
+                                {booking.package?.description ||
+                                  "Not specified"}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>
+                                Package Price
+                              </span>
+
+                              <strong style={styles.infoValue}>
+                                ₹
+                                {Number(
+                                  booking.package?.price || 0,
+                                ).toLocaleString("en-IN")}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* PAYMENT */}
+                          <div style={styles.infoCard}>
+                            <p style={styles.infoCardTitle}>
+                              💰 Payment Summary
+                            </p>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Total Amount</span>
+
+                              <strong style={styles.infoValue}>
+                                ₹{(booking.amount || 0).toLocaleString("en-IN")}
+                              </strong>
+                            </div>
+
+                            <div
+                              className="vendor-booking-info-row"
+                              style={styles.infoRow}
+                            >
+                              <span style={styles.infoLabel}>Advance</span>
+
+                              <strong
+                                style={{
+                                  ...styles.infoValue,
+                                  color:
+                                    booking.paymentStatus === "paid"
+                                      ? "#2E7D50"
+                                      : "#A66B00",
+                                }}
+                              >
+                                ₹
+                                {(booking.advanceAmount || 0).toLocaleString(
+                                  "en-IN",
+                                )}{" "}
+                                ·{" "}
+                                {booking.paymentStatus === "paid"
+                                  ? "Paid"
+                                  : "Pending"}
+                              </strong>
+                            </div>
+
+                            {status === "completed" && (
+                              <div
+                                className="vendor-booking-info-row"
+                                style={styles.infoRow}
+                              >
+                                <span style={styles.infoLabel}>Remaining</span>
+
+                                <strong
+                                  style={{
+                                    ...styles.infoValue,
+                                    color:
+                                      booking.finalPaymentStatus === "paid"
+                                        ? "#2E7D50"
+                                        : "#A66B00",
+                                  }}
+                                >
+                                  ₹{remaining.toLocaleString("en-IN")} ·{" "}
+                                  {booking.finalPaymentStatus === "paid"
+                                    ? "Paid"
+                                    : booking.finalPaymentStatus === "requested"
+                                      ? "Requested"
+                                      : "Not requested"}
+                                </strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <BookingStatusTimeline
+                          booking={booking}
+                          role="vendor"
+                        />
+
+                        {/* ACTIONS */}
+                        <div
+                          className="vendor-booking-action-row"
+                          style={styles.actionRow}
+                        >
+                          {status === "pending" && (
+                            <>
+                              <button
+                                style={{
+                                  ...styles.acceptButton,
+                                  ...(isUpdating ? styles.disabledButton : {}),
+                                }}
+                                disabled={isUpdating}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  handleBookingStatus(booking._id, "approved");
+                                }}
+                              >
+                                {isUpdating ? "Updating..." : "✓ Accept"}
+                              </button>
+
+                              <button
+                                style={{
+                                  ...styles.rejectButton,
+                                  ...(isUpdating ? styles.disabledButton : {}),
+                                }}
+                                disabled={isUpdating}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  handleBookingStatus(booking._id, "rejected");
+                                }}
+                              >
+                                {isUpdating ? "Updating..." : "Reject"}
+                              </button>
+                            </>
+                          )}
+
+                          {status === "approved" &&
+                            booking.paymentStatus === "paid" && (
+                              <button
+                                style={{
+                                  ...styles.acceptButton,
+                                  ...(isUpdating ? styles.disabledButton : {}),
+                                }}
+                                disabled={isUpdating}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  handleComplete(booking._id);
+                                }}
+                              >
+                                {isUpdating
+                                  ? "Updating..."
+                                  : "Mark Event Completed"}
+                              </button>
+                            )}
+
+                          {status === "approved" &&
+                            booking.paymentStatus !== "paid" && (
+                              <span style={styles.pendingText}>
+                                Awaiting customer's advance payment
+                              </span>
+                            )}
+
+                          {status === "completed" &&
+                            booking.finalPaymentStatus === "not_requested" && (
+                              <button
+                                style={{
+                                  ...styles.acceptButton,
+                                  ...(isUpdating ? styles.disabledButton : {}),
+                                }}
+                                disabled={isUpdating}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+
+                                  handleRequestFinal(booking._id);
+                                }}
+                              >
+                                {isUpdating
+                                  ? "Requesting..."
+                                  : "Request Final Payment"}
+                              </button>
+                            )}
+
+                          {status === "completed" &&
+                            booking.finalPaymentStatus === "requested" && (
+                              <span style={styles.pendingText}>
+                                Waiting for customer to pay remaining balance
+                              </span>
+                            )}
+
+                          {status === "completed" &&
+                            booking.finalPaymentStatus === "paid" && (
+                              <span style={styles.acceptedText}>
+                                ✓ Fully Paid
+                              </span>
+                            )}
+
+                          {status === "rejected" && (
+                            <span style={styles.rejectedText}>Rejected</span>
+                          )}
+
+                          {status === "cancelled" && (
+                            <span style={styles.rejectedText}>Cancelled</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {pagination.totalPages > 1 && (
+              <div
+                className="vendor-booking-pagination"
+                style={styles.pagination}
+              >
+                <button
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === 1 ? styles.paginationDisabled : {}),
+                  }}
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                >
+                  ← Previous
+                </button>
+
+                <div style={styles.pageNumbers}>
+                  <span style={styles.pageText}>
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                </div>
+
+                <button
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === pagination.totalPages
+                      ? styles.paginationDisabled
+                      : {}),
+                  }}
+                  disabled={currentPage === pagination.totalPages}
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(prev + 1, pagination.totalPages),
+                    )
+                  }
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
-      </div>
-    </div>
+      </main>
 
-    <BookingStatusTimeline
-      booking={booking}
-      role="vendor"
-    />
-
-    {/* ACTIONS */}
-    <div
-      className="vendor-booking-action-row"
-      style={styles.actionRow}
-    >
-
-      {status === "pending" && (
-        <>
-          <button
-            style={{
-              ...styles.acceptButton,
-              ...(isUpdating
-                ? styles.disabledButton
-                : {}),
-            }}
-            disabled={isUpdating}
-            onClick={(e) => {
-              e.stopPropagation();
-
-              handleBookingStatus(
-                booking._id,
-                "approved"
-              );
-            }}
-          >
-            {isUpdating
-              ? "Updating..."
-              : "✓ Accept"}
-          </button>
-
-          <button
-            style={{
-              ...styles.rejectButton,
-              ...(isUpdating
-                ? styles.disabledButton
-                : {}),
-            }}
-            disabled={isUpdating}
-            onClick={(e) => {
-              e.stopPropagation();
-
-              handleBookingStatus(
-                booking._id,
-                "rejected"
-              );
-            }}
-          >
-            {isUpdating
-              ? "Updating..."
-              : "Reject"}
-          </button>
-        </>
-      )}
-
-      {status === "approved" &&
-        booking.paymentStatus === "paid" && (
-          <button
-            style={{
-              ...styles.acceptButton,
-              ...(isUpdating
-                ? styles.disabledButton
-                : {}),
-            }}
-            disabled={isUpdating}
-            onClick={(e) => {
-              e.stopPropagation();
-
-              handleComplete(booking._id);
-            }}
-          >
-            {isUpdating
-              ? "Updating..."
-              : "Mark Event Completed"}
-          </button>
-        )}
-
-      {status === "approved" &&
-        booking.paymentStatus !== "paid" && (
-          <span style={styles.pendingText}>
-            Awaiting customer's advance payment
-          </span>
-        )}
-
-      {status === "completed" &&
-        booking.finalPaymentStatus ===
-          "not_requested" && (
-          <button
-            style={{
-              ...styles.acceptButton,
-              ...(isUpdating
-                ? styles.disabledButton
-                : {}),
-            }}
-            disabled={isUpdating}
-            onClick={(e) => {
-              e.stopPropagation();
-
-              handleRequestFinal(
-                booking._id
-              );
-            }}
-          >
-            {isUpdating
-              ? "Requesting..."
-              : "Request Final Payment"}
-          </button>
-        )}
-
-      {status === "completed" &&
-        booking.finalPaymentStatus ===
-          "requested" && (
-          <span style={styles.pendingText}>
-            Waiting for customer to pay remaining
-            balance
-          </span>
-        )}
-
-      {status === "completed" &&
-        booking.finalPaymentStatus === "paid" && (
-          <span style={styles.acceptedText}>
-            ✓ Fully Paid
-          </span>
-        )}
-
-      {status === "rejected" && (
-        <span style={styles.rejectedText}>
-          Rejected
-        </span>
-      )}
-
-      {status === "cancelled" && (
-        <span style={styles.rejectedText}>
-          Cancelled
-        </span>
-      )}
-    </div>
-  </div>
-)}
-
-          </div>
-        );
-      })}
-    </div>
-
-    {pagination.totalPages > 1 && (
-     <div
-  className="vendor-booking-pagination"
-  style={styles.pagination}
->
-        <button
-          style={{
-            ...styles.paginationButton,
-            ...(currentPage === 1
-              ? styles.paginationDisabled
-              : {}),
-          }}
-          disabled={currentPage === 1}
-          onClick={() =>
-            setCurrentPage((prev) =>
-              Math.max(prev - 1, 1)
-            )
-          }
-        >
-          ← Previous
-        </button>
-
-        <div style={styles.pageNumbers}>
-          <span style={styles.pageText}>
-            Page {pagination.currentPage} of{" "}
-            {pagination.totalPages}
-          </span>
-        </div>
-
-        <button
-          style={{
-            ...styles.paginationButton,
-            ...(currentPage === pagination.totalPages
-              ? styles.paginationDisabled
-              : {}),
-          }}
-          disabled={
-            currentPage === pagination.totalPages
-          }
-          onClick={() =>
-            setCurrentPage((prev) =>
-              Math.min(
-                prev + 1,
-                pagination.totalPages
-              )
-            )
-          }
-        >
-          Next →
-        </button>
-      </div>
-    )}
-  </>
-)}
-  </main>
-
-{/* RESPONSIVE CSS */}
-<style>{`
+      {/* RESPONSIVE CSS */}
+      <style>
+        {`
   * {
     box-sizing: border-box;
   }
@@ -921,6 +867,9 @@ const VendorBookings = () => {
 
     .vendor-booking-filter-select {
       width: 100% !important;
+    }
+    .vendor-booking-search-input {
+     width: 100% !important;
     }
 
     .vendor-booking-result-info {
@@ -1016,10 +965,10 @@ const VendorBookings = () => {
     }
   }
 `}
-</style>
+      </style>
     </div>
-  )
-}
+  );
+};
 
 const styles = {
   page: {
@@ -1112,8 +1061,7 @@ const styles = {
 
   cardTopRow: {
     display: "grid",
-    gridTemplateColumns:
-      "minmax(220px, 1.5fr) minmax(150px, 1fr) 110px 24px",
+    gridTemplateColumns: "minmax(220px, 1.5fr) minmax(150px, 1fr) 110px 24px",
     alignItems: "center",
     gap: "20px",
     padding: "1.25rem 1.5rem",
@@ -1221,8 +1169,8 @@ const styles = {
     color: "#A33B3B",
   },
   cancelledStatus: {
-  background: "#FBEAEA",
-  color: "#A33B3B",
+    background: "#FBEAEA",
+    color: "#A33B3B",
   },
 
   expandIcon: {
@@ -1407,78 +1355,78 @@ const styles = {
     fontSize: "14px",
   },
   filterBar: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-end",
-  gap: "20px",
-  marginBottom: "20px",
-  padding: "16px",
-  background: "#FFFFFF",
-  border: "1px solid #E5DFD5",
-  borderRadius: "10px",
-},
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: "20px",
+    marginBottom: "20px",
+    padding: "16px",
+    background: "#FFFFFF",
+    border: "1px solid #E5DFD5",
+    borderRadius: "10px",
+  },
 
-filterLabel: {
-  display: "block",
-  fontSize: "11px",
-  color: "#6B6560",
-  textTransform: "uppercase",
-  letterSpacing: "1px",
-  marginBottom: "7px",
-},
+  filterLabel: {
+    display: "block",
+    fontSize: "11px",
+    color: "#6B6560",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    marginBottom: "7px",
+  },
 
-filterSelect: {
-  minWidth: "180px",
-  padding: "9px 12px",
-  border: "1px solid #DCD4C9",
-  borderRadius: "7px",
-  background: "#FFFFFF",
-  color: "#2B2B2B",
-  fontSize: "13px",
-  outline: "none",
-  cursor: "pointer",
-},
+  filterSelect: {
+    minWidth: "180px",
+    padding: "9px 12px",
+    border: "1px solid #DCD4C9",
+    borderRadius: "7px",
+    background: "#FFFFFF",
+    color: "#2B2B2B",
+    fontSize: "13px",
+    outline: "none",
+    cursor: "pointer",
+  },
 
-resultInfo: {
-  fontSize: "12px",
-  color: "#6B6560",
-},
+  resultInfo: {
+    fontSize: "12px",
+    color: "#6B6560",
+  },
 
-pagination: {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "16px",
-  marginTop: "24px",
-  padding: "16px",
-},
+  pagination: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "24px",
+    padding: "16px",
+  },
 
-pageNumbers: {
-  minWidth: "120px",
-  textAlign: "center",
-},
+  pageNumbers: {
+    minWidth: "120px",
+    textAlign: "center",
+  },
 
-pageText: {
-  fontSize: "13px",
-  color: "#6B6560",
-  fontWeight: 600,
-},
+  pageText: {
+    fontSize: "13px",
+    color: "#6B6560",
+    fontWeight: 600,
+  },
 
-paginationButton: {
-  border: "1px solid #D7D0C7",
-  background: "#FFFFFF",
-  color: "#3D5A50",
-  padding: "8px 14px",
-  borderRadius: "7px",
-  fontSize: "12px",
-  fontWeight: 600,
-  cursor: "pointer",
-},
+  paginationButton: {
+    border: "1px solid #D7D0C7",
+    background: "#FFFFFF",
+    color: "#3D5A50",
+    padding: "8px 14px",
+    borderRadius: "7px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
 
-paginationDisabled: {
-  opacity: 0.45,
-  cursor: "not-allowed",
-},
+  paginationDisabled: {
+    opacity: 0.45,
+    cursor: "not-allowed",
+  },
 };
 
 export default VendorBookings;
