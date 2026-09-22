@@ -205,26 +205,32 @@ const VendorBookings = () => {
             <strong style={styles.totalValue}>{pagination.totalItems}</strong>
           </div>
         </section>
+
         <div className="vendor-booking-filter-bar" style={styles.filterBar}>
-          <div className="vendor-booking-search-wrapper">
-            <label style={styles.filterLabel}>Search Bookings</label>
+          <div
+            className="vendor-booking-search-wrapper"
+            style={styles.filterGroup}
+          >
+            <label style={styles.filterLabel}>Search</label>
+            <div style={styles.searchBox}>
+              <span style={styles.searchIcon}>⌕</span>
 
-            <input
-              className="vendor-booking-search-input"
-              type="text"
-              placeholder="Search customer or couple..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-                setExpandedId(null);
-              }}
-              style={styles.searchInput}
-            />
+              <input
+                className="vendor-booking-search-input"
+                type="text"
+                placeholder="Customer or couple name..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                  setExpandedId(null);
+                }}
+                style={styles.searchInput}
+              />
+            </div>
           </div>
-
-          <div>
-            <label style={styles.filterLabel}>Filter by Status</label>
+          <div style={styles.filterGroup}>
+            <label style={styles.filterLabel}>Status</label>
 
             <select
               className="vendor-booking-filter-select"
@@ -244,9 +250,9 @@ const VendorBookings = () => {
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
-
-          <div>
+          <div style={styles.filterGroup}>
             <label style={styles.filterLabel}>Sort By</label>
+
             <select
               className="vendor-booking-sort-select"
               value={sortBy}
@@ -257,14 +263,15 @@ const VendorBookings = () => {
               }}
               style={styles.filterSelect}
             >
-              <option value="newest">Newest Bookings</option>
-              <option value="oldest">Oldest Bookings</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
               <option value="serviceDateAsc">Service Date: Earliest</option>
               <option value="serviceDateDesc">Service Date: Latest</option>
             </select>
           </div>
           <div className="vendor-booking-result-info" style={styles.resultInfo}>
-            Showing {bookings.length} of {pagination.totalItems} bookings
+            <span style={styles.resultCount}>{pagination.totalItems}</span>
+            <span> bookings found</span>
           </div>
         </div>
 
@@ -408,7 +415,7 @@ const VendorBookings = () => {
                                 className="vendor-booking-info-value"
                                 style={styles.infoValue}
                               >
-                                {booking.customer?.phone || "Not specified"}
+                                {booking.customer?.email || "Not specified"}
                               </strong>
                             </div>
 
@@ -419,7 +426,7 @@ const VendorBookings = () => {
                               <span style={styles.infoLabel}>Phone</span>
 
                               <strong style={styles.infoValue}>
-                                {booking.customer?.phone || "Not specified"}
+                                {booking.customer?.email || "Not specified"}
                               </strong>
                             </div>
                           </div>
@@ -963,8 +970,23 @@ const VendorBookings = () => {
     .vendor-booking-detail-panel {
       padding: 0.75rem !important;
     }
-  }
-`}
+      .vendor-booking-search-wrapper,
+      .vendor-booking-search-input,
+      .vendor-booking-search-wrapper .vendor-booking-search-input {
+      width: 100% !important;
+    }
+
+      .vendor-booking-filter-select,
+      .vendor-booking-sort-select {
+      width: 100% !important;
+    }
+
+    .vendor-booking-result-info {
+      margin-left: 0 !important;
+      justify-content: flex-start;
+    }
+      }
+    `}
       </style>
     </div>
   );
@@ -1356,40 +1378,85 @@ const styles = {
   },
   filterBar: {
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "flex-end",
-    gap: "20px",
-    marginBottom: "20px",
+    gap: "14px",
     padding: "16px",
-    background: "#FFFFFF",
-    border: "1px solid #E5DFD5",
-    borderRadius: "10px",
+    marginBottom: "20px",
+    background: "#FCFAF7",
+    border: "1px solid #E8E0D7",
+    borderRadius: "12px",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
+  },
+
+  filterGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
   },
 
   filterLabel: {
-    display: "block",
-    fontSize: "11px",
-    color: "#6B6560",
-    textTransform: "uppercase",
-    letterSpacing: "1px",
-    marginBottom: "7px",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#5B514A",
+    letterSpacing: "0.2px",
   },
 
-  filterSelect: {
-    minWidth: "180px",
-    padding: "9px 12px",
-    border: "1px solid #DCD4C9",
-    borderRadius: "7px",
+  searchBox: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
+
+  searchIcon: {
+    position: "absolute",
+    left: "12px",
+    fontSize: "20px",
+    color: "#8A817A",
+    pointerEvents: "none",
+    lineHeight: 1,
+  },
+
+  searchInput: {
+    width: "260px",
+    height: "40px",
+    padding: "0 12px 0 36px",
+    border: "1px solid #DCD4CC",
+    borderRadius: "8px",
     background: "#FFFFFF",
     color: "#2B2B2B",
     fontSize: "13px",
     outline: "none",
+    boxSizing: "border-box",
+  },
+
+  filterSelect: {
+    minWidth: "170px",
+    height: "40px",
+    padding: "0 34px 0 12px",
+    border: "1px solid #DCD4CC",
+    borderRadius: "8px",
+    background: "#FFFFFF",
+    color: "#3A3430",
+    fontSize: "13px",
     cursor: "pointer",
+    outline: "none",
+    boxSizing: "border-box",
   },
 
   resultInfo: {
+    marginLeft: "auto",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
     fontSize: "12px",
-    color: "#6B6560",
+    color: "#81766E",
+    whiteSpace: "nowrap",
+  },
+
+  resultCount: {
+    fontWeight: "700",
+    color: "#3D5A50",
+    marginRight: "4px",
   },
 
   pagination: {
