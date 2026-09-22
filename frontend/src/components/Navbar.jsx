@@ -9,12 +9,12 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken");
-      await axiosInstance.post("/auth/logout", { refreshToken });
+      await axiosInstance.post("/auth/logout");
     } catch (err) {
+      console.error("Logout failed:", err);
     } finally {
       dispatch(logout());
-      navigate("/login");
+      navigate("/login", { replace: true });
     }
   };
 
@@ -42,4 +42,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar
+export default Navbar;

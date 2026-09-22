@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { logout } from "../../features/auth/authSlice";
 import { useDispatch } from "react-redux";
+import axiosInstance from "../../services/axiosInstance";
 
 const AdminSidebar = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
@@ -42,9 +43,19 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     },
   ];
 
-  const handleLogout = () => {
-    dispatch(logout());
-    window.location.href = "/admin/login";
+  const handleLogout = async () => {
+    try {
+      const res = await axiosInstance.post("/auth/logout");
+    } catch (error) {
+      console.error(
+        "LOGOUT ERROR:",
+        error.response?.status,
+        error.response?.data || error.message,
+      );
+    } finally {
+      dispatch(logout());
+      window.location.href = "/admin/login";
+    }
   };
 
   const handleMenuClick = () => {
@@ -55,26 +66,18 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div
-          style={styles.overlay}
-          onClick={onClose}
-        />
-      )}
+      {isOpen && <div style={styles.overlay} onClick={onClose} />}
 
-     
-     <aside
-  className={`admin-sidebar ${isOpen ? "admin-sidebar-open" : ""}`}
-  style={styles.sidebar}
->
-        {/* Mobile Close Button */}
-       <button
-  className="sidebar-close-button"
-  style={styles.closeButton}
-  onClick={onClose}
-  aria-label="Close sidebar"
->
+      <aside
+        className={`admin-sidebar ${isOpen ? "admin-sidebar-open" : ""}`}
+        style={styles.sidebar}
+      >
+        <button
+          className="sidebar-close-button"
+          style={styles.closeButton}
+          onClick={onClose}
+          aria-label="Close sidebar"
+        >
           <X size={22} />
         </button>
 
@@ -111,10 +114,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <button
-          style={styles.logout}
-          onClick={handleLogout}
-        >
+        <button style={styles.logout} onClick={handleLogout}>
           <LogOut size={18} />
           Logout
         </button>
@@ -122,7 +122,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
       {/* Responsive Styles */}
       <style>
-  {`
+        {`
     @media (max-width: 768px) {
       .admin-sidebar {
         transform: translateX(-100%) !important;
@@ -137,7 +137,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       }
     }
   `}
-</style>
+      </style>
     </>
   );
 };
