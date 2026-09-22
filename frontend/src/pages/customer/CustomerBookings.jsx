@@ -17,25 +17,61 @@ const CustomerBookings = () => {
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    limit: 5,
+  });
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchBookings();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [currentPage, statusFilter, search, sortBy]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const res = await getMyBookings();
+      const res = await getMyBookings({
+        page: currentPage,
+        limit: 5,
+        ...(statusFilter && {
+          status: statusFilter,
+        }),
+        ...(search.trim() && {
+          search: search.trim(),
+        }),
+        sortBy,
+      });
 
       setBookings(res.data || []);
+
+      setPagination(
+        res.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          limit: 5,
+        },
+      );
     } catch (error) {
       console.error("Failed to load bookings:", error);
 
       setError(
-        error.response?.data?.message ||
-          "Failed to load your bookings."
+        error.response?.data?.message || "Failed to load your bookings.",
       );
     } finally {
       setLoading(false);
@@ -75,10 +111,7 @@ const CustomerBookings = () => {
         comment,
       });
 
-      setReviewedBookings([
-        ...reviewedBookings,
-        reviewingBooking._id,
-      ]);
+      setReviewedBookings([...reviewedBookings, reviewingBooking._id]);
 
       setReviewingBooking(null);
       setRating(0);
@@ -86,24 +119,15 @@ const CustomerBookings = () => {
 
       alert("Review submitted. Thank you!");
     } catch (err) {
-      alert(
-        err.response?.data?.message ||
-          "Failed to submit review"
-      );
+      alert(err.response?.data?.message || "Failed to submit review");
     } finally {
       setSubmittingReview(false);
     }
   };
 
-  const handlePayment = async (
-    booking,
-    paymentType = "advance"
-  ) => {
+  const handlePayment = async (booking, paymentType = "advance") => {
     try {
-      const { order, keyId } = await createPayment(
-        booking._id,
-        paymentType
-      );
+      const { order, keyId } = await createPayment(booking._id, paymentType);
 
       const options = {
         key: keyId,
@@ -112,20 +136,15 @@ const CustomerBookings = () => {
         name: "One Journey Wedding Planner",
         description: `${
           paymentType === "final" ? "Final" : "Advance"
-        } payment for ${
-          booking.vendor?.businessName || "vendor"
-        }`,
+        } payment for ${booking.vendor?.businessName || "vendor"}`,
         order_id: order.id,
 
         handler: async (response) => {
           try {
             await verifyPayment({
-              razorpay_order_id:
-                response.razorpay_order_id,
-              razorpay_payment_id:
-                response.razorpay_payment_id,
-              razorpay_signature:
-                response.razorpay_signature,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
               bookingId: booking._id,
               paymentType,
             });
@@ -133,23 +152,20 @@ const CustomerBookings = () => {
             alert(
               paymentType === "final"
                 ? "Final payment successful!"
-                : "Payment successful! Advance paid."
+                : "Payment successful! Advance paid.",
             );
 
             fetchBookings();
           } catch (err) {
             alert(
-              "Payment Verification failed. Contact Support if amount was deducted."
+              "Payment Verification failed. Contact Support if amount was deducted.",
             );
           }
         },
 
         modal: {
           ondismiss: async () => {
-            await markPaymentFailed(
-              booking._id,
-              paymentType
-            );
+            await markPaymentFailed(booking._id, paymentType);
           },
         },
 
@@ -158,18 +174,13 @@ const CustomerBookings = () => {
         },
       };
 
-      const razorpayObject = new window.Razorpay(
-        options
-      );
+      const razorpayObject = new window.Razorpay(options);
 
       razorpayObject.open();
     } catch (error) {
       console.error("Payment error:", error);
 
-      alert(
-        error.response?.data?.message ||
-          "Failed to start payment"
-      );
+      alert(error.response?.data?.message || "Failed to start payment");
     }
   };
 
@@ -183,71 +194,82 @@ const CustomerBookings = () => {
   }
 
   return (
-    <div
-      style={styles.page}
-      className="customer-bookings-page"
-    >
+    <div style={styles.page} className="customer-bookings-page">
       {/* HEADER */}
-      <div
-        style={styles.header}
-        className="customer-bookings-header"
-      >
+      <div style={styles.header} className="customer-bookings-header">
         <div>
           <p style={styles.eyebrow}>MY JOURNEY</p>
 
-          <h1
-            style={styles.title}
-            className="customer-bookings-title"
-          >
+          <h1 style={styles.title} className="customer-bookings-title">
             My Bookings
           </h1>
 
           <p style={styles.subtitle}>
-            Track your vendor booking requests and their
-            status.
+            Track your vendor booking requests and their status.
           </p>
         </div>
 
-        <div
-          style={styles.countBox}
-          className="customer-bookings-count"
-        >
+        <div style={styles.countBox} className="customer-bookings-count">
           <span>Total Bookings</span>
-          <strong>{bookings.length}</strong>
+          <strong>{pagination.totalItems}</strong>
         </div>
       </div>
 
-      {/* ERROR */}
-      {error && (
-        <div style={styles.error}>
-          ⚠️ {error}
-        </div>
-      )}
+      <div style={styles.filterBar} className="customer-bookings-filter-bar">
+        <div style={styles.searchWrapper}>
+          <span style={styles.searchIcon}>🔎</span>
 
-      {/* EMPTY */}
-      {!error && bookings.length === 0 && (
-        <div
-          style={styles.empty}
-          className="customer-bookings-empty"
+          <input
+            type="text"
+            placeholder="Search by vendor name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={styles.searchInput}
+          />
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={styles.filterSelect}
         >
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="completed">Completed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          style={styles.filterSelect}
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="serviceDateAsc">Service Date: Earliest</option>
+          <option value="serviceDateDesc">Service Date: Latest</option>
+        </select>
+      </div>
+
+      {error && <div style={styles.error}>⚠️ {error}</div>}
+
+      {!error && bookings.length === 0 && (
+        <div style={styles.empty} className="customer-bookings-empty">
           <div style={styles.emptyIcon}>💍</div>
 
           <h2>No bookings yet</h2>
 
-          <p>
-            Your vendor booking requests will appear here.
-          </p>
+          <p>Your vendor booking requests will appear here.</p>
         </div>
       )}
 
-      {/* BOOKINGS LIST */}
       <div style={styles.list}>
         {bookings.map((booking) => {
           const status = booking.status || "pending";
 
           const remaining =
-            (booking.amount || 0) -
-            (booking.advanceAmount || 0);
+            (booking.amount || 0) - (booking.advanceAmount || 0);
 
           return (
             <div
@@ -264,16 +286,13 @@ const CustomerBookings = () => {
                   style={styles.vendorInfo}
                   className="customer-booking-vendor-info"
                 >
-                  <p style={styles.smallLabel}>
-                    VENDOR
-                  </p>
+                  <p style={styles.smallLabel}>VENDOR</p>
 
                   <h2
                     style={styles.vendorName}
                     className="customer-booking-vendor-name"
                   >
-                    {booking.vendor?.businessName ||
-                      "Vendor"}
+                    {booking.vendor?.businessName || "Vendor"}
                   </h2>
 
                   <p style={styles.category}>
@@ -287,22 +306,17 @@ const CustomerBookings = () => {
                     ...(status === "approved"
                       ? styles.approved
                       : status === "completed"
-                      ? styles.completed
-                      : status === "rejected"
-                      ? styles.rejected
-                      : styles.pending),
+                        ? styles.completed
+                        : status === "rejected"
+                          ? styles.rejected
+                          : styles.pending),
                   }}
                   className="customer-booking-status"
                 >
                   {formatStatus(status)}
                 </span>
               </div>
-
-              {/* BOOKING DETAILS */}
-              <div
-                style={styles.details}
-                className="customer-booking-details"
-              >
+              <div style={styles.details} className="customer-booking-details">
                 <div style={styles.detail}>
                   <span style={styles.icon}>💍</span>
 
@@ -310,11 +324,8 @@ const CustomerBookings = () => {
                     <p style={styles.label}>Wedding</p>
 
                     <strong>
-                      {booking.wedding?.brideName ||
-                        ""}{" "}
-                      &{" "}
-                      {booking.wedding?.groomName ||
-                        ""}
+                      {booking.wedding?.brideName || ""} &{" "}
+                      {booking.wedding?.groomName || ""}
                     </strong>
                   </div>
                 </div>
@@ -323,15 +334,9 @@ const CustomerBookings = () => {
                   <span style={styles.icon}>📅</span>
 
                   <div style={styles.detailContent}>
-                    <p style={styles.label}>
-                      Service Date
-                    </p>
+                    <p style={styles.label}>Service Date</p>
 
-                    <strong>
-                      {formatDate(
-                        booking.serviceDate
-                      )}
-                    </strong>
+                    <strong>{formatDate(booking.serviceDate)}</strong>
                   </div>
                 </div>
 
@@ -342,16 +347,13 @@ const CustomerBookings = () => {
                     <p style={styles.label}>Time</p>
 
                     <strong>
-                      {booking.startTime &&
-                      booking.endTime
+                      {booking.startTime && booking.endTime
                         ? `${booking.startTime} - ${booking.endTime}`
                         : "Not specified"}
                     </strong>
                   </div>
                 </div>
               </div>
-
-              {/* PACKAGE */}
               <div
                 style={styles.packageSection}
                 className="customer-booking-package"
@@ -360,18 +362,14 @@ const CustomerBookings = () => {
                   style={styles.packageInfo}
                   className="customer-booking-package-info"
                 >
-                  <p style={styles.packageLabel}>
-                    SELECTED PACKAGE
-                  </p>
+                  <p style={styles.packageLabel}>SELECTED PACKAGE</p>
 
                   <strong style={styles.packageName}>
-                    {booking.package?.packageName ||
-                      "Package"}
+                    {booking.package?.packageName || "Package"}
                   </strong>
 
                   <p style={styles.packageType}>
-                    {booking.package?.packageType ||
-                      ""}
+                    {booking.package?.packageType || ""}
                   </p>
                 </div>
 
@@ -381,27 +379,14 @@ const CustomerBookings = () => {
                 >
                   ₹
                   {Number(
-                    booking.package?.price ||
-                      booking.amount ||
-                      0
+                    booking.package?.price || booking.amount || 0,
                   ).toLocaleString("en-IN")}
                 </div>
               </div>
-
-              {/* TIMELINE */}
-              <BookingStatusTimeline
-                booking={booking}
-                role="customer"
-              />
-
-              {/* FOOTER */}
-              <div
-                style={styles.footer}
-                className="customer-booking-footer"
-              >
+              <BookingStatusTimeline booking={booking} role="customer" />\{" "}
+              <div style={styles.footer} className="customer-booking-footer">
                 <span>
-                  Booking requested on{" "}
-                  {formatDate(booking.createdAt)}
+                  Booking requested on {formatDate(booking.createdAt)}
                 </span>
 
                 {status === "approved" && (
@@ -411,9 +396,7 @@ const CustomerBookings = () => {
                 )}
 
                 {status === "completed" && (
-                  <span style={styles.successText}>
-                    Event completed 🎉
-                  </span>
+                  <span style={styles.successText}>Event completed 🎉</span>
                 )}
 
                 {status === "rejected" && (
@@ -428,75 +411,50 @@ const CustomerBookings = () => {
                   </span>
                 )}
               </div>
+              \{" "}
+              {status === "approved" && booking.paymentStatus !== "paid" && (
+                <div style={styles.paymentSection}>
+                  <div style={styles.paymentInfo}>
+                    <span>Package Total</span>
 
-              {/* ADVANCE PAYMENT */}
-              {status === "approved" &&
-                booking.paymentStatus !== "paid" && (
-                  <div style={styles.paymentSection}>
-                    <div style={styles.paymentInfo}>
-                      <span>Package Total</span>
-
-                      <strong>
-                        ₹
-                        {Number(
-                          booking.amount || 0
-                        ).toLocaleString("en-IN")}
-                      </strong>
-                    </div>
-
-                    <div style={styles.paymentInfo}>
-                      <span>
-                        Advance Payment (50%)
-                      </span>
-
-                      <strong>
-                        ₹
-                        {Number(
-                          booking.advanceAmount || 0
-                        ).toLocaleString("en-IN")}
-                      </strong>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        handlePayment(
-                          booking,
-                          "advance"
-                        )
-                      }
-                      style={styles.payButton}
-                    >
-                      Pay Advance ₹
-                      {Number(
-                        booking.advanceAmount || 0
-                      ).toLocaleString("en-IN")}
-                    </button>
+                    <strong>
+                      ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
+                    </strong>
                   </div>
-                )}
 
+                  <div style={styles.paymentInfo}>
+                    <span>Advance Payment (50%)</span>
+
+                    <strong>
+                      ₹
+                      {Number(booking.advanceAmount || 0).toLocaleString(
+                        "en-IN",
+                      )}
+                    </strong>
+                  </div>
+
+                  <button
+                    onClick={() => handlePayment(booking, "advance")}
+                    style={styles.payButton}
+                  >
+                    Pay Advance ₹
+                    {Number(booking.advanceAmount || 0).toLocaleString("en-IN")}
+                  </button>
+                </div>
+              )}
               {/* ADVANCE PAID */}
-              {status === "approved" &&
-                booking.paymentStatus === "paid" && (
-                  <span style={styles.paidBadge}>
-                    ✓ Advance Paid
-                  </span>
-                )}
-
-              {/* FINAL PAYMENT */}
+              {status === "approved" && booking.paymentStatus === "paid" && (
+                <span style={styles.paidBadge}>✓ Advance Paid</span>
+              )}
+              \{" "}
               {status === "completed" &&
-                booking.finalPaymentStatus ===
-                  "requested" && (
+                booking.finalPaymentStatus === "requested" && (
                   <div style={styles.paymentSection}>
                     <div style={styles.paymentInfo}>
-                      <span>
-                        Total Package Amount
-                      </span>
+                      <span>Total Package Amount</span>
 
                       <strong>
-                        ₹
-                        {Number(
-                          booking.amount || 0
-                        ).toLocaleString("en-IN")}
+                        ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
                       </strong>
                     </div>
 
@@ -505,110 +463,104 @@ const CustomerBookings = () => {
 
                       <strong>
                         ₹
-                        {Number(
-                          booking.advanceAmount || 0
-                        ).toLocaleString("en-IN")}
-                      </strong>
-                    </div>
-
-                    <div style={styles.paymentInfo}>
-                      <span>
-                        Remaining Amount
-                      </span>
-
-                      <strong>
-                        ₹
-                        {Number(remaining).toLocaleString(
-                          "en-IN"
+                        {Number(booking.advanceAmount || 0).toLocaleString(
+                          "en-IN",
                         )}
                       </strong>
                     </div>
 
+                    <div style={styles.paymentInfo}>
+                      <span>Remaining Amount</span>
+
+                      <strong>
+                        ₹{Number(remaining).toLocaleString("en-IN")}
+                      </strong>
+                    </div>
+
                     <button
-                      onClick={() =>
-                        handlePayment(
-                          booking,
-                          "final"
-                        )
-                      }
+                      onClick={() => handlePayment(booking, "final")}
                       style={styles.payButton}
                     >
-                      Pay Remaining ₹
-                      {Number(remaining).toLocaleString(
-                        "en-IN"
-                      )}
+                      Pay Remaining ₹{Number(remaining).toLocaleString("en-IN")}
                     </button>
                   </div>
                 )}
-
-              {/* FINAL PAYMENT NOT REQUESTED */}
+              \{" "}
               {status === "completed" &&
-                booking.finalPaymentStatus ===
-                  "not_requested" && (
+                booking.finalPaymentStatus === "not_requested" && (
                   <span style={styles.pendingText}>
-                    Waiting for vendor to request final
-                    payment
+                    Waiting for vendor to request final payment
                   </span>
                 )}
-
-              {/* FULLY PAID */}
               {status === "completed" &&
                 booking.finalPaymentStatus === "paid" && (
-                  <span style={styles.paidBadge}>
-                    ✓ Fully Paid
-                  </span>
+                  <span style={styles.paidBadge}>✓ Fully Paid</span>
                 )}
-
-              {/* REVIEW BUTTON */}
               {status === "completed" &&
                 booking.finalPaymentStatus === "paid" &&
-                !reviewedBookings.includes(
-                  booking._id
-                ) && (
+                !reviewedBookings.includes(booking._id) && (
                   <button
-                    onClick={() =>
-                      setReviewingBooking(booking)
-                    }
+                    onClick={() => setReviewingBooking(booking)}
                     style={styles.reviewButtonCustomer}
                   >
                     ⭐ Leave a Review
                   </button>
                 )}
-
-              {/* REVIEW SUBMITTED */}
-              {reviewedBookings.includes(
-                booking._id
-              ) && (
-                <span style={styles.paidBadge}>
-                  ✓ Review Submitted
-                </span>
+              {reviewedBookings.includes(booking._id) && (
+                <span style={styles.paidBadge}>✓ Review Submitted</span>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* REVIEW MODAL */}
+      {pagination.totalPages > 1 && (
+        <div style={styles.pagination} className="customer-bookings-pagination">
+          <button
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+            disabled={currentPage === 1}
+            style={{
+              ...styles.paginationButton,
+              ...(currentPage === 1 ? styles.paginationDisabled : {}),
+            }}
+          >
+            ← Previous
+          </button>
+
+          <span style={styles.paginationInfo}>
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            disabled={currentPage === pagination.totalPages}
+            style={{
+              ...styles.paginationButton,
+              ...(currentPage === pagination.totalPages
+                ? styles.paginationDisabled
+                : {}),
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
       {reviewingBooking && (
         <div
           style={styles.modalOverlay}
-          onClick={() =>
-            setReviewingBooking(null)
-          }
+          onClick={() => setReviewingBooking(null)}
         >
           <div
             style={styles.modalCard}
             className="customer-review-modal"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            onClick={(e) => e.stopPropagation()}
           >
             <h2
               style={styles.modalTitle}
               className="customer-review-modal-title"
             >
-              Rate{" "}
-              {reviewingBooking.vendor?.businessName}
+              Rate {reviewingBooking.vendor?.businessName}
             </h2>
 
             <div style={styles.starRow}>
@@ -618,10 +570,7 @@ const CustomerBookings = () => {
                   onClick={() => setRating(n)}
                   style={{
                     ...styles.star,
-                    color:
-                      n <= rating
-                        ? "#B8935A"
-                        : "#DDD",
+                    color: n <= rating ? "#B8935A" : "#DDD",
                   }}
                 >
                   ★
@@ -632,9 +581,7 @@ const CustomerBookings = () => {
             <textarea
               placeholder="Share your experience (optional)"
               value={comment}
-              onChange={(e) =>
-                setComment(e.target.value)
-              }
+              onChange={(e) => setComment(e.target.value)}
               style={styles.reviewTextarea}
               rows="4"
             />
@@ -648,15 +595,11 @@ const CustomerBookings = () => {
                 style={styles.primaryButton}
                 disabled={submittingReview}
               >
-                {submittingReview
-                  ? "Submitting..."
-                  : "Submit Review"}
+                {submittingReview ? "Submitting..." : "Submit Review"}
               </button>
 
               <button
-                onClick={() =>
-                  setReviewingBooking(null)
-                }
+                onClick={() => setReviewingBooking(null)}
                 style={styles.secondaryButtonModal}
               >
                 Cancel
@@ -708,6 +651,19 @@ const CustomerBookings = () => {
           .customer-review-modal {
             max-width: 90% !important;
           }
+            .customer-bookings-filter-bar {
+             flex-direction: column !important;
+             align-items: stretch !important;
+          }
+
+            .customer-bookings-filter-bar input,
+            .customer-bookings-filter-bar select {
+              width: 100%;
+            }
+
+            .customer-bookings-pagination {
+              gap: 10px !important;
+            }
         }
 
         @media (max-width: 480px) {
@@ -816,6 +772,13 @@ const CustomerBookings = () => {
           .starRow {
             justify-content: center;
           }
+         .customer-bookings-pagination {
+            flex-wrap: wrap;
+          }
+
+          .customer-bookings-pagination button {
+            padding: 8px 12px !important;
+          } 
         }
 
         @media (max-width: 360px) {
@@ -1253,6 +1216,84 @@ const styles = {
     marginBottom: "10px",
     fontSize: "13px",
     color: "#777",
+  },
+  filterBar: {
+    maxWidth: "1100px",
+    margin: "0 auto 25px",
+    padding: "15px",
+    background: "#FFFFFF",
+    border: "1px solid #E5DFD5",
+    borderRadius: "12px",
+    display: "flex",
+    gap: "12px",
+    alignItems: "center",
+    boxSizing: "border-box",
+  },
+
+  searchWrapper: {
+    flex: 1,
+    position: "relative",
+    minWidth: 0,
+  },
+
+  searchIcon: {
+    position: "absolute",
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    fontSize: "14px",
+  },
+
+  searchInput: {
+    width: "100%",
+    padding: "11px 12px 11px 38px",
+    border: "1px solid #DCD5CA",
+    borderRadius: "8px",
+    outline: "none",
+    fontSize: "13px",
+    boxSizing: "border-box",
+  },
+
+  filterSelect: {
+    padding: "11px 12px",
+    border: "1px solid #DCD5CA",
+    borderRadius: "8px",
+    background: "#FFFFFF",
+    color: "#555",
+    fontSize: "13px",
+    cursor: "pointer",
+    outline: "none",
+  },
+
+  pagination: {
+    maxWidth: "1100px",
+    margin: "25px auto 0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "20px",
+  },
+
+  paginationButton: {
+    padding: "9px 16px",
+    border: "1px solid #3D5A50",
+    borderRadius: "7px",
+    background: "#FFFFFF",
+    color: "#3D5A50",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  paginationDisabled: {
+    opacity: 0.45,
+    cursor: "not-allowed",
+  },
+
+  paginationInfo: {
+    color: "#666",
+    fontSize: "13px",
+    fontWeight: 600,
   },
 };
 

@@ -164,22 +164,81 @@ const createBooking = async (req, res, next) => {
     next(error);
   }
 };
-
 const getMyBookings = async (req, res, next) => {
   try {
-    const bookings = await Booking.find({
-      customer: req.user.id,
-    })
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+
+    const limit = Math.min(
+      Math.max(Number.parseInt(req.query.limit, 10) || 5, 1),
+      50,
+    );
+
+    const skip = (page - 1) * limit;
+    const filter = { customer: req.user.id };
+
+    if (req.query.status) {
+      const allowedStatuses = Object.values(BOOKING_STATUS);
+
+      if (!allowedStatuses.includes(req.query.status)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid booking status" });
+      }
+
+      filter.status = req.query.status;
+    }
+    if (req.query.search?.trim()) {
+      const search = req.query.search.trim();
+
+      const matchingVendors = await Vendor.find({
+        businessName: {
+          $regex: search,
+          $options: "i",
+        },
+      }).select("_id");
+
+      const vendorIds = matchingVendors.map((vendor) => vendor._id);
+
+      filter.vendor = { $in: vendorIds };
+    }
+    const allowedSortFields = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      serviceDateAsc: { serviceDate: 1 },
+      serviceDateDesc: { serviceDate: -1 },
+    };
+
+    const sortBy = req.query.sortBy || "newest";
+    const sort = allowedSortFields[sortBy];
+
+    if (!sort) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid sort option" });
+    }
+
+    const totalItems = await Booking.countDocuments(filter);
+    const bookings = await Booking.find(filter)
       .populate("vendor", "businessName category")
       .populate(
         "wedding",
         "brideName groomName weddingDate guestCount venue location",
       )
-      .sort({ createdAt: -1 });
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const totalPages = Math.ceil(totalItems / limit);
 
     return res.status(200).json({
       success: true,
       data: bookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        limit,
+      },
     });
   } catch (error) {
     next(error);
