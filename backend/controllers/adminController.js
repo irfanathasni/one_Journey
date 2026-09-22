@@ -1,28 +1,30 @@
-const Vendor = require("../models/Vendor")
-const VENDOR_STATUS = require("../constants/vendorStatus")
-const ROLES = require("../constants/roles")
-const User = require("../models/User")
-const Category = require("../models/Category")
-const Booking = require("../models/Booking")
-const BOOKING_STATUS = require("../constants/bookingStatus")
+const Vendor = require("../models/Vendor");
+const VENDOR_STATUS = require("../constants/vendorStatus");
+const ROLES = require("../constants/roles");
+const User = require("../models/User");
+const Category = require("../models/Category");
+const Booking = require("../models/Booking");
+const BOOKING_STATUS = require("../constants/bookingStatus");
 
-const { sendVendorStatusEmail } = require("../utils/sendEmail")
+const { sendVendorStatusEmail } = require("../utils/sendEmail");
 
 const getAllVendors = async (req, res, next) => {
   try {
-    const {status,page = 1,limit = 10,search = ""} = req.query;
+    const { status, page = 1, limit = 10, search = "" } = req.query;
     const filter = {};
     if (status) {
       if (!Object.values(VENDOR_STATUS).includes(status)) {
-        return res.status(400).json({success: false,message: "Invalid vendor status"});
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid vendor status" });
       }
-      filter.verificationStatus = status
+      filter.verificationStatus = status;
     }
 
     if (search.trim()) {
-      filter.$or = [{ businessName: {$regex: search.trim(), $options: "i" } }];
+      filter.$or = [{ businessName: { $regex: search.trim(), $options: "i" } }];
     }
-    const skip = (Number(page) - 1) * Number(limit)
+    const skip = (Number(page) - 1) * Number(limit);
     const vendors = await Vendor.find(filter)
       .populate("user", "name email phone")
       .sort({ createdAt: -1 })
@@ -30,7 +32,7 @@ const getAllVendors = async (req, res, next) => {
       .limit(Number(limit));
 
     const totalVendors = await Vendor.countDocuments(filter);
-    const totalPages = Math.ceil(totalVendors / Number(limit))
+    const totalPages = Math.ceil(totalVendors / Number(limit));
 
     return res.status(200).json({
       success: true,
@@ -39,69 +41,89 @@ const getAllVendors = async (req, res, next) => {
       totalPages,
       currentPage: Number(page),
     });
-
   } catch (error) {
     next(error);
   }
-}
+};
 
-const approveVendor= async(req,res,next) => {
-    try{
-        const { vendorId } = req.params
-        const vendor = await Vendor.findById(vendorId).populate("user", "email name")
-        if(!vendor){
-            return res.status(404).json({success:false,message:"Vendor not found"})
-        }
-        if(vendor.verificationStatus ===VENDOR_STATUS.APPROVED){
-            return res.status(400).json({success:false,message:"Vendor is already approved"})
-        }
-        
-        vendor.verificationStatus =VENDOR_STATUS.APPROVED
-        vendor.rejectionReason = null
-        await vendor.save()
-        try {
-             await sendVendorStatusEmail(
-            vendor.user.email, 
-            vendor.businessName,
-            vendor.verificationStatus,
-            vendor.rejectionReason)
-        }catch(emailError) {
-            console.error("Vendor approved but email failed:" ,emailError.message)
-        }
-       
-       
-        return res.status(200).json({success:true,message:"Vendor approved successfully",data:vendor})
+const approveVendor = async (req, res, next) => {
+  try {
+    const { vendorId } = req.params;
+    const vendor = await Vendor.findById(vendorId).populate(
+      "user",
+      "email name",
+    );
+    if (!vendor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
+    }
+    if (vendor.verificationStatus === VENDOR_STATUS.APPROVED) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Vendor is already approved" });
+    }
 
-    }catch(error){
-        next(error)
-    }
-}
-
-const rejectVendor = async (req,res,next) => {
-    try{
-    const { vendorId } =req.params
-    const { reason }  = req.body ||{}
-    if(!reason) {
-        return res.status(400).json({success:false,message:"Rejection reason is required"})
-    }
-    const vendor = await Vendor.findById(vendorId).populate("user","email name")
-    if(!vendor) {
-        return res.status(404).json({success:false,message:"Vendor not found"})
-    }
-    vendor.verificationStatus = VENDOR_STATUS.REJECTED
-    vendor.rejectionReason = reason
-    await vendor.save()
-    await sendVendorStatusEmail(
+    vendor.verificationStatus = VENDOR_STATUS.APPROVED;
+    vendor.rejectionReason = null;
+    await vendor.save();
+    try {
+      await sendVendorStatusEmail(
         vendor.user.email,
         vendor.businessName,
         vendor.verificationStatus,
-        vendor.rejectionReason
-    )
-    return res.status(200).json({success:true,message:"vendor rejevcted successfully",data:vendor})
-    }catch(error){
-        next(error)
+        vendor.rejectionReason,
+      );
+    } catch (emailError) {
+      console.error("Vendor approved but email failed:", emailError.message);
     }
-}
+
+    return res.status(200).json({
+      success: true,
+      message: "Vendor approved successfully",
+      data: vendor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const rejectVendor = async (req, res, next) => {
+  try {
+    const { vendorId } = req.params;
+    const { reason } = req.body || {};
+    if (!reason) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Rejection reason is required" });
+    }
+    const vendor = await Vendor.findById(vendorId).populate(
+      "user",
+      "email name",
+    );
+    if (!vendor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
+    }
+    vendor.verificationStatus = VENDOR_STATUS.REJECTED;
+    vendor.rejectionReason = reason;
+    await vendor.save();
+    await sendVendorStatusEmail(
+      vendor.user.email,
+      vendor.businessName,
+      vendor.verificationStatus,
+      vendor.rejectionReason,
+    );
+    return res.status(200).json({
+      success: true,
+      message: "vendor rejevcted successfully",
+      data: vendor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 const updateVendorStatus = async (req, res, next) => {
   try {
@@ -134,148 +156,213 @@ const updateVendorStatus = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 
 const getAllUsers = async (req, res, next) => {
-    try {
-        const page = parseInt(req.query.page) || 1
-        const limit = parseInt(req.query.limit) || 10
-        const search = req.query.search || ""
-        const status = req.query.status || ""
-        const skip = (page - 1) * limit
-        const query = {role: ROLES.CUSTOMER}
-        if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } }
-            ]
-        }
-        if (status === "active") {
-            query.isActive = true
-        } else if (status === "blocked") {
-            query.isActive = false
-        }
-
-        const totalUsers = await User.countDocuments(query)
-
-        const users = await User.find(query)
-            .select("-password")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean()
-
-        const totalPages = Math.ceil(totalUsers / limit)
-
-        return res.status(200).json({
-            success: true,
-            data: users,
-            totalUsers,
-            totalPages,
-            currentPage: page
-        })
-
-    } catch (error) {
-        next(error)
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const status = req.query.status || "";
+    const skip = (page - 1) * limit;
+    const query = { role: ROLES.CUSTOMER };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
     }
-}
-
-const updateUserStatus = async(req,res,next) =>{
-    try{
-        const { userId } = req.params
-        const user = await User.findById(userId)
-        if(!user) {
-            return res.status(400).json({success:false,message:"User not found"})
-        }
-        if(user.role === ROLES.ADMIN) {
-            return res.status(400).json({success:false,message:"Cannot block/unblock an admin account"})
-        }
-        if(user._id.toString() === req.user.userId) {
-            return res.status(403).json({success:false,message:"You cannot block your account."})
-        }
-        user.isActive = !user.isActive
-        await user.save()
-        return res.status(200).json({success:true,message:`User${user.isActive ?"unblocked":"blocked"}successfully`,data:user})
-    }catch(error){
-        next(error)
+    if (status === "active") {
+      query.isActive = true;
+    } else if (status === "blocked") {
+      query.isActive = false;
     }
-}
 
+    const totalUsers = await User.countDocuments(query);
+
+    const users = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    return res.status(200).json({
+      success: true,
+      data: users,
+      totalUsers,
+      totalPages,
+      currentPage: page,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateUserStatus = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
+    }
+    if (user.role === ROLES.ADMIN) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot block/unblock an admin account",
+      });
+    }
+    if (user._id.toString() === req.user.userId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "You cannot block your account." });
+    }
+    user.isActive = !user.isActive;
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: `User${user.isActive ? "unblocked" : "blocked"}successfully`,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 const createCategory = async (req, res, next) => {
   try {
     const { name, description } = req.body;
 
-    if (!name) {
-      return res.status(400).json({success: false,message: "Category name is required"})
+    if (!name || !name.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Category name is required" });
     }
-    const existingCategory = await Category.findOne({name: name.trim()})
+
+    const categoryName = name.trim();
+
+    const existingCategory = await Category.findOne({
+      name: {
+        $regex: `^${categoryName}$`,
+        $options: "i",
+      },
+    });
+
     if (existingCategory) {
-      return res.status(409).json({success: false,message: "Category already exists"})
+      return res
+        .status(409)
+        .json({ success: false, message: "Category already exists" });
     }
-    const category = await Category.create({name: name.trim(),description})
-        return res.status(201).json({success: true,message: "Category created successfully",data: category})
+
+    const category = await Category.create({
+      name: categoryName,
+      description: description?.trim() || "",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Category created successfully",
+      data: category,
+    });
   } catch (error) {
     next(error);
   }
-}
+};
 
 const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find()
-      .sort({ createdAt: -1 })
-    return res.status(200).json({success: true,data: categories})
+    const categories = await Category.find().sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, data: categories });
   } catch (error) {
     next(error);
   }
-}
+};
 const updateCategory = async (req, res, next) => {
   try {
     const { name, description, isActive } = req.body;
+
     const category = await Category.findById(req.params.categoryId);
     if (!category) {
-      return res.status(404).json({success: false,message: "Category not found",
-      })
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
 
-    if (name) {
-      const existingCategory = await Category.findOne({name: name.trim(), _id: { $ne: req.params.categoryId }})
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Category name is required" });
+      }
+
+      const categoryName = name.trim();
+
+      const existingCategory = await Category.findOne({
+        name: {
+          $regex: `^${categoryName}$`,
+          $options: "i",
+        },
+        _id: {
+          $ne: req.params.categoryId,
+        },
+      });
 
       if (existingCategory) {
-        return res.status(409).json({success: false, message: "Category already exists"});
+        return res
+          .status(409)
+          .json({ success: false, message: "Category already exists" });
       }
-      category.name = name.trim();
+
+      category.name = categoryName;
     }
+
     if (description !== undefined) {
-      category.description = description;
+      category.description = description.trim();
     }
+
     if (isActive !== undefined) {
       category.isActive = isActive;
     }
+
     await category.save();
-    return res.status(200).json({success: true,message: "Category updated successfully",data: category})
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Category updated successfully",
+        data: category,
+      });
   } catch (error) {
     next(error);
   }
-}
+};
 
 const toggleCategoryStatus = async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.categoryId);
     if (!category) {
-      return res.status(404).json({success: false,message: "Category not found"})
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
-    category.isActive = !category.isActive
+    category.isActive = !category.isActive;
     await category.save();
-    return res.status(200).json({success: true,message: category.isActive
+    return res.status(200).json({
+      success: true,
+      message: category.isActive
         ? "Category activated successfully"
         : "Category deactivated successfully",
       data: category,
-    })
+    });
   } catch (error) {
     next(error);
   }
-}
+};
 const getActiveCategories = async (req, res, next) => {
   try {
     const categories = await Category.find({
@@ -289,14 +376,16 @@ const getActiveCategories = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 const getDashboardStats = async (req, res, next) => {
   try {
-    const totalUsers = await User.countDocuments({role: ROLES.CUSTOMER})
+    const totalUsers = await User.countDocuments({ role: ROLES.CUSTOMER });
 
     const totalVendors = await Vendor.countDocuments();
 
-    const pendingVendors = await Vendor.countDocuments({verificationStatus: VENDOR_STATUS.PENDING});
+    const pendingVendors = await Vendor.countDocuments({
+      verificationStatus: VENDOR_STATUS.PENDING,
+    });
     const totalBookings = await Booking.countDocuments();
     const revenueAgg = await Booking.aggregate([
       {
@@ -315,7 +404,7 @@ const getDashboardStats = async (req, res, next) => {
     ]);
 
     const totalRevenue = revenueAgg[0]?.totalRevenue || 0;
-    const recentUsers = await User.find({role: ROLES.CUSTOMER})
+    const recentUsers = await User.find({ role: ROLES.CUSTOMER })
       .sort({ createdAt: -1 })
       .limit(5)
       .select("name email createdAt");
@@ -333,7 +422,8 @@ const getDashboardStats = async (req, res, next) => {
       .populate("vendor", "businessName")
       .select("customer vendor status createdAt");
 
-      const activities = [...recentUsers.map((user) => ({
+    const activities = [
+      ...recentUsers.map((user) => ({
         type: "user",
         message: `New user ${user.name} registered`,
         createdAt: user.createdAt,
@@ -351,9 +441,7 @@ const getDashboardStats = async (req, res, next) => {
         createdAt: booking.createdAt,
       })),
     ];
-    activities.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return res.status(200).json({
       success: true,
@@ -369,7 +457,7 @@ const getDashboardStats = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 
 const getVendorReports = async (req, res, next) => {
   try {
@@ -384,37 +472,30 @@ const getVendorReports = async (req, res, next) => {
       let end;
 
       if (period === "day") {
-        start = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate()
-        );
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        end = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() + 1
-        );
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       }
 
       if (period === "month") {
-        start = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          1
-        );
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        end = new Date(now.getFullYear(),now.getMonth() + 1,1)}
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      }
 
-      if (period === "year") {start = new Date(now.getFullYear(),0,1);
-        end = new Date(now.getFullYear() + 1,0,1)
+      if (period === "year") {
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear() + 1, 0, 1);
       }
 
       if (!start || !end) {
-        return res.status(400).json({success: false,message: "Invalid period. Use day, month or year"})
+        return res.status(400).json({
+          success: false,
+          message: "Invalid period. Use day, month or year",
+        });
       }
 
-      matchStage.serviceDate = {$gte: start,$lt: end}
+      matchStage.serviceDate = { $gte: start, $lt: end };
     }
     if (startDate || endDate) {
       if (!startDate || !endDate) {
@@ -427,10 +508,7 @@ const getVendorReports = async (req, res, next) => {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      if (
-        isNaN(start.getTime()) ||
-        isNaN(end.getTime())
-      ) {
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         return res.status(400).json({
           success: false,
           message: "Invalid date format",
@@ -477,10 +555,7 @@ const getVendorReports = async (req, res, next) => {
             $sum: {
               $cond: [
                 {
-                  $eq: [
-                    "$status",
-                    BOOKING_STATUS.COMPLETED,
-                  ],
+                  $eq: ["$status", BOOKING_STATUS.COMPLETED],
                 },
                 1,
                 0,
@@ -498,10 +573,7 @@ const getVendorReports = async (req, res, next) => {
             $sum: {
               $cond: [
                 {
-                  $eq: [
-                    "$paymentStatus",
-                    "paid",
-                  ],
+                  $eq: ["$paymentStatus", "paid"],
                 },
                 "$advanceAmount",
                 0,
@@ -514,16 +586,10 @@ const getVendorReports = async (req, res, next) => {
             $sum: {
               $cond: [
                 {
-                  $eq: [
-                    "$finalPaymentStatus",
-                    "paid",
-                  ],
+                  $eq: ["$finalPaymentStatus", "paid"],
                 },
                 {
-                  $subtract: [
-                    "$amount",
-                    "$advanceAmount",
-                  ],
+                  $subtract: ["$amount", "$advanceAmount"],
                 },
                 0,
               ],
@@ -556,18 +622,12 @@ const getVendorReports = async (req, res, next) => {
           completionRate: {
             $cond: [
               {
-                $gt: [
-                  "$totalBookings",
-                  0,
-                ],
+                $gt: ["$totalBookings", 0],
               },
               {
                 $multiply: [
                   {
-                    $divide: [
-                      "$completedBookings",
-                      "$totalBookings",
-                    ],
+                    $divide: ["$completedBookings", "$totalBookings"],
                   },
                   100,
                 ],
@@ -587,11 +647,9 @@ const getVendorReports = async (req, res, next) => {
 
           vendorId: "$_id",
 
-          businessName:
-            "$vendor.businessName",
+          businessName: "$vendor.businessName",
 
-          category:
-            "$vendor.category",
+          category: "$vendor.category",
 
           totalBookings: 1,
 
@@ -605,17 +663,11 @@ const getVendorReports = async (req, res, next) => {
 
           // Actual payments received
           totalPaymentsReceived: {
-            $add: [
-              "$paidAdvance",
-              "$finalPayments",
-            ],
+            $add: ["$paidAdvance", "$finalPayments"],
           },
 
           completionRate: {
-            $round: [
-              "$completionRate",
-              2,
-            ],
+            $round: ["$completionRate", 2],
           },
         },
       },
@@ -633,17 +685,13 @@ const getVendorReports = async (req, res, next) => {
     // --------------------------------
     const summary = vendorReports.reduce(
       (result, vendor) => {
-        result.totalBookings +=
-          vendor.totalBookings || 0;
+        result.totalBookings += vendor.totalBookings || 0;
 
-        result.completedBookings +=
-          vendor.completedBookings || 0;
+        result.completedBookings += vendor.completedBookings || 0;
 
-        result.totalBookingValue +=
-          vendor.totalBookingValue || 0;
+        result.totalBookingValue += vendor.totalBookingValue || 0;
 
-        result.totalPaymentsReceived +=
-          vendor.totalPaymentsReceived || 0;
+        result.totalPaymentsReceived += vendor.totalPaymentsReceived || 0;
 
         return result;
       },
@@ -652,7 +700,7 @@ const getVendorReports = async (req, res, next) => {
         completedBookings: 0,
         totalBookingValue: 0,
         totalPaymentsReceived: 0,
-      }
+      },
     );
 
     // --------------------------------
@@ -676,15 +724,14 @@ const getVendorReports = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
-
+};
 
 module.exports = {
-  getAllVendors ,
-  approveVendor ,
+  getAllVendors,
+  approveVendor,
   rejectVendor,
-  updateVendorStatus, 
-  getAllUsers ,
+  updateVendorStatus,
+  getAllUsers,
   updateUserStatus,
   createCategory,
   getCategories,
@@ -692,5 +739,5 @@ module.exports = {
   toggleCategoryStatus,
   getActiveCategories,
   getDashboardStats,
-  getVendorReports 
-}
+  getVendorReports,
+};
