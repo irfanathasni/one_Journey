@@ -12,21 +12,26 @@ const CustomerBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState([]);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
     limit: 5,
   });
+
+  const [expandedBooking, setExpandedBooking] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -134,17 +139,22 @@ const CustomerBookings = () => {
         amount: order.amount,
         currency: order.currency,
         name: "One Journey Wedding Planner",
+
         description: `${
           paymentType === "final" ? "Final" : "Advance"
         } payment for ${booking.vendor?.businessName || "vendor"}`,
+
         order_id: order.id,
 
         handler: async (response) => {
           try {
             await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
+
               razorpay_payment_id: response.razorpay_payment_id,
+
               razorpay_signature: response.razorpay_signature,
+
               bookingId: booking._id,
               paymentType,
             });
@@ -195,7 +205,6 @@ const CustomerBookings = () => {
 
   return (
     <div style={styles.page} className="customer-bookings-page">
-      {/* HEADER */}
       <div style={styles.header} className="customer-bookings-header">
         <div>
           <p style={styles.eyebrow}>MY JOURNEY</p>
@@ -211,6 +220,7 @@ const CustomerBookings = () => {
 
         <div style={styles.countBox} className="customer-bookings-count">
           <span>Total Bookings</span>
+
           <strong>{pagination.totalItems}</strong>
         </div>
       </div>
@@ -246,8 +256,11 @@ const CustomerBookings = () => {
           style={styles.filterSelect}
         >
           <option value="newest">Newest First</option>
+
           <option value="oldest">Oldest First</option>
+
           <option value="serviceDateAsc">Service Date: Earliest</option>
+
           <option value="serviceDateDesc">Service Date: Latest</option>
         </select>
       </div>
@@ -271,13 +284,14 @@ const CustomerBookings = () => {
           const remaining =
             (booking.amount || 0) - (booking.advanceAmount || 0);
 
+          const isExpanded = expandedBooking === booking._id;
+
           return (
             <div
               key={booking._id}
               style={styles.card}
               className="customer-booking-card"
             >
-              {/* CARD HEADER */}
               <div
                 style={styles.cardHeader}
                 className="customer-booking-card-header"
@@ -287,7 +301,6 @@ const CustomerBookings = () => {
                   className="customer-booking-vendor-info"
                 >
                   <p style={styles.smallLabel}>VENDOR</p>
-
                   <h2
                     style={styles.vendorName}
                     className="customer-booking-vendor-name"
@@ -303,6 +316,7 @@ const CustomerBookings = () => {
                 <span
                   style={{
                     ...styles.status,
+
                     ...(status === "approved"
                       ? styles.approved
                       : status === "completed"
@@ -316,198 +330,269 @@ const CustomerBookings = () => {
                   {formatStatus(status)}
                 </span>
               </div>
-              <div style={styles.details} className="customer-booking-details">
-                <div style={styles.detail}>
-                  <span style={styles.icon}>💍</span>
 
-                  <div style={styles.detailContent}>
-                    <p style={styles.label}>Wedding</p>
-
-                    <strong>
-                      {booking.wedding?.brideName || ""} &{" "}
-                      {booking.wedding?.groomName || ""}
-                    </strong>
-                  </div>
-                </div>
-
-                <div style={styles.detail}>
-                  <span style={styles.icon}>📅</span>
-
-                  <div style={styles.detailContent}>
-                    <p style={styles.label}>Service Date</p>
-
-                    <strong>{formatDate(booking.serviceDate)}</strong>
-                  </div>
-                </div>
-
-                <div style={styles.detail}>
-                  <span style={styles.icon}>⏰</span>
-
-                  <div style={styles.detailContent}>
-                    <p style={styles.label}>Time</p>
-
-                    <strong>
-                      {booking.startTime && booking.endTime
-                        ? `${booking.startTime} - ${booking.endTime}`
-                        : "Not specified"}
-                    </strong>
-                  </div>
-                </div>
-              </div>
               <div
-                style={styles.packageSection}
-                className="customer-booking-package"
+                style={styles.bookingSummary}
+                className="customer-booking-summary"
               >
-                <div
-                  style={styles.packageInfo}
-                  className="customer-booking-package-info"
-                >
-                  <p style={styles.packageLabel}>SELECTED PACKAGE</p>
+                <div style={styles.summaryItem}>
+                  <span style={styles.summaryLabel}>SERVICE DATE📅</span>
 
-                  <strong style={styles.packageName}>
+                  <strong>{formatDate(booking.serviceDate)}</strong>
+                </div>
+
+                <div style={styles.summaryItem}>
+                  <span style={styles.summaryLabel}>PACKAGE📦</span>
+
+                  <strong style={styles.summaryValue}>
                     {booking.package?.packageName || "Package"}
                   </strong>
-
-                  <p style={styles.packageType}>
-                    {booking.package?.packageType || ""}
-                  </p>
                 </div>
 
+                <div style={styles.summaryItem}>
+                  <span style={styles.summaryLabel}>AMOUNT💰</span>
+
+                  <strong style={styles.summaryAmount}>
+                    ₹
+                    {Number(
+                      booking.package?.price || booking.amount || 0,
+                    ).toLocaleString("en-IN")}
+                  </strong>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setExpandedBooking(isExpanded ? null : booking._id)
+                }
+                style={styles.viewDetailsButton}
+                className="customer-booking-view-details"
+              >
+                {isExpanded ? "Hide Details ↑" : "View Details ↓"}
+              </button>
+
+              {isExpanded && (
                 <div
-                  style={styles.packagePrice}
-                  className="customer-booking-package-price"
+                  style={styles.expandedDetails}
+                  className="customer-booking-expanded-details"
                 >
-                  ₹
-                  {Number(
-                    booking.package?.price || booking.amount || 0,
-                  ).toLocaleString("en-IN")}
-                </div>
-              </div>
-              <BookingStatusTimeline booking={booking} role="customer" />\{" "}
-              <div style={styles.footer} className="customer-booking-footer">
-                <span>
-                  Booking requested on {formatDate(booking.createdAt)}
-                </span>
-
-                {status === "approved" && (
-                  <span style={styles.successText}>
-                    Your booking has been approved 🎉
-                  </span>
-                )}
-
-                {status === "completed" && (
-                  <span style={styles.successText}>Event completed 🎉</span>
-                )}
-
-                {status === "rejected" && (
-                  <span style={styles.rejectText}>
-                    This booking request was rejected.
-                  </span>
-                )}
-
-                {status === "pending" && (
-                  <span style={styles.pendingText}>
-                    Waiting for vendor response...
-                  </span>
-                )}
-              </div>
-              \{" "}
-              {status === "approved" && booking.paymentStatus !== "paid" && (
-                <div style={styles.paymentSection}>
-                  <div style={styles.paymentInfo}>
-                    <span>Package Total</span>
-
-                    <strong>
-                      ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
-                    </strong>
-                  </div>
-
-                  <div style={styles.paymentInfo}>
-                    <span>Advance Payment (50%)</span>
-
-                    <strong>
-                      ₹
-                      {Number(booking.advanceAmount || 0).toLocaleString(
-                        "en-IN",
-                      )}
-                    </strong>
-                  </div>
-
-                  <button
-                    onClick={() => handlePayment(booking, "advance")}
-                    style={styles.payButton}
+                  <div
+                    style={styles.details}
+                    className="customer-booking-details"
                   >
-                    Pay Advance ₹
-                    {Number(booking.advanceAmount || 0).toLocaleString("en-IN")}
-                  </button>
-                </div>
-              )}
-              {/* ADVANCE PAID */}
-              {status === "approved" && booking.paymentStatus === "paid" && (
-                <span style={styles.paidBadge}>✓ Advance Paid</span>
-              )}
-              \{" "}
-              {status === "completed" &&
-                booking.finalPaymentStatus === "requested" && (
-                  <div style={styles.paymentSection}>
-                    <div style={styles.paymentInfo}>
-                      <span>Total Package Amount</span>
+                    <div style={styles.detail}>
+                      <span style={styles.icon}>💍</span>
 
-                      <strong>
-                        ₹{Number(booking.amount || 0).toLocaleString("en-IN")}
-                      </strong>
+                      <div style={styles.detailContent}>
+                        <p style={styles.label}>Wedding</p>
+
+                        <strong>
+                          {booking.wedding?.brideName || ""} &{" "}
+                          {booking.wedding?.groomName || ""}
+                        </strong>
+                      </div>
                     </div>
 
-                    <div style={styles.paymentInfo}>
-                      <span>Advance Paid</span>
+                    <div style={styles.detail}>
+                      <span style={styles.icon}>📅</span>
 
-                      <strong>
-                        ₹
-                        {Number(booking.advanceAmount || 0).toLocaleString(
-                          "en-IN",
-                        )}
-                      </strong>
+                      <div style={styles.detailContent}>
+                        <p style={styles.label}>Service Date</p>
+
+                        <strong>{formatDate(booking.serviceDate)}</strong>
+                      </div>
                     </div>
 
-                    <div style={styles.paymentInfo}>
-                      <span>Remaining Amount</span>
+                    <div style={styles.detail}>
+                      <span style={styles.icon}>⏰</span>
 
-                      <strong>
-                        ₹{Number(remaining).toLocaleString("en-IN")}
-                      </strong>
+                      <div style={styles.detailContent}>
+                        <p style={styles.label}>Time</p>
+
+                        <strong>
+                          {booking.startTime && booking.endTime
+                            ? `${booking.startTime} - ${booking.endTime}`
+                            : "Not specified"}
+                        </strong>
+                      </div>
                     </div>
+                  </div>
 
-                    <button
-                      onClick={() => handlePayment(booking, "final")}
-                      style={styles.payButton}
+                  <div
+                    style={styles.packageSection}
+                    className="customer-booking-package"
+                  >
+                    <div
+                      style={styles.packageInfo}
+                      className="customer-booking-package-info"
                     >
-                      Pay Remaining ₹{Number(remaining).toLocaleString("en-IN")}
-                    </button>
+                      <p style={styles.packageLabel}>SELECTED PACKAGE</p>
+
+                      <strong style={styles.packageName}>
+                        {booking.package?.packageName || "Package"}
+                      </strong>
+
+                      <p style={styles.packageType}>
+                        {booking.package?.packageType || ""}
+                      </p>
+                    </div>
+
+                    <div
+                      style={styles.packagePrice}
+                      className="customer-booking-package-price"
+                    >
+                      ₹
+                      {Number(
+                        booking.package?.price || booking.amount || 0,
+                      ).toLocaleString("en-IN")}
+                    </div>
                   </div>
-                )}
-              \{" "}
-              {status === "completed" &&
-                booking.finalPaymentStatus === "not_requested" && (
-                  <span style={styles.pendingText}>
-                    Waiting for vendor to request final payment
-                  </span>
-                )}
-              {status === "completed" &&
-                booking.finalPaymentStatus === "paid" && (
-                  <span style={styles.paidBadge}>✓ Fully Paid</span>
-                )}
-              {status === "completed" &&
-                booking.finalPaymentStatus === "paid" &&
-                !reviewedBookings.includes(booking._id) && (
-                  <button
-                    onClick={() => setReviewingBooking(booking)}
-                    style={styles.reviewButtonCustomer}
+
+                  <BookingStatusTimeline booking={booking} role="customer" />
+
+                  <div
+                    style={styles.footer}
+                    className="customer-booking-footer"
                   >
-                    ⭐ Leave a Review
-                  </button>
-                )}
-              {reviewedBookings.includes(booking._id) && (
-                <span style={styles.paidBadge}>✓ Review Submitted</span>
+                    <span>
+                      Booking requested on {formatDate(booking.createdAt)}
+                    </span>
+
+                    {status === "approved" && (
+                      <span style={styles.successText}>
+                        Your booking has been approved 🎉
+                      </span>
+                    )}
+
+                    {status === "completed" && (
+                      <span style={styles.successText}>Event completed 🎉</span>
+                    )}
+
+                    {status === "rejected" && (
+                      <span style={styles.rejectText}>
+                        This booking request was rejected.
+                      </span>
+                    )}
+
+                    {status === "pending" && (
+                      <span style={styles.pendingText}>
+                        Waiting for vendor response...
+                      </span>
+                    )}
+                  </div>
+
+                  {status === "approved" &&
+                    booking.paymentStatus !== "paid" && (
+                      <div style={styles.paymentSection}>
+                        <div style={styles.paymentInfo}>
+                          <span>Package Total</span>
+
+                          <strong>
+                            ₹
+                            {Number(booking.amount || 0).toLocaleString(
+                              "en-IN",
+                            )}
+                          </strong>
+                        </div>
+
+                        <div style={styles.paymentInfo}>
+                          <span>Advance Payment (50%)</span>
+
+                          <strong>
+                            ₹
+                            {Number(booking.advanceAmount || 0).toLocaleString(
+                              "en-IN",
+                            )}
+                          </strong>
+                        </div>
+
+                        <button
+                          onClick={() => handlePayment(booking, "advance")}
+                          style={styles.payButton}
+                        >
+                          Pay Advance ₹
+                          {Number(booking.advanceAmount || 0).toLocaleString(
+                            "en-IN",
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                  {status === "approved" &&
+                    booking.paymentStatus === "paid" && (
+                      <span style={styles.paidBadge}>✓ Advance Paid</span>
+                    )}
+
+                  {status === "completed" &&
+                    booking.finalPaymentStatus === "requested" && (
+                      <div style={styles.paymentSection}>
+                        <div style={styles.paymentInfo}>
+                          <span>Total Package Amount</span>
+
+                          <strong>
+                            ₹
+                            {Number(booking.amount || 0).toLocaleString(
+                              "en-IN",
+                            )}
+                          </strong>
+                        </div>
+
+                        <div style={styles.paymentInfo}>
+                          <span>Advance Paid</span>
+
+                          <strong>
+                            ₹
+                            {Number(booking.advanceAmount || 0).toLocaleString(
+                              "en-IN",
+                            )}
+                          </strong>
+                        </div>
+
+                        <div style={styles.paymentInfo}>
+                          <span>Remaining Amount</span>
+
+                          <strong>
+                            ₹{Number(remaining).toLocaleString("en-IN")}
+                          </strong>
+                        </div>
+
+                        <button
+                          onClick={() => handlePayment(booking, "final")}
+                          style={styles.payButton}
+                        >
+                          Pay Remaining ₹
+                          {Number(remaining).toLocaleString("en-IN")}
+                        </button>
+                      </div>
+                    )}
+
+                  {status === "completed" &&
+                    booking.finalPaymentStatus === "not_requested" && (
+                      <span style={styles.pendingText}>
+                        Waiting for vendor to request final payment
+                      </span>
+                    )}
+
+                  {status === "completed" &&
+                    booking.finalPaymentStatus === "paid" && (
+                      <span style={styles.paidBadge}>✓ Fully Paid</span>
+                    )}
+
+                  {status === "completed" &&
+                    booking.finalPaymentStatus === "paid" &&
+                    !reviewedBookings.includes(booking._id) && (
+                      <button
+                        onClick={() => setReviewingBooking(booking)}
+                        style={styles.reviewButtonCustomer}
+                      >
+                        ⭐ Leave a Review
+                      </button>
+                    )}
+
+                  {reviewedBookings.includes(booking._id) && (
+                    <span style={styles.paidBadge}>✓ Review Submitted</span>
+                  )}
+                </div>
               )}
             </div>
           );
@@ -521,6 +606,7 @@ const CustomerBookings = () => {
             disabled={currentPage === 1}
             style={{
               ...styles.paginationButton,
+
               ...(currentPage === 1 ? styles.paginationDisabled : {}),
             }}
           >
@@ -536,6 +622,7 @@ const CustomerBookings = () => {
             disabled={currentPage === pagination.totalPages}
             style={{
               ...styles.paginationButton,
+
               ...(currentPage === pagination.totalPages
                 ? styles.paginationDisabled
                 : {}),
@@ -570,6 +657,7 @@ const CustomerBookings = () => {
                   onClick={() => setRating(n)}
                   style={{
                     ...styles.star,
+
                     color: n <= rating ? "#B8935A" : "#DDD",
                   }}
                 >
@@ -609,7 +697,6 @@ const CustomerBookings = () => {
         </div>
       )}
 
-      {/* RESPONSIVE CSS */}
       <style>{`
         @media (max-width: 768px) {
           .customer-bookings-page {
@@ -634,6 +721,10 @@ const CustomerBookings = () => {
             padding: 20px !important;
           }
 
+          .customer-booking-summary {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
           .customer-booking-details {
             grid-template-columns: 1fr 1fr !important;
           }
@@ -651,19 +742,20 @@ const CustomerBookings = () => {
           .customer-review-modal {
             max-width: 90% !important;
           }
-            .customer-bookings-filter-bar {
-             flex-direction: column !important;
-             align-items: stretch !important;
+
+          .customer-bookings-filter-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
           }
 
-            .customer-bookings-filter-bar input,
-            .customer-bookings-filter-bar select {
-              width: 100%;
-            }
+          .customer-bookings-filter-bar input,
+          .customer-bookings-filter-bar select {
+            width: 100%;
+          }
 
-            .customer-bookings-pagination {
-              gap: 10px !important;
-            }
+          .customer-bookings-pagination {
+            gap: 10px !important;
+          }
         }
 
         @media (max-width: 480px) {
@@ -709,6 +801,11 @@ const CustomerBookings = () => {
 
           .customer-booking-status {
             align-self: flex-start;
+          }
+
+          .customer-booking-summary {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
           }
 
           .customer-booking-details {
@@ -772,13 +869,14 @@ const CustomerBookings = () => {
           .starRow {
             justify-content: center;
           }
-         .customer-bookings-pagination {
+
+          .customer-bookings-pagination {
             flex-wrap: wrap;
           }
 
           .customer-bookings-pagination button {
             padding: 8px 12px !important;
-          } 
+          }
         }
 
         @media (max-width: 360px) {
@@ -936,6 +1034,55 @@ const styles = {
   pending: {
     background: "#FFF4DD",
     color: "#A06A00",
+  },
+
+  bookingSummary: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "15px",
+    padding: "20px 0 15px",
+  },
+
+  summaryItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px",
+    minWidth: 0,
+  },
+
+  summaryLabel: {
+    fontSize: "10px",
+    letterSpacing: "1.3px",
+    color: "#999",
+    fontWeight: 700,
+  },
+
+  summaryValue: {
+    color: "#3D5A50",
+    wordBreak: "break-word",
+  },
+
+  summaryAmount: {
+    color: "#B8935A",
+  },
+
+  viewDetailsButton: {
+    width: "100%",
+    padding: "10px 14px",
+    marginTop: "5px",
+    border: "1px solid #3D5A50",
+    borderRadius: "8px",
+    background: "#FFFF",
+    color: "#084c34",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  expandedDetails: {
+    marginTop: "15px",
+    paddingTop: "5px",
+    borderTop: "1px solid #EEE",
   },
 
   details: {
@@ -1217,6 +1364,7 @@ const styles = {
     fontSize: "13px",
     color: "#777",
   },
+
   filterBar: {
     maxWidth: "1100px",
     margin: "0 auto 25px",
