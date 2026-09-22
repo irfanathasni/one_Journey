@@ -16,19 +16,20 @@ const VendorDetails = () => {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [wedding, setWedding] = useState(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [serviceDate, setServiceDate] = useState("");
+
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState("");
-
   const [availability, setAvailability] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [packageError, setPackageError] = useState("");
-
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -64,9 +65,7 @@ const VendorDetails = () => {
 
       const res = await getVendors();
 
-      const foundVendor = res.data?.find(
-        (item) => item._id === vendorId
-      );
+      const foundVendor = res.data?.find((item) => item._id === vendorId);
 
       if (!foundVendor) {
         setError("Vendor not found");
@@ -77,10 +76,7 @@ const VendorDetails = () => {
     } catch (err) {
       console.error("Vendor details error:", err);
 
-      setError(
-        err.response?.data?.message ||
-          "Failed to load vendor details"
-      );
+      setError(err.response?.data?.message || "Failed to load vendor details");
     } finally {
       setLoading(false);
     }
@@ -125,6 +121,72 @@ const VendorDetails = () => {
     }
   };
 
+  const formatDateForInput = (date) => {
+    const parsedDate = new Date(date);
+
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(parsedDate.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDisplayDate = (date) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const handleSearchAvailability = async () => {
+    setBookingError("");
+    setSelectedSlot(null);
+    setServiceDate("");
+    setAvailability([]);
+
+    if (!fromDate || !toDate) {
+      setBookingError("Please select both from date and to date.");
+      return;
+    }
+
+    if (fromDate > toDate) {
+      setBookingError("From date cannot be after to date.");
+      return;
+    }
+
+    try {
+      setAvailabilityLoading(true);
+
+      const res = await getVendorAvailability(vendorId, fromDate, toDate);
+
+      setAvailability(res.data || []);
+
+      if (!res.data || res.data.length === 0) {
+        setBookingError(
+          "No available slots found for the selected date range.",
+        );
+      }
+    } catch (error) {
+      console.error("Availability error:", error);
+
+      setBookingError(
+        error.response?.data?.message || "Failed to load available slots",
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
+  const handleSelectSlot = (slot) => {
+    setSelectedSlot(slot);
+
+    const selectedDate = formatDateForInput(slot.date);
+
+    setServiceDate(selectedDate);
+    setBookingError("");
+  };
+
   const handleBooking = async (e) => {
     e.preventDefault();
 
@@ -133,18 +195,18 @@ const VendorDetails = () => {
       return;
     }
 
+    if (!selectedSlot) {
+      setBookingError("Please select an available time slot");
+      return;
+    }
+
     if (!serviceDate) {
-      setBookingError("Please select a service date");
+      setBookingError("Please select an available time slot");
       return;
     }
 
     if (!selectedPackage) {
       setBookingError("Please select a package");
-      return;
-    }
-
-    if (!selectedSlot) {
-      setBookingError("Please select an available time slot");
       return;
     }
 
@@ -162,51 +224,41 @@ const VendorDetails = () => {
         packageId: selectedPackage._id,
       });
 
-      setBookingSuccess(
-        res.message || "Booking request sent successfully"
-      );
+      setBookingSuccess(res.message || "Booking request sent successfully");
 
       setShowBookingForm(false);
+
+      setFromDate("");
+      setToDate("");
       setServiceDate("");
+
       setSelectedSlot(null);
       setSelectedPackage(null);
       setAvailability([]);
+
       setPackageError("");
     } catch (error) {
       console.log("Booking error", error);
 
       setBookingError(
-        error.response?.data?.message ||
-          "Failed to create booking"
+        error.response?.data?.message || "Failed to create booking",
       );
     } finally {
       setBookingLoading(false);
     }
   };
 
-  const handleDateChange = async (e) => {
-    const date = e.target.value;
+  const groupedAvailability = availability.reduce((groups, slot) => {
+    const dateKey = formatDateForInput(slot.date);
 
-    setServiceDate(date);
-    setSelectedSlot(null);
-    setAvailability([]);
-    setBookingError("");
-
-    if (!date) return;
-
-    try {
-      const res = await getVendorAvailability(vendorId, date);
-
-      setAvailability(res.data || []);
-    } catch (error) {
-      console.error("Availability error:", error);
-
-      setBookingError(
-        error.response?.data?.message ||
-          "Failed to load available slots"
-      );
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
     }
-  };
+
+    groups[dateKey].push(slot);
+
+    return groups;
+  }, {});
 
   if (loading) {
     return (
@@ -222,10 +274,7 @@ const VendorDetails = () => {
       <div style={styles.center}>
         <h2>{error}</h2>
 
-        <button
-          style={styles.backButton}
-          onClick={() => navigate(-1)}
-        >
+        <button style={styles.backButton} onClick={() => navigate(-1)}>
           ← Go Back
         </button>
       </div>
@@ -234,49 +283,29 @@ const VendorDetails = () => {
 
   return (
     <div style={styles.page}>
-
-      <button
-        onClick={() => navigate(-1)}
-        style={styles.backLink}
-      >
+      <button onClick={() => navigate(-1)} style={styles.backLink}>
         ← Back to Vendors
       </button>
 
-      {/* HERO */}
       <div style={styles.hero}>
         <div style={styles.icon}>💍</div>
-
         <div style={styles.heroInfo}>
-          <p style={styles.eyebrow}>
-            {formatCategory(vendor.category)}
-          </p>
+          <p style={styles.eyebrow}>{formatCategory(vendor.category)}</p>
 
-          <h1 style={styles.title}>
-            {vendor.businessName}
-          </h1>
-
-          <span style={styles.status}>
-            ✓ Approved Vendor
-          </span>
+          <h1 style={styles.title}>{vendor.businessName}</h1>
+          <span style={styles.status}>✓ Approved Vendor</span>
         </div>
       </div>
 
       <div style={styles.content}>
-
-        {/* SERVICE PACKAGES */}
         <section style={styles.card}>
-          <h2 style={styles.sectionTitle}>
-            Service Packages
-          </h2>
+          <h2 style={styles.sectionTitle}>Service Packages</h2>
 
           {packageError && (
-            <div style={styles.packageError}>
-              ⚠️ {packageError}
-            </div>
+            <div style={styles.packageError}>⚠️ {packageError}</div>
           )}
 
-          {!vendor.packages ||
-          vendor.packages.length === 0 ? (
+          {!vendor.packages || vendor.packages.length === 0 ? (
             <p style={styles.description}>
               This vendor has not added any packages yet.
             </p>
@@ -300,25 +329,14 @@ const VendorDetails = () => {
                   }}
                 >
                   <div style={styles.packageInfo}>
-                    <span style={styles.packageType}>
-                      {pkg.packageType}
-                    </span>
-
-                    <h3 style={styles.packageName}>
-                      {pkg.packageName}
-                    </h3>
-
-                    <p style={styles.packageDescription}>
-                      {pkg.description}
-                    </p>
+                    <span style={styles.packageType}>{pkg.packageType}</span>
+                    <h3 style={styles.packageName}>{pkg.packageName}</h3>
+                    <p style={styles.packageDescription}>{pkg.description}</p>
                   </div>
 
                   <div style={styles.packageRight}>
                     <strong style={styles.packagePrice}>
-                      ₹
-                      {Number(pkg.price).toLocaleString(
-                        "en-IN"
-                      )}
+                      ₹{Number(pkg.price).toLocaleString("en-IN")}
                     </strong>
 
                     <button
@@ -347,36 +365,24 @@ const VendorDetails = () => {
           )}
         </section>
 
-        {/* ABOUT */}
         <section style={styles.card}>
-          <h2 style={styles.sectionTitle}>
-            About this vendor
-          </h2>
-
+          <h2 style={styles.sectionTitle}>About this vendor</h2>
           <p style={styles.description}>
             {vendor.description ||
               "This vendor has not added a description yet."}
           </p>
         </section>
 
-        {/* REVIEWS */}
         <section style={styles.card}>
           <h2 style={styles.sectionTitle}>
-            Reviews{" "}
-            {reviewCount > 0 &&
-              `(${avgRating} ★ · ${reviewCount})`}
+            Reviews {reviewCount > 0 && `(${avgRating} ★ · ${reviewCount})`}
           </h2>
 
           {reviews.length === 0 ? (
-            <p style={styles.description}>
-              No reviews yet.
-            </p>
+            <p style={styles.description}>No reviews yet.</p>
           ) : (
             reviews.map((r) => (
-              <div
-                key={r._id}
-                style={styles.reviewItem}
-              >
+              <div key={r._id} style={styles.reviewItem}>
                 <div style={styles.reviewHeader}>
                   <strong style={styles.reviewCustomer}>
                     {r.customer?.name || "Customer"}
@@ -388,31 +394,23 @@ const VendorDetails = () => {
                   </span>
                 </div>
 
-                {r.comment && (
-                  <p style={styles.reviewComment}>
-                    {r.comment}
-                  </p>
-                )}
+                {r.comment && <p style={styles.reviewComment}>{r.comment}</p>}
               </div>
             ))
           )}
         </section>
 
-        {/* CONTACT */}
         {vendor.user && (
           <section style={styles.card}>
-            <h2 style={styles.sectionTitle}>
-              Contact Information
-            </h2>
+            <h2 style={styles.sectionTitle}>Contact Information</h2>
 
             <div style={styles.infoRow}>
               <span style={styles.infoIcon}>👤</span>
 
               <div style={styles.infoContent}>
                 <p style={styles.label}>Owner</p>
-                <p style={styles.value}>
-                  {vendor.user.name}
-                </p>
+
+                <p style={styles.value}>{vendor.user.name}</p>
               </div>
             </div>
 
@@ -421,9 +419,7 @@ const VendorDetails = () => {
 
               <div style={styles.infoContent}>
                 <p style={styles.label}>Email</p>
-                <p style={styles.value}>
-                  {vendor.user.email}
-                </p>
+                <p style={styles.value}>{vendor.user.email}</p>
               </div>
             </div>
 
@@ -434,25 +430,18 @@ const VendorDetails = () => {
                 <div style={styles.infoContent}>
                   <p style={styles.label}>Phone</p>
 
-                  <p style={styles.value}>
-                    {vendor.user.phone}
-                  </p>
+                  <p style={styles.value}>{vendor.user.phone}</p>
                 </div>
               </div>
             )}
           </section>
         )}
 
-        {/* BOOKING CTA */}
         <section style={styles.bookingCard}>
           <div style={styles.bookingInfo}>
-            <p style={styles.bookingSmall}>
-              READY TO PLAN?
-            </p>
+            <p style={styles.bookingSmall}>READY TO PLAN?</p>
 
-            <h2 style={styles.bookingTitle}>
-              Interested in this vendor?
-            </h2>
+            <h2 style={styles.bookingTitle}>Interested in this vendor?</h2>
 
             <p style={styles.bookingText}>
               Start your journey by requesting a booking.
@@ -460,10 +449,7 @@ const VendorDetails = () => {
           </div>
 
           <div style={styles.actionButtons}>
-            <button
-              style={styles.messageButton}
-              onClick={handleMessageVendor}
-            >
+            <button style={styles.messageButton} onClick={handleMessageVendor}>
               💬 Message Vendor
             </button>
 
@@ -472,7 +458,7 @@ const VendorDetails = () => {
               onClick={() => {
                 if (!selectedPackage) {
                   setPackageError(
-                    "Please select a package before booking this vendor."
+                    "Please select a package before booking this vendor.",
                   );
                   return;
                 }
@@ -487,33 +473,23 @@ const VendorDetails = () => {
             </button>
 
             {packageError && (
-              <div style={styles.packageError}>
-                ⚠️ {packageError}
-              </div>
+              <div style={styles.packageError}>⚠️ {packageError}</div>
             )}
           </div>
         </section>
 
-        {/* BOOKING FORM */}
         {showBookingForm && (
           <div style={styles.bookingForm}>
-
             <div style={styles.formHeader}>
               <div>
-                <p style={styles.bookingSmall}>
-                  BOOKING REQUEST
-                </p>
+                <p style={styles.bookingSmall}>BOOKING REQUEST</p>
 
-                <h2 style={styles.formTitle}>
-                  Book {vendor.businessName}
-                </h2>
+                <h2 style={styles.formTitle}>Book {vendor.businessName}</h2>
               </div>
 
               <button
                 style={styles.closeButton}
-                onClick={() =>
-                  setShowBookingForm(false)
-                }
+                onClick={() => setShowBookingForm(false)}
               >
                 ✕
               </button>
@@ -521,19 +497,12 @@ const VendorDetails = () => {
 
             {wedding?.totalBudget > 0 &&
               selectedPackage &&
-              selectedPackage.price >
-                wedding.totalBudget && (
+              selectedPackage.price > wedding.totalBudget && (
                 <div style={styles.budgetWarning}>
-                  ⚠️ This package price (
-                  ₹
-                  {Number(
-                    selectedPackage.price
-                  ).toLocaleString("en-IN")}
-                  ) exceeds your total wedding budget (
-                  ₹
-                  {Number(
-                    wedding.totalBudget
-                  ).toLocaleString("en-IN")}
+                  ⚠️ This package price ( ₹
+                  {Number(selectedPackage.price).toLocaleString("en-IN")})
+                  exceeds your total wedding budget ( ₹
+                  {Number(wedding.totalBudget).toLocaleString("en-IN")}
                   ).
                 </div>
               )}
@@ -541,142 +510,162 @@ const VendorDetails = () => {
             {!wedding ? (
               <div style={styles.formMessage}>
                 <h3>No Wedding Found 💍</h3>
-
-                <p>
-                  Please create your wedding before
-                  booking a vendor.
-                </p>
+                <p>Please create your weddingbefore booking a vendor.</p>
 
                 <button
                   style={styles.createWeddingButton}
-                  onClick={() =>
-                    navigate("/customer/wedding")
-                  }
+                  onClick={() => navigate("/customer/wedding")}
                 >
                   Go to My Wedding
                 </button>
               </div>
             ) : (
               <form onSubmit={handleBooking}>
-
-                {/* SELECTED PACKAGE */}
                 <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>
-                    Selected Package
-                  </label>
+                  <label style={styles.formLabel}>Selected Package</label>
 
                   {selectedPackage ? (
                     <div style={styles.selectedPackageBox}>
                       <div style={styles.selectedPackageInfo}>
-                        <strong>
-                          {selectedPackage.packageName}
-                        </strong>
+                        <strong>{selectedPackage.packageName}</strong>
 
-                        <span>
-                          {selectedPackage.packageType} Package
-                        </span>
+                        <span>{selectedPackage.packageType} Package</span>
                       </div>
 
                       <strong>
-                        ₹
-                        {Number(
-                          selectedPackage.price
-                        ).toLocaleString("en-IN")}
+                        ₹{Number(selectedPackage.price).toLocaleString("en-IN")}
                       </strong>
                     </div>
                   ) : (
                     <p style={styles.noPackage}>
-                      Please select a package above
-                      before booking.
+                      Please select a package above before booking.
                     </p>
                   )}
                 </div>
 
-                {/* WEDDING */}
                 <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>
-                    Your Wedding
-                  </label>
+                  <label style={styles.formLabel}>Your Wedding</label>
 
                   <div style={styles.weddingBox}>
                     <strong>
-                      {wedding.brideName} &{" "}
-                      {wedding.groomName}
+                      {wedding.brideName} & {wedding.groomName}
                     </strong>
 
                     <span>
-                      {new Date(
-                        wedding.weddingDate
-                      ).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      {new Date(wedding.weddingDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}
                     </span>
                   </div>
                 </div>
 
-                {/* SERVICE DATE */}
                 <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>
-                    Service Date
-                  </label>
+                  <label style={styles.formLabel}>Find Available Slots</label>
 
-                  <input
-                    type="date"
-                    value={serviceDate}
-                    onChange={handleDateChange}
-                    style={styles.dateInput}
-                  />
+                  <div style={styles.dateRange}>
+                    <div style={styles.dateField}>
+                      <label style={styles.smallLabel}>From Date</label>
 
-                  {serviceDate && (
-                    <div style={styles.slotSection}>
-                      <label style={styles.formLabel}>
-                        Available Time Slots
-                      </label>
-
-                      {availability.length === 0 ? (
-                        <p style={styles.noSlots}>
-                          No available slots for this
-                          date.
-                        </p>
-                      ) : (
-                        <div style={styles.slotGrid}>
-                          {availability.map((slot) => (
-                            <button
-                              key={slot._id}
-                              type="button"
-                              onClick={() =>
-                                setSelectedSlot(slot)
-                              }
-                              style={{
-                                ...styles.slotButton,
-                                ...(selectedSlot?._id ===
-                                slot._id
-                                  ? styles.selectedSlot
-                                  : {}),
-                              }}
-                            >
-                              {slot.startTime} -{" "}
-                              {slot.endTime}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <input
+                        type="date"
+                        value={fromDate}
+                        onChange={(e) => {
+                          setFromDate(e.target.value);
+                          setBookingError("");
+                        }}
+                        style={styles.dateInput}
+                      />
                     </div>
-                  )}
+
+                    <div style={styles.dateField}>
+                      <label style={styles.smallLabel}>To Date</label>
+
+                      <input
+                        type="date"
+                        value={toDate}
+                        min={fromDate || undefined}
+                        onChange={(e) => {
+                          setToDate(e.target.value);
+                          setBookingError("");
+                        }}
+                        style={styles.dateInput}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSearchAvailability}
+                    style={styles.searchSlotsButton}
+                    disabled={availabilityLoading}
+                  >
+                    {availabilityLoading
+                      ? "Searching..."
+                      : "Search Available Slots"}
+                  </button>
                 </div>
 
-                {bookingError && (
-                  <div style={styles.formError}>
-                    {bookingError}
+                {availability.length > 0 && (
+                  <div style={styles.availableSlotsSection}>
+                    <label style={styles.formLabel}>Available Time Slots</label>
+
+                    <p style={styles.slotHint}>
+                      Select one available slot for your booking.
+                    </p>
+
+                    {Object.entries(groupedAvailability).map(
+                      ([date, slots]) => (
+                        <div key={date} style={styles.dateSlotGroup}>
+                          <h4 style={styles.slotDateTitle}>
+                            {formatDisplayDate(date)}
+                          </h4>
+
+                          <div style={styles.slotGrid}>
+                            {slots.map((slot) => (
+                              <button
+                                key={slot._id}
+                                type="button"
+                                onClick={() => handleSelectSlot(slot)}
+                                style={{
+                                  ...styles.slotButton,
+                                  ...(selectedSlot?._id === slot._id
+                                    ? styles.selectedSlot
+                                    : {}),
+                                }}
+                              >
+                                {slot.startTime} - {slot.endTime}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ),
+                    )}
                   </div>
                 )}
 
-                {bookingSuccess && (
-                  <div style={styles.formSuccess}>
-                    {bookingSuccess}
+                {selectedSlot && (
+                  <div style={styles.selectedSlotBox}>
+                    <span style={styles.selectedSlotLabel}>Selected Slot</span>
+
+                    <strong>{formatDisplayDate(selectedSlot.date)}</strong>
+
+                    <span>
+                      {selectedSlot.startTime} - {selectedSlot.endTime}
+                    </span>
                   </div>
+                )}
+
+                {bookingError && (
+                  <div style={styles.formError}>{bookingError}</div>
+                )}
+
+                {bookingSuccess && (
+                  <div style={styles.formSuccess}>{bookingSuccess}</div>
                 )}
 
                 <button
@@ -694,7 +683,6 @@ const VendorDetails = () => {
         )}
       </div>
 
-      {/* RESPONSIVE CSS */}
       <style>{`
         @media (max-width: 768px) {
           .vendor-details-page {
@@ -746,6 +734,10 @@ const VendorDetails = () => {
 
           .vendor-details-package-box {
             gap: 12px;
+          }
+
+          .vendor-details-date-range {
+            flex-direction: column !important;
           }
         }
 
@@ -875,6 +867,14 @@ const VendorDetails = () => {
             box-sizing: border-box;
             padding: 10px 8px !important;
           }
+
+          .vendor-details-date-range {
+            flex-direction: column !important;
+          }
+
+          .vendor-details-date-field {
+            width: 100% !important;
+          }
         }
       `}</style>
     </div>
@@ -902,8 +902,7 @@ const styles = {
     maxWidth: "1000px",
     margin: "0 auto 30px",
     padding: "40px",
-    background:
-      "linear-gradient(135deg, #F5E9E8, #F8F2E9)",
+    background: "linear-gradient(135deg, #F5E9E8, #F8F2E9)",
     borderRadius: "20px",
     display: "flex",
     alignItems: "center",
@@ -1134,6 +1133,24 @@ const styles = {
     color: "#3D5A50",
   },
 
+  dateRange: {
+    display: "flex",
+    gap: "12px",
+    width: "100%",
+  },
+
+  dateField: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  smallLabel: {
+    display: "block",
+    marginBottom: "6px",
+    color: "#99918A",
+    fontSize: "11px",
+  },
+
   dateInput: {
     width: "100%",
     boxSizing: "border-box",
@@ -1143,6 +1160,88 @@ const styles = {
     fontSize: "13px",
     color: "#3A3734",
     background: "#FFFFFF",
+  },
+
+  searchSlotsButton: {
+    width: "100%",
+    marginTop: "12px",
+    padding: "12px",
+    border: "1px solid #3D5A50",
+    borderRadius: "8px",
+    background: "#F1F6F3",
+    color: "#3D5A50",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 600,
+  },
+
+  availableSlotsSection: {
+    marginBottom: "20px",
+    padding: "16px",
+    background: "#FAF9F6",
+    border: "1px solid #E5DFD5",
+    borderRadius: "10px",
+  },
+
+  slotHint: {
+    margin: "0 0 15px",
+    color: "#99918A",
+    fontSize: "11px",
+  },
+
+  dateSlotGroup: {
+    marginBottom: "18px",
+  },
+
+  slotDateTitle: {
+    margin: "0 0 9px",
+    color: "#3D5A50",
+    fontSize: "14px",
+    fontWeight: 700,
+  },
+
+  slotGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+
+  slotButton: {
+    padding: "10px 16px",
+    border: "1.5px solid #D8D2C7",
+    borderRadius: "8px",
+    background: "#FFFFFF",
+    color: "#3D5A50",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  },
+
+  selectedSlot: {
+    border: "1.5px solid #3D5A50",
+    background: "#3D5A50",
+    color: "#FFFFFF",
+  },
+
+  selectedSlotBox: {
+    marginBottom: "20px",
+    padding: "14px 16px",
+    background: "#E8F1EC",
+    border: "1px solid #C9DCD3",
+    borderRadius: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    color: "#3D5A50",
+  },
+
+  selectedSlotLabel: {
+    fontSize: "10px",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    color: "#7A968B",
+    fontWeight: 700,
   },
 
   submitButton: {
@@ -1190,51 +1289,6 @@ const styles = {
     color: "#FFFFFF",
     cursor: "pointer",
     fontSize: "12px",
-  },
-
-  slotSection: {
-    marginTop: "14px",
-  },
-
-  noSlots: {
-    color: "#A6535D",
-    fontSize: "13px",
-    background: "#FDF0F1",
-    padding: "12px 14px",
-    borderRadius: "8px",
-    margin: 0,
-  },
-
-  slotGrid: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginTop: "10px",
-  },
-
-  slotButton: {
-    padding: "10px 16px",
-    border: "1.5px solid #D8D2C7",
-    borderRadius: "8px",
-    background: "#FAF9F7",
-    color: "#3D5A50",
-    fontSize: "13px",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-  },
-
-  selectedSlot: {
-    border: "1.5px solid #3D5A50",
-    background: "#3D5A50",
-    color: "#FFFFFF",
-  },
-
-  priceTag: {
-    marginTop: "8px",
-    fontSize: "20px",
-    fontWeight: 700,
-    color: "#3D5A50",
   },
 
   budgetWarning: {

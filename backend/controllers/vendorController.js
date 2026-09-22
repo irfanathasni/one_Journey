@@ -415,32 +415,52 @@ const deleteAvailability = async (req, res, next) => {
 const getVendorAvailability = async (req, res, next) => {
   try {
     const { vendorId } = req.params;
-    const { date } = req.query;
+    const { fromDate, toDate } = req.query;
 
-    if (!date) {
+    if (!fromDate || !toDate) {
       return res
         .status(400)
-        .json({ success: false, message: "Date is required" });
+        .json({
+          success: false,
+          message: "From date and to date are required",
+        });
     }
-    const selectedDate = new Date(date);
 
-    const startofDay = new Date(selectedDate);
-    startofDay.setHours(0, 0, 0, 0);
+    const startDate = new Date(fromDate);
+    startDate.setHours(0, 0, 0, 0);
 
-    const endofDay = new Date(selectedDate);
-    endofDay.setHours(23, 59, 59, 999);
+    const endDate = new Date(toDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid date range" });
+    }
+
+    if (startDate > endDate) {
+      return res
+        .status(400)
+        .json({ success: false, message: "From date cannot be after to date" });
+    }
 
     const slots = await VendorAvailability.find({
       vendor: vendorId,
-      date: { $gte: startofDay, $lte: endofDay },
+      date: {
+        $gte: startDate,
+        $lte: endDate,
+      },
       isBooked: false,
-    }).sort({ startTime: 1 });
+    }).sort({
+      date: 1,
+      startTime: 1,
+    });
+
     return res.status(200).json({ success: true, data: slots });
   } catch (error) {
     next(error);
   }
 };
-
 const addPackage = async (req, res, next) => {
   try {
     const { packageType, packageName, description, price } = req.body;
