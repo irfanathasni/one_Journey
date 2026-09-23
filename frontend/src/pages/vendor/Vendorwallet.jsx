@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import VendorNavbar from "../../components/VendorNavbar";
 
 import { getMyWallet, withdrawFromWallet } from "../../services/walletService";
@@ -13,20 +14,14 @@ const VendorWallet = () => {
   const [vendor, setVendor] = useState(null);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
   const [amount, setAmount] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
-  const [withdrawError, setWithdrawError] = useState("");
-  const [withdrawSuccess, setWithdrawSuccess] = useState("");
   const [accountHolderName, setAccountHolderName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
 
   const [showBankForm, setShowBankForm] = useState(false);
   const [settingUpBank, setSettingUpBank] = useState(false);
-  const [bankError, setBankError] = useState("");
-  const [bankSuccess, setBankSuccess] = useState("");
 
   useEffect(() => {
     fetchWallet();
@@ -40,9 +35,8 @@ const VendorWallet = () => {
       const res = await getMyWallet();
 
       setWallet(res.data);
-      setError("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load wallet");
+      toast.error(err.response?.data?.message || "Failed to load wallet");
     } finally {
       setLoading(false);
     }
@@ -57,28 +51,32 @@ const VendorWallet = () => {
         setShowBankForm(true);
       }
     } catch (err) {
-      console.error("Failed to load vendor profile:", err);
+      console.error(
+        "Failed to load vendor profile:",
+        err.response?.data || err,
+      );
+
+      toast.error(
+        err.response?.data?.message || "Failed to load vendor profile",
+      );
     }
   };
 
   const handleBankSetup = async (e) => {
     e.preventDefault();
 
-    setBankError("");
-    setBankSuccess("");
-
     if (!accountHolderName.trim()) {
-      setBankError("Enter account holder name");
+      toast.error("Enter account holder name");
       return;
     }
 
     if (!accountNumber.trim()) {
-      setBankError("Enter account number");
+      toast.error("Enter account number");
       return;
     }
 
     if (!ifsc.trim()) {
-      setBankError("Enter IFSC code");
+      toast.error("Enter IFSC code");
       return;
     }
 
@@ -114,8 +112,9 @@ const VendorWallet = () => {
       setIfsc("");
 
       setShowBankForm(false);
+      toast.success(res.message || "Bank account configured successfully");
     } catch (err) {
-      setBankError(
+      toast.error(
         err.response?.data?.message || "Failed to configure bank account",
       );
     } finally {
@@ -126,24 +125,20 @@ const VendorWallet = () => {
   const handleWithdraw = async (e) => {
     e.preventDefault();
 
-    setWithdrawError("");
-    setWithdrawSuccess("");
     if (!vendor?.payoutDetails?.fundAccountId) {
-      setWithdrawError(
-        "Please configure your bank account before withdrawing.",
-      );
+      toast.error("Please configure your bank account before withdrawing.");
       return;
     }
 
     const numAmount = Number(amount);
 
     if (!numAmount || numAmount <= 0) {
-      setWithdrawError("Enter a valid amount");
+      toast.error("Enter a valid amount");
       return;
     }
 
     if (wallet && numAmount > wallet.balance) {
-      setWithdrawError("Amount exceeds available balance");
+      toast.error("Amount exceeds available balance");
       return;
     }
 
@@ -158,20 +153,20 @@ const VendorWallet = () => {
       );
 
       if (latestTransaction?.status === "pending") {
-        setWithdrawSuccess(
+        toast.success(
           `₹${numAmount.toLocaleString(
             "en-IN",
           )} withdrawal request submitted successfully.`,
         );
       } else {
-        setWithdrawSuccess(
+        toast.success(
           `₹${numAmount.toLocaleString("en-IN")} withdrawn successfully.`,
         );
       }
 
       setAmount("");
     } catch (err) {
-      setWithdrawError(err.response?.data?.message || "Withdrawal failed");
+      toast.error(err.response?.data?.message || "Withdrawal failed");
 
       if (err.response?.data?.data) {
         setWallet(err.response.data.data);
@@ -219,8 +214,6 @@ const VendorWallet = () => {
           </p>
         </div>
 
-        {error && <div style={styles.errorBox}>{error}</div>}
-
         <section className="vendor-wallet-bank-card" style={styles.bankCard}>
           <div className="vendor-wallet-bank-header" style={styles.bankHeader}>
             <div>
@@ -233,16 +226,6 @@ const VendorWallet = () => {
               <span style={styles.configuredBadge}>✓ Configured</span>
             )}
           </div>
-
-          {/* Bank error */}
-
-          {bankError && <div style={styles.errorBoxSmall}>{bankError}</div>}
-
-          {/* Bank success */}
-
-          {bankSuccess && (
-            <div style={styles.successBoxSmall}>{bankSuccess}</div>
-          )}
 
           {!vendor?.payoutDetails?.fundAccountId && showBankForm ? (
             <form
@@ -367,14 +350,6 @@ const VendorWallet = () => {
               <div style={styles.warningBoxSmall}>
                 Please configure your bank account before withdrawing funds.
               </div>
-            )}
-
-            {withdrawError && (
-              <div style={styles.errorBoxSmall}>{withdrawError}</div>
-            )}
-
-            {withdrawSuccess && (
-              <div style={styles.successBoxSmall}>{withdrawSuccess}</div>
             )}
 
             <form
@@ -938,35 +913,6 @@ const styles = {
     margin: "3px 0 0",
     fontSize: "11px",
     color: "#999",
-  },
-
-  errorBox: {
-    background: "#FBEAEA",
-    color: "#A33B3B",
-    borderRadius: "7px",
-    padding: "12px 14px",
-    fontSize: "13px",
-    marginBottom: "18px",
-  },
-
-  errorBoxSmall: {
-    background: "#FBEAEA",
-    color: "#A33B3B",
-    borderRadius: "7px",
-    padding: "9px 12px",
-    fontSize: "12px",
-    marginBottom: "10px",
-    overflowWrap: "anywhere",
-  },
-
-  successBoxSmall: {
-    background: "#E6F3EC",
-    color: "#2E7D50",
-    borderRadius: "7px",
-    padding: "9px 12px",
-    fontSize: "12px",
-    marginBottom: "10px",
-    overflowWrap: "anywhere",
   },
 
   warningBoxSmall: {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import VendorNavbar from "../../components/VendorNavbar";
 import {
   getMyVendorProfile,
@@ -22,22 +23,16 @@ const VendorProfile = () => {
   const [error, setError] = useState("");
 
   const [categories, setCategories] = useState([]);
-
-  // Profile edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
     category: "",
     description: "",
   });
-  const [updateError, setUpdateError] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
-
-  // Package modal
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [editingPackageId, setEditingPackageId] = useState(null);
   const [packageForm, setPackageForm] = useState(emptyPackageForm);
-  const [packageError, setPackageError] = useState("");
   const [savingPackage, setSavingPackage] = useState(false);
 
   useEffect(() => {
@@ -93,14 +88,12 @@ const VendorProfile = () => {
       description: vendor?.description || "",
     });
 
-    setUpdateError("");
     setShowEditModal(true);
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
-    setUpdateError("");
     setUpdatingProfile(true);
 
     try {
@@ -114,21 +107,17 @@ const VendorProfile = () => {
 
       setVendor(res.data);
       setShowEditModal(false);
+      toast.success("Profile updated successfully");
     } catch (err) {
-      setUpdateError(err.response?.data?.message || "Failed to update profile");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdatingProfile(false);
     }
   };
 
-  // =========================
-  // PACKAGE MANAGEMENT
-  // =========================
-
   const openAddPackageModal = () => {
     setEditingPackageId(null);
     setPackageForm(emptyPackageForm);
-    setPackageError("");
     setShowPackageModal(true);
   };
 
@@ -142,17 +131,13 @@ const VendorProfile = () => {
       price: pkg.price ?? "",
     });
 
-    setPackageError("");
     setShowPackageModal(true);
   };
 
   const closePackageModal = () => {
-    if (savingPackage) return;
-
     setShowPackageModal(false);
     setEditingPackageId(null);
     setPackageForm(emptyPackageForm);
-    setPackageError("");
   };
 
   const handlePackageChange = (e) => {
@@ -165,24 +150,22 @@ const VendorProfile = () => {
   const handleSavePackage = async (e) => {
     e.preventDefault();
 
-    setPackageError("");
-
     const packageName = packageForm.packageName.trim();
     const description = packageForm.description.trim();
     const price = Number(packageForm.price);
 
     if (!packageName || !description || packageForm.price === "") {
-      setPackageError("Package name, description and price are required.");
+      toast.error("Package name, description and price are required.");
       return;
     }
 
     if (!["Normal", "Premium"].includes(packageForm.packageType)) {
-      setPackageError("Package type must be Normal or Premium.");
+      toast.error("Package type must be Normal or Premium.");
       return;
     }
 
     if (Number.isNaN(price) || price < 0) {
-      setPackageError("Package price must be a valid positive number.");
+      toast.error("Package price must be a valid number.");
       return;
     }
 
@@ -207,8 +190,14 @@ const VendorProfile = () => {
       setVendor(res.data);
 
       closePackageModal();
+
+      toast.success(
+        editingPackageId
+          ? "Package updated successfully"
+          : "Package added successfully",
+      );
     } catch (err) {
-      setPackageError(
+      toast.error(
         err.response?.data?.message ||
           `Failed to ${editingPackageId ? "update" : "add"} package`,
       );
@@ -218,20 +207,14 @@ const VendorProfile = () => {
   };
 
   const handleDeletePackage = async (packageId) => {
-    const shouldDelete = window.confirm(
-      "Are you sure you want to delete this package?",
-    );
-
-    if (!shouldDelete) {
-      return;
-    }
-
     try {
       const res = await deletePackage(packageId);
 
       setVendor(res.data);
+
+      toast.success("Package deleted successfully");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete package");
+      toast.error(err.response?.data?.message || "Failed to delete package");
     }
   };
 
@@ -279,10 +262,6 @@ const VendorProfile = () => {
             </p>
           </div>
         </div>
-
-        {/* =========================
-            PROFILE CARD
-        ========================= */}
 
         <section className="vendor-profile-card" style={styles.card}>
           <div
@@ -351,10 +330,6 @@ const VendorProfile = () => {
             </div>
           </div>
         </section>
-
-        {/* =========================
-            SERVICE PACKAGES
-        ========================= */}
 
         <section
           className="vendor-profile-packages-section"
@@ -459,10 +434,6 @@ const VendorProfile = () => {
         </section>
       </main>
 
-      {/* =========================
-          PROFILE EDIT MODAL
-      ========================= */}
-
       {showEditModal && (
         <div
           className="vendor-profile-modal-overlay"
@@ -489,8 +460,6 @@ const VendorProfile = () => {
                 ✕
               </button>
             </div>
-
-            {updateError && <div style={styles.errorBox}>{updateError}</div>}
 
             <form onSubmit={handleUpdateProfile} style={styles.form}>
               <div style={styles.field}>
@@ -563,10 +532,6 @@ const VendorProfile = () => {
         </div>
       )}
 
-      {/* =========================
-          PACKAGE MODAL
-      ========================= */}
-
       {showPackageModal && (
         <div
           className="vendor-profile-modal-overlay"
@@ -595,8 +560,6 @@ const VendorProfile = () => {
                 ✕
               </button>
             </div>
-
-            {packageError && <div style={styles.errorBox}>{packageError}</div>}
 
             <form onSubmit={handleSavePackage} style={styles.form}>
               <div style={styles.field}>
@@ -693,9 +656,6 @@ const VendorProfile = () => {
       )}
 
       <style>{`
-        /* =========================
-           TABLET
-        ========================= */
 
         @media (max-width: 900px) {
           .vendor-profile-main {

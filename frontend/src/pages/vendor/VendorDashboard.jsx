@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import toast from "react-hot-toast";
 import {
   createVendorProfile,
   getMyVendorProfile,
@@ -15,18 +15,13 @@ import { getActiveCategories } from "../../services/categoryService";
 const VendorDashboard = () => {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-
   const [formData, setFormData] = useState({
     businessName: "",
     category: "",
     description: "",
   });
-
-  const [error, setError] = useState("");
-
   const [showEditForm, setShowEditForm] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
@@ -59,6 +54,9 @@ const VendorDashboard = () => {
         "Failed to fetch vendor profile:",
         err.response?.data || err,
       );
+      toast.error(
+        err.response?.data?.message || "Failed to load vendor profile",
+      );
 
       setVendor(null);
     } finally {
@@ -78,6 +76,7 @@ const VendorDashboard = () => {
         "Failed to fetch categories:",
         error.response?.data || error,
       );
+      toast.error(error.response?.data?.message || "Failed to load categories");
 
       setCategories([]);
     } finally {
@@ -110,6 +109,9 @@ const VendorDashboard = () => {
         "Failed to fetch vendor dashboard:",
         error.response?.data || error,
       );
+      toast.error(
+        error.response?.data?.message || "Failed to load vendor dashboard",
+      );
 
       setDashboardData({
         stats: {
@@ -136,14 +138,13 @@ const VendorDashboard = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    setError("");
-
     try {
       const res = await createVendorProfile(formData);
 
       setVendor(res.data);
+      toast.success("Vendor Profile submitted successfully");
     } catch (err) {
-      setError(
+      toast.error(
         err.response?.data?.message || "Failed to submit vendor profile",
       );
     }
@@ -152,7 +153,6 @@ const VendorDashboard = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
-    setError("");
     setUpdatingProfile(true);
 
     try {
@@ -160,8 +160,9 @@ const VendorDashboard = () => {
 
       setVendor(res.data);
       setShowEditForm(false);
+      toast.success("Profile updated successfully");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update profile");
+      toast.error(err.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdatingProfile(false);
     }
@@ -193,11 +194,7 @@ const VendorDashboard = () => {
               booking requests.
             </p>
 
-            {error && <div style={styles.errorBox}>{error}</div>}
-
             <form onSubmit={handleCreate} style={styles.form}>
-              {/* BUSINESS NAME */}
-
               <div style={styles.field}>
                 <label style={styles.label}>Business Name</label>
 
@@ -211,8 +208,6 @@ const VendorDashboard = () => {
                   required
                 />
               </div>
-
-              {/* CATEGORY */}
 
               <div style={styles.field}>
                 <label style={styles.label}>Category</label>
@@ -233,8 +228,6 @@ const VendorDashboard = () => {
                   ))}
                 </select>
               </div>
-
-              {/* DESCRIPTION */}
 
               <div style={styles.field}>
                 <label style={styles.label}>Description</label>
@@ -314,8 +307,6 @@ const VendorDashboard = () => {
             </p>
 
             <form onSubmit={handleCreate} style={styles.form}>
-              {/* BUSINESS NAME */}
-
               <div style={styles.field}>
                 <label style={styles.label}>Business Name</label>
 
@@ -328,8 +319,6 @@ const VendorDashboard = () => {
                   required
                 />
               </div>
-
-              {/* CATEGORY */}
 
               <div style={styles.field}>
                 <label style={styles.label}>Category</label>
@@ -350,8 +339,6 @@ const VendorDashboard = () => {
                   ))}
                 </select>
               </div>
-
-              {/* DESCRIPTION */}
 
               <div style={styles.field}>
                 <label style={styles.label}>Description</label>
@@ -969,15 +956,6 @@ const styles = {
     resize: "vertical",
     fontFamily: "Arial, sans-serif",
     boxSizing: "border-box",
-  },
-
-  errorBox: {
-    background: "#FBEAEA",
-    color: "#A33B3B",
-    borderRadius: "7px",
-    padding: "11px 13px",
-    fontSize: "13px",
-    marginBottom: "15px",
   },
 
   statusBox: {

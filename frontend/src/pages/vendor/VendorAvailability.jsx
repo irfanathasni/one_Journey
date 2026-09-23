@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   createAvailability,
   getMyAvailability,
@@ -14,8 +15,6 @@ const VendorAvailability = () => {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -28,7 +27,6 @@ const VendorAvailability = () => {
   const fetchAvailability = async () => {
     try {
       setLoading(true);
-      setError("");
 
       const res = await getMyAvailability({
         page: currentPage,
@@ -43,9 +41,8 @@ const VendorAvailability = () => {
     } catch (error) {
       console.error("Availability error:", error);
 
-      setError(
-        error.response?.data?.message ||
-          "Failed to load availability"
+      toast.error(
+        error.response?.data?.message || "Failed to load availability",
       );
     } finally {
       setLoading(false);
@@ -60,16 +57,13 @@ const VendorAvailability = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
     if (!date || !startTime || !endTime) {
-      setError("Please select date, start time and end time.");
+      toast.error("Please select date, start time and end time.");
       return;
     }
 
     if (startTime >= endTime) {
-      setError("End time must be after start time.");
+      toast.error("End time must be after start time.");
       return;
     }
 
@@ -82,10 +76,8 @@ const VendorAvailability = () => {
         endTime,
       });
 
-      setSuccess(
-        res.message ||
-          res.messages ||
-          "Availability slot created successfully"
+      toast.success(
+        res.message || res.messages || "Availability slot created successfully",
       );
 
       setDate("");
@@ -98,9 +90,8 @@ const VendorAvailability = () => {
     } catch (error) {
       console.error("Create availability error:", error);
 
-      setError(
-        error.response?.data?.message ||
-          "Failed to create availability"
+      toast.error(
+        error.response?.data?.message || "Failed to create availability",
       );
     } finally {
       setSaving(false);
@@ -109,19 +100,15 @@ const VendorAvailability = () => {
 
   const handleDelete = async (slotId) => {
     try {
-      setError("");
-      setSuccess("");
-
       await deleteAvailability(slotId);
 
-      setSuccess("Availability deleted successfully.");
+      toast.success("Availability deleted successfully.");
       fetchAvailability();
     } catch (error) {
       console.error("Delete availability error:", error);
 
-      setError(
-        error.response?.data?.message ||
-          "Failed to delete availability"
+      toast.error(
+        error.response?.data?.message || "Failed to delete availability",
       );
     }
   };
@@ -139,48 +126,22 @@ const VendorAvailability = () => {
       <VendorNavbar />
 
       <main className="vendor-availability-main" style={styles.main}>
-        {/* HEADER */}
         <div className="vendor-availability-header" style={styles.header}>
           <div>
             <p style={styles.eyebrow}>VENDOR</p>
 
-            <h1
-              className="vendor-availability-title"
-              style={styles.title}
-            >
+            <h1 className="vendor-availability-title" style={styles.title}>
               Manage Availability
             </h1>
 
-            <p
-              className="vendor-availability-subtitle"
-              style={styles.subtitle}
-            >
-              Add the dates and time slots when you are available
-              for wedding services.
+            <p className="vendor-availability-subtitle" style={styles.subtitle}>
+              Add the dates and time slots when you are available for wedding
+              services.
             </p>
           </div>
         </div>
-        {error && (
-          <div
-            className="vendor-availability-message"
-            style={styles.error}
-          >
-            ⚠️ {error}
-          </div>
-        )}
-        {success && (
-          <div
-            className="vendor-availability-message"
-            style={styles.success}
-          >
-            ✓ {success}
-          </div>
-        )}
 
-        <section
-          className="vendor-availability-card"
-          style={styles.card}
-        >
+        <section className="vendor-availability-card" style={styles.card}>
           <h2
             className="vendor-availability-card-title"
             style={styles.cardTitle}
@@ -238,10 +199,7 @@ const VendorAvailability = () => {
           </form>
         </section>
 
-        <section
-          className="vendor-availability-card"
-          style={styles.card}
-        >
+        <section className="vendor-availability-card" style={styles.card}>
           <div
             className="vendor-availability-list-header"
             style={styles.listHeader}
@@ -257,24 +215,18 @@ const VendorAvailability = () => {
               </h2>
             </div>
 
-            <span style={styles.count}>
-              {totalItems} slots
-            </span>
+            <span style={styles.count}>{totalItems} slots</span>
           </div>
 
           <div
             className="vendor-availability-filter"
             style={styles.filterContainer}
           >
-            <label style={styles.filterLabel}>
-              Filter:
-            </label>
+            <label style={styles.filterLabel}>Filter:</label>
 
             <select
               value={filter}
-              onChange={(e) =>
-                handleFilterChange(e.target.value)
-              }
+              onChange={(e) => handleFilterChange(e.target.value)}
               style={styles.filterSelect}
             >
               <option value="all">All</option>
@@ -284,19 +236,12 @@ const VendorAvailability = () => {
           </div>
 
           {loading ? (
-            <p style={styles.loadingText}>
-              Loading availability...
-            </p>
+            <p style={styles.loadingText}>Loading availability...</p>
           ) : slots.length === 0 ? (
-            <div
-              className="vendor-availability-empty"
-              style={styles.empty}
-            >
+            <div className="vendor-availability-empty" style={styles.empty}>
               <div style={styles.emptyIcon}>📅</div>
 
-              <h3 style={styles.emptyTitle}>
-                No availability found
-              </h3>
+              <h3 style={styles.emptyTitle}>No availability found</h3>
 
               <p style={styles.emptyText}>
                 {filter === "all"
@@ -331,14 +276,10 @@ const VendorAvailability = () => {
 
                     <div className="vendor-availability-slot-action">
                       {slot.isBooked ? (
-                        <span style={styles.booked}>
-                          Booked
-                        </span>
+                        <span style={styles.booked}>Booked</span>
                       ) : (
                         <button
-                          onClick={() =>
-                            handleDelete(slot._id)
-                          }
+                          onClick={() => handleDelete(slot._id)}
                           style={styles.deleteButton}
                         >
                           Delete
@@ -357,14 +298,10 @@ const VendorAvailability = () => {
                   <button
                     type="button"
                     disabled={currentPage === 1}
-                    onClick={() =>
-                      setCurrentPage((prev) => prev - 1)
-                    }
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
                     style={{
                       ...styles.paginationButton,
-                      ...(currentPage === 1
-                        ? styles.disabledButton
-                        : {}),
+                      ...(currentPage === 1 ? styles.disabledButton : {}),
                     }}
                   >
                     ← Previous
@@ -377,9 +314,7 @@ const VendorAvailability = () => {
                   <button
                     type="button"
                     disabled={currentPage === totalPages}
-                    onClick={() =>
-                      setCurrentPage((prev) => prev + 1)
-                    }
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
                     style={{
                       ...styles.paginationButton,
                       ...(currentPage === totalPages

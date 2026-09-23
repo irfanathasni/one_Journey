@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   getVendorBookings,
   updateBookingStatus,
@@ -12,7 +13,6 @@ const VendorBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
-  const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -36,7 +36,6 @@ const VendorBookings = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      setError("");
 
       const res = await getVendorBookings({
         page: currentPage,
@@ -52,8 +51,6 @@ const VendorBookings = () => {
 
         sortBy,
       });
-
-      console.log("BOOKING DATA:", res.data);
 
       setBookings(res.data || []);
 
@@ -71,7 +68,7 @@ const VendorBookings = () => {
         error.response?.data || error,
       );
 
-      setError(
+      toast.error(
         error.response?.data?.message || "Failed to load booking requests.",
       );
     } finally {
@@ -82,12 +79,16 @@ const VendorBookings = () => {
   const handleBookingStatus = async (bookingId, status) => {
     try {
       setUpdatingId(bookingId);
-      setError("");
 
       await updateBookingStatus(bookingId, status);
+      toast.success(
+        status === "approved"
+          ? "Booking accepted successfully."
+          : "Booking rejected successfully.",
+      );
       await fetchBookings();
     } catch (error) {
-      setError(
+      toast.error(
         error.response?.data?.message || "Failed to update booking status.",
       );
     } finally {
@@ -98,12 +99,12 @@ const VendorBookings = () => {
   const handleComplete = async (bookingId) => {
     try {
       setUpdatingId(bookingId);
-      setError("");
 
       await completeBooking(bookingId);
+      toast.success("Event marked as compleated successfully.");
       await fetchBookings();
     } catch (error) {
-      setError(
+      toast.error(
         error.response?.data?.message || "Failed to mark event as completed.",
       );
     } finally {
@@ -114,12 +115,13 @@ const VendorBookings = () => {
   const handleRequestFinal = async (bookingId) => {
     try {
       setUpdatingId(bookingId);
-      setError("");
 
       await requestFinalPayment(bookingId);
+      toast.success("Final payment requested successfully.");
+
       await fetchBookings();
     } catch (error) {
-      setError(
+      toast.error(
         error.response?.data?.message || "Failed to request final payment.",
       );
     } finally {
@@ -274,13 +276,6 @@ const VendorBookings = () => {
             <span> bookings found</span>
           </div>
         </div>
-
-        {error && (
-          <div style={styles.errorBox}>
-            <span>⚠️</span>
-            <p style={styles.errorText}>{error}</p>
-          </div>
-        )}
 
         {bookings.length === 0 ? (
           <div className="vendor-booking-empty" style={styles.emptyCard}>
@@ -1331,24 +1326,6 @@ const styles = {
     color: "#6B6560",
     fontSize: "14px",
     lineHeight: 1.6,
-  },
-
-  errorBox: {
-    display: "flex",
-    gap: "10px",
-    alignItems: "flex-start",
-    background: "#FBEAEA",
-    border: "1px solid #E8B8BE",
-    color: "#A6535D",
-    padding: "12px 16px",
-    borderRadius: "8px",
-    marginBottom: "20px",
-    fontSize: "13px",
-  },
-
-  errorText: {
-    margin: 0,
-    overflowWrap: "anywhere",
   },
 
   loadingCard: {
