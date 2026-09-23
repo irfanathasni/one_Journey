@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { getMyBookings } from "../../services/bookingService";
 import {
   createPayment,
@@ -11,7 +12,6 @@ import BookingStatusTimeline from "../../components/BookingStatusTimeline";
 const CustomerBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [reviewingBooking, setReviewingBooking] = useState(null);
   const [rating, setRating] = useState(0);
@@ -48,7 +48,6 @@ const CustomerBookings = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      setError("");
 
       const res = await getMyBookings({
         page: currentPage,
@@ -103,7 +102,7 @@ const CustomerBookings = () => {
 
   const handleSubmitReview = async () => {
     if (!rating) {
-      alert("Please select a rating");
+      toast.error("Please select a rating");
       return;
     }
 
@@ -122,9 +121,9 @@ const CustomerBookings = () => {
       setRating(0);
       setComment("");
 
-      alert("Review submitted. Thank you!");
+      toast.success("Review submitted. Thank you!");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to submit review");
+      toast.error(err.response?.data?.message || "Failed to submit review");
     } finally {
       setSubmittingReview(false);
     }
@@ -159,7 +158,7 @@ const CustomerBookings = () => {
               paymentType,
             });
 
-            alert(
+            toast.success(
               paymentType === "final"
                 ? "Final payment successful!"
                 : "Payment successful! Advance paid.",
@@ -167,7 +166,7 @@ const CustomerBookings = () => {
 
             fetchBookings();
           } catch (err) {
-            alert(
+            toast.error(
               "Payment Verification failed. Contact Support if amount was deducted.",
             );
           }
@@ -190,7 +189,7 @@ const CustomerBookings = () => {
     } catch (error) {
       console.error("Payment error:", error);
 
-      alert(error.response?.data?.message || "Failed to start payment");
+      toast.error(error.response?.data?.message || "Failed to start payment");
     }
   };
 
@@ -265,9 +264,7 @@ const CustomerBookings = () => {
         </select>
       </div>
 
-      {error && <div style={styles.error}>⚠️ {error}</div>}
-
-      {!error && bookings.length === 0 && (
+      {bookings.length === 0 && (
         <div style={styles.empty} className="customer-bookings-empty">
           <div style={styles.emptyIcon}>💍</div>
 
