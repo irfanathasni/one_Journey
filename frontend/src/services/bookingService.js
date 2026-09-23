@@ -20,6 +20,12 @@ export const getVendorBookings = async (params = {}) => {
   return res.data;
 };
 
+export const getVendorDashboard = async () => {
+  const res = await axiosInstance.get("/booking/vendor-dashboard");
+
+  return res.data;
+};
+
 export const updateBookingStatus = async (bookingId, status) => {
   const res = await axiosInstance.put(`/booking/${bookingId}/status`, {
     status,

@@ -418,12 +418,10 @@ const getVendorAvailability = async (req, res, next) => {
     const { fromDate, toDate } = req.query;
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "From date and to date are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "From date and to date are required",
+      });
     }
 
     const startDate = new Date(fromDate);
@@ -519,6 +517,81 @@ const addPackage = async (req, res, next) => {
   }
 };
 
+const updatePackage = async (req, res, next) => {
+  try {
+    const { packageId } = req.params;
+    const { packageType, packageName, description, price } = req.body;
+
+    if (!packageType || !packageName || !description || price === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Package type, name, description and price are required",
+      });
+    }
+
+    if (!["Normal", "Premium"].includes(packageType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Package type must be Normal or Premium",
+      });
+    }
+
+    if (Number(price) < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Package price cannot be negative",
+      });
+    }
+
+    const vendor = await Vendor.findOne({
+      user: req.user.id,
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor profile not found",
+      });
+    }
+
+    const packageToUpdate = vendor.packages.id(packageId);
+
+    if (!packageToUpdate) {
+      return res.status(404).json({
+        success: false,
+        message: "Package not found",
+      });
+    }
+
+    const duplicatePackage = vendor.packages.find(
+      (pkg) =>
+        pkg.packageType === packageType && pkg._id.toString() !== packageId,
+    );
+
+    if (duplicatePackage) {
+      return res.status(409).json({
+        success: false,
+        message: `${packageType} package already exists`,
+      });
+    }
+
+    packageToUpdate.packageType = packageType;
+    packageToUpdate.packageName = packageName;
+    packageToUpdate.description = description;
+    packageToUpdate.price = Number(price);
+
+    await vendor.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Package updated successfully",
+      data: vendor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deletePackage = async (req, res, next) => {
   try {
     const { packageId } = req.params;
@@ -566,5 +639,6 @@ module.exports = {
   deleteAvailability,
   getVendorAvailability,
   addPackage,
+  updatePackage,
   deletePackage,
 };

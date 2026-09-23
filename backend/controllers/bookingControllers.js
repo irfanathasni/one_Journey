@@ -164,6 +164,7 @@ const createBooking = async (req, res, next) => {
     next(error);
   }
 };
+
 const getMyBookings = async (req, res, next) => {
   try {
     const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
@@ -361,6 +362,116 @@ const getVendorBookings = async (req, res, next) => {
   }
 };
 
+const getVendorDashboard = async (req, res, next) => {
+  try {
+    const vendor = await Vendor.findOne({ user: req.user.id });
+
+    if (!vendor) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor profile not found." });
+    }
+
+    const vendorId = vendor._id;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const totalRequests = await Booking.countDocuments({
+      vendor: vendorId,
+    });
+
+    const pendingRequests = await Booking.countDocuments({
+      vendor: vendorId,
+      status: BOOKING_STATUS.PENDING,
+    });
+
+    const activeBookings = await Booking.countDocuments({
+      vendor: vendorId,
+      status: {
+        $in: [BOOKING_STATUS.APPROVED, BOOKING_STATUS.COMPLETED],
+      },
+    });
+
+    const revenueResult = await Booking.aggregate([
+      {
+        $match: {
+          vendor: vendorId,
+          status: {
+            $in: [BOOKING_STATUS.APPROVED, BOOKING_STATUS.COMPLETED],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $ifNull: ["$amount", 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const totalRevenue =
+      revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+
+    const todayEvents = await Booking.find({
+      vendor: vendorId,
+      status: {
+        $in: [BOOKING_STATUS.APPROVED, BOOKING_STATUS.COMPLETED],
+      },
+      serviceDate: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+    })
+      .populate("wedding", "brideName groomName guestCount venue location")
+      .populate("customer", "name email phone")
+      .sort({
+        startTime: 1,
+      })
+      .limit(10);
+
+    const upcomingEvents = await Booking.find({
+      vendor: vendorId,
+      status: {
+        $in: [BOOKING_STATUS.APPROVED, BOOKING_STATUS.COMPLETED],
+      },
+      serviceDate: {
+        $gte: tomorrow,
+      },
+    })
+      .populate("wedding", "brideName groomName guestCount venue location")
+      .populate("customer", "name email phone")
+      .sort({
+        serviceDate: 1,
+        startTime: 1,
+      })
+      .limit(5);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        stats: {
+          totalRequests,
+          pendingRequests,
+          activeBookings,
+          totalRevenue,
+        },
+        todayEvents,
+        upcomingEvents,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateBookingStatus = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -542,6 +653,7 @@ module.exports = {
   createBooking,
   getMyBookings,
   getVendorBookings,
+  getVendorDashboard,
   updateBookingStatus,
   completeBooking,
   requestFinalPayment,

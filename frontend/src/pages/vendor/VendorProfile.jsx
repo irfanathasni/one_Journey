@@ -4,9 +4,17 @@ import {
   getMyVendorProfile,
   updateVendorProfile,
   addPackage,
+  updatePackage,
   deletePackage,
 } from "../../services/vendorService";
 import { getActiveCategories } from "../../services/categoryService";
+
+const emptyPackageForm = {
+  packageType: "Normal",
+  packageName: "",
+  description: "",
+  price: "",
+};
 
 const VendorProfile = () => {
   const [vendor, setVendor] = useState(null);
@@ -14,6 +22,8 @@ const VendorProfile = () => {
   const [error, setError] = useState("");
 
   const [categories, setCategories] = useState([]);
+
+  // Profile edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
@@ -22,6 +32,13 @@ const VendorProfile = () => {
   });
   const [updateError, setUpdateError] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  // Package modal
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [editingPackageId, setEditingPackageId] = useState(null);
+  const [packageForm, setPackageForm] = useState(emptyPackageForm);
+  const [packageError, setPackageError] = useState("");
+  const [savingPackage, setSavingPackage] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -32,12 +49,15 @@ const VendorProfile = () => {
     try {
       setLoading(true);
       setError("");
+
       const res = await getMyVendorProfile();
+
       setVendor(res.data);
     } catch (error) {
       console.error("Profile error:", error);
+
       setError(
-        error.response?.data?.message || "Failed to load vendor profile"
+        error.response?.data?.message || "Failed to load vendor profile",
       );
     } finally {
       setLoading(false);
@@ -47,18 +67,23 @@ const VendorProfile = () => {
   const fetchCategories = async () => {
     try {
       const res = await getActiveCategories();
+
       setCategories(res.data?.data || []);
     } catch (error) {
       console.error(
         "Failed to fetch categories:",
-        error.response?.data || error
+        error.response?.data || error,
       );
+
       setCategories([]);
     }
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const openEditModal = () => {
@@ -90,52 +115,123 @@ const VendorProfile = () => {
       setVendor(res.data);
       setShowEditModal(false);
     } catch (err) {
-      setUpdateError(
-        err.response?.data?.message || "Failed to update profile"
-      );
+      setUpdateError(err.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdatingProfile(false);
     }
   };
 
-  const handleAddPackage = async () => {
+  // =========================
+  // PACKAGE MANAGEMENT
+  // =========================
+
+  const openAddPackageModal = () => {
+    setEditingPackageId(null);
+    setPackageForm(emptyPackageForm);
+    setPackageError("");
+    setShowPackageModal(true);
+  };
+
+  const openEditPackageModal = (pkg) => {
+    setEditingPackageId(pkg._id);
+
+    setPackageForm({
+      packageType: pkg.packageType || "Normal",
+      packageName: pkg.packageName || "",
+      description: pkg.description || "",
+      price: pkg.price ?? "",
+    });
+
+    setPackageError("");
+    setShowPackageModal(true);
+  };
+
+  const closePackageModal = () => {
+    if (savingPackage) return;
+
+    setShowPackageModal(false);
+    setEditingPackageId(null);
+    setPackageForm(emptyPackageForm);
+    setPackageError("");
+  };
+
+  const handlePackageChange = (e) => {
+    setPackageForm({
+      ...packageForm,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSavePackage = async (e) => {
+    e.preventDefault();
+
+    setPackageError("");
+
+    const packageName = packageForm.packageName.trim();
+    const description = packageForm.description.trim();
+    const price = Number(packageForm.price);
+
+    if (!packageName || !description || packageForm.price === "") {
+      setPackageError("Package name, description and price are required.");
+      return;
+    }
+
+    if (!["Normal", "Premium"].includes(packageForm.packageType)) {
+      setPackageError("Package type must be Normal or Premium.");
+      return;
+    }
+
+    if (Number.isNaN(price) || price < 0) {
+      setPackageError("Package price must be a valid positive number.");
+      return;
+    }
+
     try {
-      const packageType = prompt("Enter package type: Normal or Premium");
-      const packageName = prompt("Enter package name");
-      const description = prompt("Enter package description");
-      const price = prompt("Enter package price");
+      setSavingPackage(true);
 
-      if (!packageType || !packageName || !description || !price) {
-        return;
-      }
-
-      if (!["Normal", "Premium"].includes(packageType)) {
-        alert("Package type must be Normal or Premium");
-        return;
-      }
-
-      const res = await addPackage({
-        packageType,
+      const data = {
+        packageType: packageForm.packageType,
         packageName,
         description,
-        price: Number(price),
-      });
+        price,
+      };
+
+      let res;
+
+      if (editingPackageId) {
+        res = await updatePackage(editingPackageId, data);
+      } else {
+        res = await addPackage(data);
+      }
 
       setVendor(res.data);
+
+      closePackageModal();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to add package");
+      setPackageError(
+        err.response?.data?.message ||
+          `Failed to ${editingPackageId ? "update" : "add"} package`,
+      );
+    } finally {
+      setSavingPackage(false);
     }
   };
 
   const handleDeletePackage = async (packageId) => {
+    const shouldDelete = window.confirm(
+      "Are you sure you want to delete this package?",
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
     try {
       const res = await deletePackage(packageId);
 
       setVendor(res.data);
     } catch (err) {
-      alert(
-        err.response?.data?.message || "Failed to delete package"
-      );
+      alert(err.response?.data?.message || "Failed to delete package");
     }
   };
 
@@ -184,12 +280,16 @@ const VendorProfile = () => {
           </div>
         </div>
 
+        {/* =========================
+            PROFILE CARD
+        ========================= */}
+
         <section className="vendor-profile-card" style={styles.card}>
           <div
             className="vendor-profile-profile-header"
             style={styles.profileHeader}
           >
-            <div style={styles.avatar}>
+            <div className="vendor-profile-avatar" style={styles.avatar}>
               {vendor?.businessName?.charAt(0).toUpperCase()}
             </div>
 
@@ -197,9 +297,7 @@ const VendorProfile = () => {
               className="vendor-profile-header-text"
               style={styles.profileHeaderText}
             >
-              <h2 style={styles.businessName}>
-                {vendor?.businessName}
-              </h2>
+              <h2 style={styles.businessName}>{vendor?.businessName}</h2>
 
               <p style={styles.category}>{vendor?.category}</p>
             </div>
@@ -222,6 +320,7 @@ const VendorProfile = () => {
           <div className="vendor-profile-info-grid" style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <span style={styles.label}>Business Name</span>
+
               <strong className="vendor-profile-value">
                 {vendor?.businessName}
               </strong>
@@ -229,6 +328,7 @@ const VendorProfile = () => {
 
             <div style={styles.infoItem}>
               <span style={styles.label}>Category</span>
+
               <strong className="vendor-profile-value">
                 {vendor?.category}
               </strong>
@@ -236,79 +336,132 @@ const VendorProfile = () => {
 
             <div style={styles.infoItem}>
               <span style={styles.label}>Description</span>
+
               <strong className="vendor-profile-value">
                 {vendor?.description || "No description added"}
               </strong>
             </div>
 
-            {vendor?.packages?.length > 0 && (
-              <div
-                className="vendor-profile-pricing-display"
-                style={styles.pricingDisplay}
-              >
-                <span style={styles.label}>Service Packages</span>
-
-                <div style={styles.pricingList}>
-                  {vendor.packages.map((pkg) => (
-                    <div
-                      key={pkg._id}
-                      className="vendor-profile-package-row"
-                      style={styles.pricingDisplayRow}
-                    >
-                      <div className="vendor-profile-package-info">
-                        <div style={styles.eventType}>
-                          {pkg.packageName}
-                        </div>
-
-                        <div style={styles.guestRangeText}>
-                          {pkg.packageType}
-                        </div>
-
-                        <div
-                          className="vendor-profile-package-description"
-                          style={styles.guestRangeText}
-                        >
-                          {pkg.description}
-                        </div>
-                      </div>
-
-                      <div
-                        className="vendor-profile-package-price"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "12px",
-                        }}
-                      >
-                        <strong style={styles.pricingAmount}>
-                          ₹{Number(pkg.price).toLocaleString("en-IN")}
-                        </strong>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeletePackage(pkg._id)
-                          }
-                          style={styles.removePricingButton}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div style={styles.infoItem}>
               <span style={styles.label}>Verification Status</span>
+
               <strong className="vendor-profile-value">
                 {vendor?.verificationStatus}
               </strong>
             </div>
           </div>
         </section>
+
+        {/* =========================
+            SERVICE PACKAGES
+        ========================= */}
+
+        <section
+          className="vendor-profile-packages-section"
+          style={styles.pricingSection}
+        >
+          <div
+            className="vendor-profile-pricing-header"
+            style={styles.pricingHeader}
+          >
+            <div>
+              <h2 style={styles.pricingTitle}>Service Packages</h2>
+
+              <p style={styles.pricingSubtitle}>
+                Manage the packages customers can choose when booking your
+                service.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="vendor-profile-add-package-button"
+              style={styles.addPricingButton}
+              onClick={openAddPackageModal}
+            >
+              + Add Package
+            </button>
+          </div>
+
+          {vendor?.packages?.length > 0 ? (
+            <div style={styles.pricingList}>
+              {vendor.packages.map((pkg) => (
+                <div
+                  key={pkg._id}
+                  className="vendor-profile-package-row"
+                  style={styles.pricingDisplayRow}
+                >
+                  <div
+                    className="vendor-profile-package-info"
+                    style={styles.packageInfo}
+                  >
+                    <div style={styles.packageTypeBadge}>{pkg.packageType}</div>
+
+                    <div style={styles.eventType}>{pkg.packageName}</div>
+
+                    <div
+                      className="vendor-profile-package-description"
+                      style={styles.guestRangeText}
+                    >
+                      {pkg.description}
+                    </div>
+                  </div>
+
+                  <div
+                    className="vendor-profile-package-price"
+                    style={styles.packageActions}
+                  >
+                    <strong style={styles.pricingAmount}>
+                      ₹{Number(pkg.price).toLocaleString("en-IN")}
+                    </strong>
+
+                    <button
+                      type="button"
+                      onClick={() => openEditPackageModal(pkg)}
+                      style={styles.editPackageButton}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePackage(pkg._id)}
+                      style={styles.removePricingButton}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={styles.emptyPricing}>
+              <div style={styles.emptyPackageIcon}>📦</div>
+
+              <strong style={styles.emptyPackageTitle}>
+                No packages added yet
+              </strong>
+
+              <p style={styles.emptyPackageText}>
+                Add your Normal or Premium package so customers can choose your
+                service.
+              </p>
+
+              <button
+                type="button"
+                style={styles.emptyPackageButton}
+                onClick={openAddPackageModal}
+              >
+                + Add Your First Package
+              </button>
+            </div>
+          )}
+        </section>
       </main>
+
+      {/* =========================
+          PROFILE EDIT MODAL
+      ========================= */}
 
       {showEditModal && (
         <div
@@ -322,7 +475,10 @@ const VendorProfile = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>
+              <h2
+                className="vendor-profile-modal-title"
+                style={styles.modalTitle}
+              >
                 Edit Vendor Profile
               </h2>
 
@@ -334,15 +490,11 @@ const VendorProfile = () => {
               </button>
             </div>
 
-            {updateError && (
-              <div style={styles.errorBox}>{updateError}</div>
-            )}
+            {updateError && <div style={styles.errorBox}>{updateError}</div>}
 
             <form onSubmit={handleUpdateProfile} style={styles.form}>
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>
-                  Business Name
-                </label>
+                <label style={styles.fieldLabel}>Business Name</label>
 
                 <input
                   type="text"
@@ -367,10 +519,7 @@ const VendorProfile = () => {
                   <option value="">Select Category</option>
 
                   {categories.map((category) => (
-                    <option
-                      key={category._id}
-                      value={category.name}
-                    >
+                    <option key={category._id} value={category.name}>
                       {category.name}
                     </option>
                   ))}
@@ -378,9 +527,7 @@ const VendorProfile = () => {
               </div>
 
               <div style={styles.field}>
-                <label style={styles.fieldLabel}>
-                  Description
-                </label>
+                <label style={styles.fieldLabel}>Description</label>
 
                 <textarea
                   name="description"
@@ -416,6 +563,135 @@ const VendorProfile = () => {
         </div>
       )}
 
+      {/* =========================
+          PACKAGE MODAL
+      ========================= */}
+
+      {showPackageModal && (
+        <div
+          className="vendor-profile-modal-overlay"
+          style={styles.modalOverlay}
+          onClick={closePackageModal}
+        >
+          <div
+            className="vendor-profile-modal-card"
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={styles.modalHeader}>
+              <h2
+                className="vendor-profile-modal-title"
+                style={styles.modalTitle}
+              >
+                {editingPackageId ? "Edit Package" : "Add Package"}
+              </h2>
+
+              <button
+                type="button"
+                style={styles.closeButton}
+                onClick={closePackageModal}
+                disabled={savingPackage}
+              >
+                ✕
+              </button>
+            </div>
+
+            {packageError && <div style={styles.errorBox}>{packageError}</div>}
+
+            <form onSubmit={handleSavePackage} style={styles.form}>
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Package Type</label>
+
+                <select
+                  name="packageType"
+                  value={packageForm.packageType}
+                  onChange={handlePackageChange}
+                  style={styles.input}
+                  required
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="Premium">Premium</option>
+                </select>
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Package Name</label>
+
+                <input
+                  type="text"
+                  name="packageName"
+                  value={packageForm.packageName}
+                  onChange={handlePackageChange}
+                  placeholder="Eg: Basic Photography"
+                  style={styles.input}
+                  required
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Description</label>
+
+                <textarea
+                  name="description"
+                  value={packageForm.description}
+                  onChange={handlePackageChange}
+                  placeholder="Describe what is included in this package"
+                  style={styles.textarea}
+                  rows="4"
+                  required
+                />
+              </div>
+
+              <div style={styles.field}>
+                <label style={styles.fieldLabel}>Price</label>
+
+                <div style={styles.priceInputWrapper}>
+                  <span style={styles.rupee}>₹</span>
+
+                  <input
+                    type="number"
+                    name="price"
+                    value={packageForm.price}
+                    onChange={handlePackageChange}
+                    placeholder="0"
+                    min="0"
+                    step="1"
+                    style={styles.priceInput}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div
+                className="vendor-profile-modal-actions"
+                style={styles.modalActions}
+              >
+                <button
+                  type="submit"
+                  style={styles.primaryButton}
+                  disabled={savingPackage}
+                >
+                  {savingPackage
+                    ? "Saving..."
+                    : editingPackageId
+                      ? "Update Package"
+                      : "Add Package"}
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.secondaryButton}
+                  onClick={closePackageModal}
+                  disabled={savingPackage}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <style>{`
         /* =========================
            TABLET
@@ -435,6 +711,14 @@ const VendorProfile = () => {
           }
 
           .vendor-profile-edit-button {
+            width: 100%;
+          }
+
+          .vendor-profile-pricing-header {
+            flex-wrap: wrap;
+          }
+
+          .vendor-profile-add-package-button {
             width: 100%;
           }
         }
@@ -510,15 +794,24 @@ const VendorProfile = () => {
             line-height: 1.5;
           }
 
-          .vendor-profile-pricing-display {
-            grid-column: 1 / -1 !important;
+          .vendor-profile-packages-section {
+            margin-top: 28px !important;
+          }
+
+          .vendor-profile-pricing-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .vendor-profile-add-package-button {
+            width: 100%;
           }
 
           .vendor-profile-package-row {
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 12px !important;
-            padding: 13px !important;
+            padding: 15px !important;
           }
 
           .vendor-profile-package-info {
@@ -533,6 +826,10 @@ const VendorProfile = () => {
           .vendor-profile-package-price {
             justify-content: space-between !important;
             width: 100%;
+          }
+
+          .vendor-profile-edit-package-button {
+            flex: 1;
           }
 
           .vendor-profile-modal-overlay {
@@ -748,6 +1045,10 @@ const styles = {
     marginBottom: "15px",
   },
 
+  // =========================
+  // MODAL
+  // =========================
+
   modalOverlay: {
     position: "fixed",
     top: 0,
@@ -871,10 +1172,17 @@ const styles = {
     fontWeight: 600,
   },
 
+  // =========================
+  // PACKAGES
+  // =========================
+
   pricingSection: {
-    marginTop: "8px",
-    paddingTop: "22px",
-    borderTop: "1px solid #E5DFD5",
+    marginTop: "30px",
+    padding: "24px",
+    background: "#FFFFFF",
+    borderRadius: "16px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+    boxSizing: "border-box",
   },
 
   pricingHeader: {
@@ -912,66 +1220,76 @@ const styles = {
     cursor: "pointer",
   },
 
-  pricingCard: {
-    background: "#FBFAF7",
-    border: "1px solid #E5DFD5",
-    borderRadius: "12px",
-    padding: "16px",
-    marginBottom: "12px",
-  },
-
-  pricingTopRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr auto",
-    gap: "12px",
-    alignItems: "end",
-  },
-
-  pricingField: {
+  pricingList: {
     display: "flex",
     flexDirection: "column",
-    gap: "6px",
+    gap: "10px",
   },
 
-  smallLabel: {
-    fontSize: "11px",
-    color: "#4D514D",
+  pricingDisplayRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "15px",
+    background: "#FAF9F6",
+    border: "1px solid #E8E2D9",
+    borderRadius: "10px",
+    minWidth: 0,
+  },
+
+  packageInfo: {
+    minWidth: 0,
+    flex: 1,
+  },
+
+  packageTypeBadge: {
+    display: "inline-block",
+    padding: "4px 8px",
+    borderRadius: "20px",
+    background: "#E7F2EC",
+    color: "#3D5A50",
+    fontSize: "10px",
     fontWeight: 600,
+    marginBottom: "7px",
   },
 
-  pricingInput: {
-    width: "100%",
-    padding: "10px 11px",
-    border: "1px solid #DCD5CA",
-    borderRadius: "8px",
-    background: "#FFFFFF",
+  eventType: {
     fontSize: "13px",
-    outline: "none",
-    boxSizing: "border-box",
+    fontWeight: 600,
+    color: "#3D5A50",
+    overflowWrap: "anywhere",
   },
 
-  priceInputWrapper: {
+  guestRangeText: {
+    marginTop: "4px",
+    fontSize: "11px",
+    color: "#77716B",
+    overflowWrap: "anywhere",
+  },
+
+  packageActions: {
     display: "flex",
     alignItems: "center",
-    border: "1px solid #DCD5CA",
-    borderRadius: "8px",
+    gap: "10px",
+    marginLeft: "15px",
+    flexShrink: 0,
+  },
+
+  pricingAmount: {
+    fontSize: "14px",
+    color: "#2B2B2B",
+    whiteSpace: "nowrap",
+  },
+
+  editPackageButton: {
+    padding: "8px 12px",
+    border: "1px solid #3D5A50",
+    borderRadius: "7px",
     background: "#FFFFFF",
-    overflow: "hidden",
-  },
-
-  rupee: {
-    paddingLeft: "11px",
-    color: "#6B6560",
-    fontSize: "13px",
-  },
-
-  priceInput: {
-    width: "100%",
-    padding: "10px 8px",
-    border: "none",
-    outline: "none",
-    background: "transparent",
-    fontSize: "13px",
+    color: "#3D5A50",
+    cursor: "pointer",
+    fontSize: "11px",
+    fontWeight: 600,
   },
 
   removePricingButton: {
@@ -986,45 +1304,32 @@ const styles = {
     flexShrink: 0,
   },
 
-  guestSection: {
-    marginTop: "16px",
-    paddingTop: "14px",
-    borderTop: "1px solid #E8E2D9",
-  },
-
-  guestRange: {
+  priceInputWrapper: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    marginTop: "8px",
-  },
-
-  guestInputWrapper: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-
-  guestInput: {
-    width: "100%",
-    padding: "10px 11px",
     border: "1px solid #DCD5CA",
-    borderRadius: "8px",
+    borderRadius: "7px",
     background: "#FFFFFF",
-    fontSize: "13px",
-    outline: "none",
-    boxSizing: "border-box",
+    overflow: "hidden",
   },
 
-  rangeDash: {
-    color: "#9A938B",
-    fontSize: "16px",
-    marginTop: "-16px",
+  rupee: {
+    paddingLeft: "12px",
+    color: "#6B6560",
+    fontSize: "13px",
+  },
+
+  priceInput: {
+    width: "100%",
+    padding: "12px 8px",
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    fontSize: "13px",
   },
 
   emptyPricing: {
-    padding: "20px",
+    padding: "30px 20px",
     background: "#FBFAF7",
     border: "1px dashed #D8D1C7",
     borderRadius: "10px",
@@ -1033,50 +1338,33 @@ const styles = {
     fontSize: "12px",
   },
 
-  pricingDisplay: {
-    gridColumn: "1 / -1",
-    marginTop: "8px",
-    minWidth: 0,
+  emptyPackageIcon: {
+    fontSize: "30px",
+    marginBottom: "8px",
   },
 
-  pricingList: {
-    marginTop: "10px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-
-  pricingDisplayRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 14px",
-    background: "#FAF9F6",
-    border: "1px solid #E8E2D9",
-    borderRadius: "8px",
-    minWidth: 0,
-  },
-
-  eventType: {
-    fontSize: "13px",
-    fontWeight: 600,
+  emptyPackageTitle: {
+    display: "block",
     color: "#3D5A50",
-    overflowWrap: "anywhere",
+    fontSize: "13px",
   },
 
-  guestRangeText: {
-    marginTop: "3px",
-    fontSize: "11px",
-    color: "#77716B",
-    overflowWrap: "anywhere",
+  emptyPackageText: {
+    maxWidth: "420px",
+    margin: "7px auto 15px",
+    lineHeight: 1.5,
   },
 
-  pricingAmount: {
-    fontSize: "14px",
-    color: "#2B2B2B",
-    whiteSpace: "nowrap",
+  emptyPackageButton: {
+    border: "1px solid #3D5A50",
+    background: "#FFFFFF",
+    color: "#174F42",
+    borderRadius: "8px",
+    padding: "9px 14px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
   },
 };
 
 export default VendorProfile;
-

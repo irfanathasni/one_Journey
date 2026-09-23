@@ -53,10 +53,16 @@ export const addPackage = async (data) => {
   return res.data;
 };
 
+export const updatePackage = async (packageId, data) => {
+  const res = await axiosInstance.put(`/vendor/packages/${packageId}`, data);
+  return res.data;
+};
+
 export const deletePackage = async (packageId) => {
   const res = await axiosInstance.delete(`/vendor/packages/${packageId}`);
   return res.data;
 };
+
 export const setupVendorPayout = async (data) => {
   const res = await axiosInstance.post("/vendor/payout/setup", data);
   return res.data;

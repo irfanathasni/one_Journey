@@ -426,7 +426,7 @@ const VendorBookings = () => {
                               <span style={styles.infoLabel}>Phone</span>
 
                               <strong style={styles.infoValue}>
-                                {booking.customer?.email || "Not specified"}
+                                {booking.customer?.phone || "Not specified"}
                               </strong>
                             </div>
                           </div>
