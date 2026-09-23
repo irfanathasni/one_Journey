@@ -1,5 +1,4 @@
 const axios = require("axios");
-const crypto = require("crypto");
 
 const razorpayXClient = axios.create({
   baseURL: process.env.RAZORPAYX_BASE_URL,
@@ -13,8 +12,6 @@ const razorpayXClient = axios.create({
 });
 
 const createPayout = async ({ fundAccountId, amount, referenceId }) => {
-  const idempotencyKey = crypto.randomUUID();
-
   const payload = {
     account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
     fund_account_id: fundAccountId,
@@ -29,7 +26,7 @@ const createPayout = async ({ fundAccountId, amount, referenceId }) => {
 
   const response = await razorpayXClient.post("/payouts", payload, {
     headers: {
-      "X-Payout-Idempotency": idempotencyKey,
+      "X-Payout-Idempotency": referenceId,
     },
   });
 

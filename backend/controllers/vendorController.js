@@ -3,6 +3,7 @@ const Vendor = require("../models/Vendor");
 const Category = require("../models/Category");
 const VendorAvailability = require("../models/VendorAvailability");
 const User = require("../models/User");
+const Wallet = require("../models/Wallet");
 
 const {
   createContact,
@@ -13,10 +14,12 @@ const createVendorProfile = async (req, res, next) => {
   try {
     const { businessName, category, description } = req.body;
     if (!businessName || !category) {
-      return res.status(400).json({
-        success: false,
-        message: "Business Name ,category and price are required",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Business Name ,category and price are required",
+        });
     }
     const categoryData = await Category.findOne({
       name: category.trim(),
@@ -41,18 +44,19 @@ const createVendorProfile = async (req, res, next) => {
 
         await existingVendor.save();
 
-        return res.status(200).json({
-          success: true,
-          message:
-            "Vendor profile updated successfully and sent for review again.",
-          data: existingVendor,
-        });
+        return res
+          .status(200)
+          .json({
+            success: true,
+            message:
+              "Vendor profile updated successfully and sent for review again.",
+            data: existingVendor,
+          });
       }
 
-      return res.status(400).json({
-        success: false,
-        message: "Vendor profile already exists",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Vendor profile already exists" });
     }
 
     const vendor = await Vendor.create({
@@ -63,11 +67,15 @@ const createVendorProfile = async (req, res, next) => {
       verificationStatus: VENDOR_STATUS.PENDING,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "Vendor profile created",
-      data: vendor,
+    await Wallet.create({
+      vendor: vendor._id,
+      balance: 0,
+      transactions: [],
     });
+
+    return res
+      .status(201)
+      .json({ success: true, message: "Vendor profile created", data: vendor });
   } catch (error) {
     next(error);
   }
