@@ -22,6 +22,7 @@ const getMyWallet = async (req, res, next) => {
         transactions: [],
       });
     }
+    await wallet.populate("transactions.customer", "name email");
 
     return res.status(200).json({ success: true, data: wallet });
   } catch (error) {

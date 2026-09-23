@@ -338,8 +338,6 @@ const VendorWallet = () => {
             </h2>
           </div>
 
-          {/* WITHDRAW */}
-
           <div
             className="vendor-wallet-withdraw-card"
             style={styles.withdrawCard}
@@ -418,6 +416,12 @@ const VendorWallet = () => {
                       </strong>
 
                       <p style={styles.rowDesc}>{t.description}</p>
+
+                      {isCredit && t.customer && (
+                        <p style={styles.customerInfo}>
+                          From: {t.customer.name}
+                        </p>
+                      )}
 
                       {!isCredit && (
                         <span
@@ -903,7 +907,12 @@ const styles = {
     overflowWrap: "anywhere",
     lineHeight: 1.5,
   },
-
+  customerInfo: {
+    margin: "4px 0 0",
+    fontSize: "12px",
+    color: "#6B6560",
+    fontWeight: 500,
+  },
   rowRight: {
     textAlign: "right",
     flexShrink: 0,
