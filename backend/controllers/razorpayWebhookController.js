@@ -29,64 +29,77 @@ const handleRazorpayXWebhook = async (req, res) => {
       event.event === "payout.failed" ||
       event.event === "payout.reversed"
     ) {
-      const payout = event.payload?.payout?.entity;
-
-      if (!payout) {
-        return res.status(200).json({ success: true });
-      }
-
-      const payoutId = payout.id;
-
-      const wallet = await Wallet.findOne({
-        "transactions.payoutId": payoutId,
+      return res.status(200).json({
+        success: true,
+        message: "Event ignored",
       });
+    }
+    const payout = event.payload?.payout?.entity;
 
-      if (!wallet) {
-        console.log("Wallet not found for payout:", payoutId);
-
-        return res.status(200).json({ success: true });
-      }
-
-      const transaction = wallet.transactions.find(
-        (item) => item.payoutId === payoutId,
-      );
-
-      if (!transaction) {
-        return res.status(200).json({ success: true });
-      }
-
-      if (payout.status === "processed") {
-        if (transaction.status === "pending") {
-          transaction.status = "success";
-          transaction.description = "Vendor payout completed";
-          wallet.balance -= Number(transaction.amount);
-        }
-      }
-
-      if (payout.status === "failed" || payout.status === "reversed") {
-        if (transaction.status === "success") {
-          wallet.balance += Number(transaction.amount);
-        }
-        if (transaction.status !== "failed") {
-          transaction.status = "failed";
-
-          transaction.failureReason =
-            payout.status_details?.description || `Payout ${payout.status}`;
-
-          transaction.description = "Vendor payout failed";
-        }
-      }
-
-      await wallet.save();
+    if (!payout) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Payout data not found" });
     }
 
-    return res.status(200).json({ success: true });
+    const payoutId = payout.id;
+
+    const wallet = await Wallet.findOne({
+      "transactions.payoutId": payoutId,
+    });
+
+    if (!wallet) {
+      console.log("Wallet not found for payout:", payoutId);
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Wallet not found" });
+    }
+
+    const transaction = wallet.transactions.find(
+      (item) => item.payoutId === payoutId,
+    );
+
+    if (!transaction) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Transaction not found" });
+    }
+
+    if (payout.status === "processed") {
+      if (transaction.status === "pending") {
+        transaction.status = "success";
+        transaction.description = "Vendor payout completed";
+        wallet.balance -= Number(transaction.amount);
+      }
+    }
+
+    if (payout.status === "failed" || payout.status === "reversed") {
+      if (transaction.status === "success") {
+        wallet.balance += Number(transaction.amount);
+      }
+      if (transaction.status !== "failed") {
+        transaction.status = "failed";
+
+        transaction.failureReason =
+          payout.status_details?.description || `Payout ${payout.status}`;
+
+        transaction.description = "Vendor payout failed";
+      }
+    }
+
+    await wallet.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Webhook processed successfully." });
   } catch (error) {
     console.error("RAZORPAYX WEBHOOK ERROR:", error);
 
-    return res
-      .status(500)
-      .json({ success: false, message: "Webhook processing failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Webhook processing failed",
+    });
   }
 };
 
