@@ -72,8 +72,6 @@ const CustomerLayout = () => {
             alt="One Journey"
             style={styles.logoImage}
           />
-
-          <p style={styles.logoSubtext}>Wedding Planner</p>
         </div>
 
         <nav className="customer-menu" style={styles.menu}>
@@ -277,7 +275,6 @@ const styles = {
   },
 
   logoSection: {
-    padding: "10px 14px 30px",
     borderBottom: "1px solid #E5DFD5",
     marginBottom: "25px",
   },
@@ -285,14 +282,6 @@ const styles = {
     width: "155px",
     height: "auto",
     objectFit: "contain",
-  },
-
-  logoSubtext: {
-    margin: "5px 0 0",
-    fontSize: "11px",
-    color: "#C97B84",
-    letterSpacing: "1.5px",
-    textTransform: "uppercase",
   },
 
   menu: {

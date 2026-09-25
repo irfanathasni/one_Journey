@@ -35,7 +35,7 @@ const VendorNavbar = () => {
         {/* Logo */}
         <div style={styles.logo}>
           <img
-            src="/OneJourney-logo.png"
+            src="/logo.png"
             alt="One Journey"
             style={styles.logoImage}
           />
