@@ -35,7 +35,6 @@ const CustomerLayout = () => {
 
   return (
     <div style={styles.layout}>
-
       {/* Mobile Header */}
       <div className="customer-mobile-header">
         <button
@@ -46,16 +45,13 @@ const CustomerLayout = () => {
         </button>
 
         <div className="customer-mobile-title">
-          <span>One Journey</span>
+          <img src="/OneJourney-logo.png" alt="One Journey" />
         </div>
       </div>
 
       {/* Overlay */}
       {isSidebarOpen && (
-        <div
-          className="customer-sidebar-overlay"
-          onClick={closeSidebar}
-        />
+        <div className="customer-sidebar-overlay" onClick={closeSidebar} />
       )}
 
       {/* Sidebar */}
@@ -65,17 +61,18 @@ const CustomerLayout = () => {
         }`}
         style={styles.sidebar}
       >
-
         {/* Mobile Close Button */}
-        <button
-          className="customer-sidebar-close"
-          onClick={closeSidebar}
-        >
+        <button className="customer-sidebar-close" onClick={closeSidebar}>
           ×
         </button>
 
         <div style={styles.logoSection}>
-          <h2 style={styles.logo}>One Journey</h2>
+          <img
+            src="/OneJourney-logo.png"
+            alt="One Journey"
+            style={styles.logoImage}
+          />
+
           <p style={styles.logoSubtext}>Wedding Planner</p>
         </div>
 
@@ -97,7 +94,6 @@ const CustomerLayout = () => {
         </nav>
 
         <div style={styles.bottomSection}>
-
           <NavLink
             to="/customer/profile"
             onClick={closeSidebar}
@@ -110,22 +106,15 @@ const CustomerLayout = () => {
             <span>Profile</span>
           </NavLink>
 
-          <button
-            onClick={handleLogout}
-            style={styles.logoutButton}
-          >
+          <button onClick={handleLogout} style={styles.logoutButton}>
             <span style={styles.icon}>↪</span>
             <span>Logout</span>
           </button>
-
         </div>
       </aside>
 
       {/* Main Content */}
-      <main
-        className="customer-main"
-        style={styles.mainContent}
-      >
+      <main className="customer-main" style={styles.mainContent}>
         <Outlet />
       </main>
 
@@ -148,10 +137,10 @@ const CustomerLayout = () => {
           padding: 5px;
         }
 
-        .customer-mobile-title {
-          font-family: Georgia, serif;
-          font-size: 20px;
-          color: #3D5A50;
+       .customer-mobile-title img {
+          width: 120px;
+          height: auto;
+          object-fit: contain;
         }
 
         /* =========================
@@ -292,13 +281,10 @@ const styles = {
     borderBottom: "1px solid #E5DFD5",
     marginBottom: "25px",
   },
-
-  logo: {
-    margin: 0,
-    fontFamily: "Georgia, serif",
-    fontSize: "25px",
-    fontWeight: "400",
-    color: "#3D5A50",
+  logoImage: {
+    width: "155px",
+    height: "auto",
+    objectFit: "contain",
   },
 
   logoSubtext: {

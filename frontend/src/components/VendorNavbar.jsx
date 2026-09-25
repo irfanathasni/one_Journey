@@ -33,8 +33,13 @@ const VendorNavbar = () => {
     <>
       <header className="vendor-navbar" style={styles.navbar}>
         {/* Logo */}
-        <div style={styles.logo}>One_Journey</div>
-
+        <div style={styles.logo}>
+          <img
+            src="/OneJourney-logo.png"
+            alt="One Journey"
+            style={styles.logoImage}
+          />
+        </div>
         {/* Desktop Navigation */}
         <nav className="vendor-nav-links" style={styles.navLinks}>
           <NavLink
@@ -185,10 +190,7 @@ const VendorNavbar = () => {
             Wallet
           </NavLink>
 
-          <button
-            className="vendor-mobile-logout"
-            onClick={handleLogout}
-          >
+          <button className="vendor-mobile-logout" onClick={handleLogout}>
             Logout
           </button>
         </div>
@@ -286,14 +288,13 @@ const VendorNavbar = () => {
             font-size: 13px;
           }
         }
-
-        @media (max-width: 380px) {
+          @media (max-width: 380px) {
           .vendor-navbar {
             padding: 10px 12px !important;
           }
 
-          .vendor-navbar > div:first-child {
-            font-size: 19px !important;
+          .vendor-navbar .logo img {
+            width: 120px !important;
           }
 
           .vendor-menu-button {
@@ -314,15 +315,17 @@ const styles = {
     background: "#FFFFFF",
     borderBottom: "1px solid #E5DFD5",
   },
-
   logo: {
-    fontFamily: "Georgia, serif",
-    fontSize: "22px",
-    fontWeight: "600",
-    color: "#3D5A50",
+    display: "flex",
+    alignItems: "center",
     flexShrink: 0,
   },
 
+  logoImage: {
+    width: "150px",
+    height: "auto",
+    objectFit: "contain",
+  },
   navLinks: {
     display: "flex",
     alignItems: "center",

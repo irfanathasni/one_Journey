@@ -82,9 +82,15 @@ const AdminSidebar = ({ isOpen, onClose }) => {
         </button>
 
         <div>
-          <h2 style={styles.logo}>
-            One_Journey <span style={styles.admin}>Admin</span>
-          </h2>
+          <div style={styles.logoSection}>
+            <img
+              src="/OneJourney-logo.png"
+              alt="One Journey"
+              style={styles.logoImage}
+            />
+
+            <span style={styles.admin}>Admin</span>
+          </div>
 
           <p style={styles.subtitle}>Platform Management</p>
 
@@ -188,15 +194,23 @@ const styles = {
     padding: "5px",
   },
 
-  logo: {
-    fontSize: "28px",
-    fontFamily: "Georgia, serif",
-    color: "#2B2B2B",
-    margin: 0,
+  logoSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "6px",
+  },
+
+  logoImage: {
+    width: "130px",
+    height: "auto",
+    objectFit: "contain",
   },
 
   admin: {
     color: "#B8935A",
+    fontSize: "16px",
+    fontWeight: "600",
   },
 
   subtitle: {
