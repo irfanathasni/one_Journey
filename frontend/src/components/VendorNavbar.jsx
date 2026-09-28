@@ -322,7 +322,7 @@ const styles = {
   },
 
   logoImage: {
-    width: "150px",
+    width: "100px",
     height: "auto",
     objectFit: "contain",
   },
