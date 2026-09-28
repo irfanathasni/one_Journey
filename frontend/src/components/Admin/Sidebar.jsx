@@ -83,9 +83,11 @@ const AdminSidebar = ({ isOpen, onClose }) => {
 
         <div>
           <div style={styles.logoSection}>
-            <img src="/logo.png" alt="One Journey" style={styles.logoImage} />
-
-            <span style={styles.admin}>Admin</span>
+            <img
+              src="/OneJourney-logo.png"
+              alt="One Journey"
+              style={styles.logoImage}
+            />
           </div>
 
           <p style={styles.subtitle}>Platform Management</p>
